@@ -1,0 +1,100 @@
+name: Release
+
+# Triggered when you push a tag matching v* (e.g. `git tag v0.0.2 && git push --tags`).
+# The release flow: build per-platform .vsix files in parallel runners (so each
+# one bundles the correct better-sqlite3 native binary), then a single publish
+# job uploads all of them to the Marketplace and attaches them to a GitHub
+# release with auto-generated notes.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write  # needed to create the GitHub Release
+
+jobs:
+  package:
+    name: Package (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: darwin-arm64
+          - os: macos-13
+            target: darwin-x64
+          - os: ubuntu-latest
+            target: linux-x64
+          - os: windows-latest
+            target: win32-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npx vitest run
+
+      - name: Build extension + webview
+        run: npm run build
+
+      - name: Package .vsix for ${{ matrix.target }}
+        run: npx --yes @vscode/vsce package --target ${{ matrix.target }} -o sesh-${{ matrix.target }}.vsix
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsix-${{ matrix.target }}
+          path: sesh-${{ matrix.target }}.vsix
+          if-no-files-found: error
+
+  publish:
+    name: Publish to Marketplace + GitHub Release
+    needs: package
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history so the GH release notes can diff against the previous tag
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: vsix-*
+          merge-multiple: true
+
+      - name: List downloaded artifacts
+        run: ls -la dist/
+
+      - name: Publish each platform .vsix to the Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          for vsix in dist/*.vsix; do
+            echo "Publishing $vsix"
+            npx --yes @vscode/vsce publish --packagePath "$vsix"
+          done
+
+      - name: Create GitHub Release with .vsix files attached
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.vsix
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
