@@ -42,6 +42,13 @@
           "title": "Sesh",
           "icon": "resources/sesh-icon.svg"
         }
+      ],
+      "secondarySidebar": [
+        {
+          "id": "sesh-secondary",
+          "title": "Sesh",
+          "icon": "resources/sesh-icon.svg"
+        }
       ]
     },
     "views": {
@@ -51,12 +58,23 @@
           "id": "sesh.welcome",
           "name": "Saved sessions"
         }
+      ],
+      "sesh-secondary": [
+        {
+          "type": "tree",
+          "id": "sesh.welcomeSecondary",
+          "name": "Saved sessions"
+        }
       ]
     },
     "viewsWelcome": [
       {
         "view": "sesh.welcome",
         "contents": "Browse, annotate, and resume saved Claude Code sessions.\n[Open Sesh panel](command:sesh.open)\n\nA full editor tab opens with your session list, search, filters, and transcript preview."
+      },
+      {
+        "view": "sesh.welcomeSecondary",
+        "contents": "Browse, annotate, and resume saved Claude Code sessions.\n[Open Sesh panel](command:sesh.open)"
       }
     ],
     "menus": {

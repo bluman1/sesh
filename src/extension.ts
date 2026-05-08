@@ -10,13 +10,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   host = new SeshHost(output);
 
-  // Empty tree-data provider so the activity bar view renders its
-  // viewsWelcome content (a clickable 'Open Sesh panel' button).
+  // Empty tree-data providers so the activity-bar view and secondary-sidebar
+  // view both render their viewsWelcome content (a clickable 'Open Sesh
+  // panel' button). Secondary sidebar is what shows up in the top-right
+  // icon group alongside Claude Code and Codex; activity bar is the left
+  // rail. Users can right-click any view to move it.
+  const emptyTreeProvider: vscode.TreeDataProvider<unknown> = {
+    getChildren: () => [],
+    getTreeItem: () => new vscode.TreeItem(""),
+  };
   context.subscriptions.push(
-    vscode.window.registerTreeDataProvider("sesh.welcome", {
-      getChildren: () => [],
-      getTreeItem: () => new vscode.TreeItem(""),
-    }),
+    vscode.window.registerTreeDataProvider("sesh.welcome", emptyTreeProvider),
+    vscode.window.registerTreeDataProvider(
+      "sesh.welcomeSecondary",
+      emptyTreeProvider,
+    ),
   );
 
   context.subscriptions.push(
