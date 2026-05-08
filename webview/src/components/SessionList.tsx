@@ -59,9 +59,10 @@ export function SessionList({
       itemContent={(_, s) => {
         const cat =
           s.category_id != null ? categoryById.get(s.category_id) : undefined;
+        const isOrphan = s.orphaned === 1;
         return (
           <div
-            className={`sesh-list-row ${selectedId === s.id ? "is-selected" : ""}`}
+            className={`sesh-list-row ${selectedId === s.id ? "is-selected" : ""} ${isOrphan ? "is-orphan" : ""}`}
             onClick={() => onSelect(s.id)}
           >
             <div className="sesh-list-line-1">
@@ -102,6 +103,14 @@ export function SessionList({
                     #{t}
                   </span>
                 ))}
+                {isOrphan && (
+                  <span
+                    className="sesh-list-pruned"
+                    title="Transcript pruned by Claude Code"
+                  >
+                    <Icon name="archive" />
+                  </span>
+                )}
                 <SourceBadge source={s.source} className="sesh-list-source" />
               </span>
             </div>

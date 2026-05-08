@@ -10,6 +10,7 @@ export interface SessionListItem {
   message_count: number;
   favorited: 0 | 1;
   archived: 0 | 1;
+  orphaned: 0 | 1;
   category_id: number | null;
   tags: string[];
 }
@@ -100,6 +101,7 @@ export function rowToListItem(row: SessionRow, tags: string[]): SessionListItem 
     message_count: row.message_count,
     favorited: row.favorited,
     archived: row.archived,
+    orphaned: row.orphaned,
     category_id: row.category_id,
     tags,
   };

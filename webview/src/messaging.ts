@@ -8,6 +8,7 @@ export interface SessionListItem {
   message_count: number;
   favorited: 0 | 1;
   archived: 0 | 1;
+  orphaned: 0 | 1;
   category_id: number | null;
   tags: string[];
 }

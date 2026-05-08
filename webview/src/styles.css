@@ -270,6 +270,20 @@ body {
   margin-left: var(--sesh-space-1);
   opacity: 0.7;
 }
+.sesh-list-pruned {
+  color: var(--sesh-fg-muted);
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.7;
+}
+.sesh-list-pruned .codicon {
+  font-size: var(--sesh-text-sm);
+}
+.sesh-list-row.is-orphan .sesh-list-title {
+  color: var(--sesh-fg-muted);
+  font-style: italic;
+}
 .sesh-list-source .codicon {
   font-size: var(--sesh-text-sm);
 }
@@ -557,6 +571,29 @@ body {
   color: var(--sesh-fg-muted);
   display: inline-flex;
   align-items: center;
+}
+.sesh-detail-hint-warn {
+  color: var(--vscode-editorWarning-foreground, var(--sesh-warning));
+}
+.sesh-transcript-pruned {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sesh-space-2);
+  padding: var(--sesh-space-6);
+}
+.sesh-transcript-pruned .codicon {
+  font-size: 28px;
+  opacity: 0.5;
+}
+.sesh-transcript-pruned p {
+  margin: 0;
+  max-width: 50ch;
+  text-align: center;
+}
+.sesh-transcript-pruned-hint {
+  color: var(--sesh-fg-muted);
+  font-size: var(--sesh-text-xs);
 }
 
 /* ─── Sections (annotations / transcript) ───────────── */

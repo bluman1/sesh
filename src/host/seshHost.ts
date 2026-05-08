@@ -8,6 +8,7 @@ import { SessionRepository } from "../db/sessions";
 import { TagRepository } from "../db/tags";
 import { CategoryRepository } from "../db/categories";
 import { scanProjectsRoot } from "../scanner/scan";
+import { scanSessionsIndex } from "../scanner/sessionsIndex";
 import { extractMetadata } from "../scanner/extract";
 import { ContentIndexer } from "../scanner/contentIndexer";
 import { ProjectsWatcher } from "../scanner/watcher";
@@ -72,6 +73,12 @@ export class SeshHost {
     this.output.appendLine(
       `[sesh] scan complete: scanned=${result.scanned} upserted=${result.upserted} skipped=${result.skipped}`,
     );
+    const ghosts = await scanSessionsIndex(CLAUDE_PROJECTS_DIR, this.sessions);
+    if (ghosts.indexFiles > 0) {
+      this.output.appendLine(
+        `[sesh] sessions-index: indexFiles=${ghosts.indexFiles} importedGhosts=${ghosts.imported} skippedExisting=${ghosts.skippedExisting} skippedSidechain=${ghosts.skippedSidechain}`,
+      );
+    }
   }
 
   private async healDirtyAutoTitles(): Promise<void> {

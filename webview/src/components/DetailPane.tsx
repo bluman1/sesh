@@ -157,6 +157,7 @@ export function DetailPane({
     .slice(0, 5);
 
   const sameWorkspace = currentPath && session.project_path === currentPath;
+  const isOrphan = session.orphaned === 1;
 
   return (
     <div className="sesh-detail">
@@ -227,36 +228,46 @@ export function DetailPane({
         </div>
 
         <div className="sesh-detail-actions">
-          <button
-            className="sesh-action-btn sesh-action-primary"
-            onClick={() =>
-              postToHost({ kind: "resumeInTerminal", sessionId: session.id })
-            }
-            title="Run claude --resume in a new terminal in this session's cwd"
-          >
-            <Icon name="terminal" /> Resume in terminal
-          </button>
-          {sameWorkspace && (
-            <button
-              className="sesh-action-btn"
-              onClick={() =>
-                postToHost({
-                  kind: "openClaudeCodePanel",
-                  sessionId: session.id,
-                })
-              }
-              title="Resume this session in the Claude Code editor panel"
-            >
-              <Icon name="play" /> Resume in panel
-            </button>
-          )}
-          {currentPath && !sameWorkspace && (
-            <span
-              className="sesh-detail-hint"
-              title={`Open ${session.project_path} as a workspace to enable panel resume.`}
-            >
-              <Icon name="info" /> Panel resume needs this project's workspace
+          {isOrphan ? (
+            <span className="sesh-detail-hint sesh-detail-hint-warn">
+              <Icon name="warning" /> Transcript was pruned by Claude Code —
+              can't be resumed.
             </span>
+          ) : (
+            <>
+              <button
+                className="sesh-action-btn sesh-action-primary"
+                onClick={() =>
+                  postToHost({ kind: "resumeInTerminal", sessionId: session.id })
+                }
+                title="Run claude --resume in a new terminal in this session's cwd"
+              >
+                <Icon name="terminal" /> Resume in terminal
+              </button>
+              {sameWorkspace && (
+                <button
+                  className="sesh-action-btn"
+                  onClick={() =>
+                    postToHost({
+                      kind: "openClaudeCodePanel",
+                      sessionId: session.id,
+                    })
+                  }
+                  title="Resume this session in the Claude Code editor panel"
+                >
+                  <Icon name="play" /> Resume in panel
+                </button>
+              )}
+              {currentPath && !sameWorkspace && (
+                <span
+                  className="sesh-detail-hint"
+                  title={`Open ${session.project_path} as a workspace to enable panel resume.`}
+                >
+                  <Icon name="info" /> Panel resume needs this project's
+                  workspace
+                </span>
+              )}
+            </>
           )}
         </div>
       </header>
@@ -367,7 +378,20 @@ export function DetailPane({
 
       <section className="sesh-detail-section sesh-detail-transcript">
         <div className="sesh-section-label">Transcript</div>
-        <Transcript messages={transcript} searchQuery={searchQuery} />
+        {isOrphan ? (
+          <div className="sesh-transcript-empty sesh-transcript-pruned">
+            <Icon name="archive" />
+            <p>
+              Transcript pruned by Claude Code — only the metadata (title,
+              dates, message count) remains.
+            </p>
+            <p className="sesh-transcript-pruned-hint">
+              Annotations you add here still persist in Sesh's database.
+            </p>
+          </div>
+        ) : (
+          <Transcript messages={transcript} searchQuery={searchQuery} />
+        )}
       </section>
     </div>
   );
