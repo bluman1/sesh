@@ -40,7 +40,5 @@ CREATE TABLE project_remap (
   to_path TEXT NOT NULL
 );
 
-CREATE TABLE schema_version (
-  version INTEGER PRIMARY KEY,
-  applied_at INTEGER NOT NULL
-);
+-- schema_version is bootstrapped by runMigrations() via CREATE TABLE IF NOT
+-- EXISTS, not here, so older DBs that already have it don't fail to upgrade.

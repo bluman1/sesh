@@ -52,7 +52,24 @@ export class SeshHost {
   async start(): Promise<void> {
     fs.mkdirSync(DEFAULT_DB_DIR, { recursive: true });
     this.db = openDb(DEFAULT_DB_FILE);
-    runMigrations(this.db);
+    try {
+      runMigrations(this.db);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.output.appendLine(`[sesh] migration error: ${message}`);
+      this.output.appendLine(
+        `[sesh] If this is a stale DB from an older Sesh build, the safe recovery is:`,
+      );
+      this.output.appendLine(`[sesh]   1. Close VSCode`);
+      this.output.appendLine(`[sesh]   2. mv ${DEFAULT_DB_FILE} ${DEFAULT_DB_FILE}.bak`);
+      this.output.appendLine(
+        `[sesh]   3. Reopen VSCode — Sesh will rebuild the index from your source JSONLs.`,
+      );
+      this.output.appendLine(
+        `[sesh]      (Annotations will be reset; the source JSONL files are untouched.)`,
+      );
+      throw err;
+    }
     this.sessions = new SessionRepository(this.db);
     this.tags = new TagRepository(this.db);
     this.categories = new CategoryRepository(this.db);
