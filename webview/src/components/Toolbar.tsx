@@ -1,5 +1,6 @@
 import type { Scope, SearchFilters } from "../messaging";
 import type { Category } from "../hooks/useCategories";
+import { Icon } from "./Icon";
 
 interface Props {
   filters: SearchFilters;
@@ -33,14 +34,16 @@ export function Toolbar(props: Props): JSX.Element {
   return (
     <div className="sesh-toolbar">
       <div className="sesh-toolbar-row">
-        <span className="sesh-title">Sesh</span>
-        <input
-          className="sesh-search-input"
-          type="search"
-          placeholder="Search annotations + transcripts…"
-          value={filters.query}
-          onChange={(e) => onQueryChange(e.target.value)}
-        />
+        <div className="sesh-search-wrap">
+          <Icon name="search" className="sesh-search-icon" />
+          <input
+            className="sesh-search-input"
+            type="search"
+            placeholder="Search annotations + transcripts…"
+            value={filters.query}
+            onChange={(e) => onQueryChange(e.target.value)}
+          />
+        </div>
         <select
           className="sesh-scope-select"
           value={filters.scope}
@@ -50,9 +53,7 @@ export function Toolbar(props: Props): JSX.Element {
           <option value="all">All projects</option>
         </select>
         <span className="sesh-count">
-          {filtered === count
-            ? `${count} sessions`
-            : `${filtered} of ${count}`}
+          {filtered === count ? `${count} sessions` : `${filtered} of ${count}`}
         </span>
       </div>
       <div className="sesh-toolbar-row sesh-toolbar-chips">
@@ -60,13 +61,16 @@ export function Toolbar(props: Props): JSX.Element {
           className={`sesh-chip ${filters.favorited === true ? "is-on" : ""}`}
           onClick={onToggleFavorited}
         >
-          ★ Favorited
+          <Icon name="star-full" /> Favorited
         </button>
         <button
           className={`sesh-chip ${filters.archived === null ? "is-on" : ""}`}
           onClick={onToggleArchived}
-          title={filters.archived === false ? "Hide archived" : "Show archived too"}
+          title={
+            filters.archived === false ? "Hide archived" : "Show archived too"
+          }
         >
+          <Icon name="archive" />{" "}
           {filters.archived === null ? "Including archived" : "Active only"}
         </button>
         {categories.map((c) => (

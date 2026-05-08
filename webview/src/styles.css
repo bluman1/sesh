@@ -102,13 +102,26 @@ body {
   font-weight: 600;
   font-size: var(--sesh-text-md);
 }
+.sesh-search-wrap {
+  flex: 1 1 auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.sesh-search-icon {
+  position: absolute;
+  left: var(--sesh-space-2);
+  color: var(--sesh-fg-muted);
+  pointer-events: none;
+  font-size: var(--sesh-text-sm);
+}
 .sesh-search-input {
   flex: 1 1 auto;
   background: var(--vscode-input-background, #1e1e1e);
   color: var(--vscode-input-foreground, #ccc);
   border: 1px solid var(--vscode-input-border, var(--sesh-border));
   border-radius: var(--sesh-radius-sm);
-  padding: var(--sesh-space-1) var(--sesh-space-2);
+  padding: var(--sesh-space-1) var(--sesh-space-2) var(--sesh-space-1) 26px;
   font: inherit;
   font-size: var(--sesh-text-sm);
 }
@@ -146,6 +159,12 @@ body {
   border-radius: var(--sesh-radius-pill);
   cursor: pointer;
   font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.sesh-chip .codicon {
+  font-size: var(--sesh-text-sm);
 }
 .sesh-chip:hover {
   background: var(--sesh-hover);
@@ -635,8 +654,15 @@ body {
   border-radius: var(--sesh-radius-sm);
 }
 .sesh-msg {
-  padding: var(--sesh-space-2) var(--sesh-space-3);
+  padding: var(--sesh-space-2) var(--sesh-space-3) var(--sesh-space-2) var(--sesh-space-4);
   border-bottom: 1px solid var(--sesh-border-subtle);
+  border-left: 2px solid transparent;
+}
+.sesh-msg-user {
+  border-left-color: color-mix(in srgb, var(--vscode-charts-blue, #4daafc) 60%, transparent);
+}
+.sesh-msg-assistant {
+  border-left-color: color-mix(in srgb, var(--vscode-charts-purple, #c8a4e8) 60%, transparent);
 }
 .sesh-msg-role {
   font-size: 10px;
@@ -644,12 +670,13 @@ body {
   letter-spacing: 0.05em;
   color: var(--sesh-fg-muted);
   margin-bottom: var(--sesh-space-1);
+  font-weight: 600;
 }
 .sesh-msg-user .sesh-msg-role {
-  color: var(--vscode-charts-blue, #5fa);
+  color: var(--vscode-charts-blue, #4daafc);
 }
 .sesh-msg-assistant .sesh-msg-role {
-  color: var(--vscode-charts-purple, #c5f);
+  color: var(--vscode-charts-purple, #c8a4e8);
 }
 .sesh-msg-text {
   margin: 0;
