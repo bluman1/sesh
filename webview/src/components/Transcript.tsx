@@ -79,8 +79,8 @@ export function Transcript({ messages, searchQuery = "" }: Props): JSX.Element {
               <span className="sesh-msg-role">{m.type}</span>
               {m.timestamp > 0 && (
                 <span
-                  className="sesh-msg-time"
-                  title={formatAbsolute(m.timestamp)}
+                  className="sesh-msg-time sesh-tt"
+                  data-tooltip={formatAbsolute(m.timestamp)}
                 >
                   {formatRelative(m.timestamp)}
                 </span>

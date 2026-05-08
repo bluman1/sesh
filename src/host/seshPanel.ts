@@ -261,6 +261,21 @@ export class SeshPanel {
           await this.handleGenerateTitle(msg.id);
           break;
         }
+        case "openFolderInNewWindow": {
+          try {
+            await vscode.commands.executeCommand(
+              "vscode.openFolder",
+              vscode.Uri.file(msg.path),
+              true,
+            );
+          } catch (err) {
+            this.send({
+              kind: "error",
+              message: `Failed to open folder: ${(err as Error).message}`,
+            });
+          }
+          break;
+        }
         case "setTags":
           this.host.tags!.setTags(msg.id, msg.tags);
           this.refreshDetail(msg.id);

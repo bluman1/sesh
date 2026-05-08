@@ -276,13 +276,19 @@ export function DetailPane({
           </div>
           <div>
             <dt>Last active</dt>
-            <dd title={formatAbsolute(session.last_active_at)}>
+            <dd
+              className="sesh-tt"
+              data-tooltip={formatAbsolute(session.last_active_at)}
+            >
               {formatRelative(session.last_active_at)}
             </dd>
           </div>
           <div>
             <dt>Created</dt>
-            <dd title={formatAbsolute(session.created_at)}>
+            <dd
+              className="sesh-tt"
+              data-tooltip={formatAbsolute(session.created_at)}
+            >
               {formatRelative(session.created_at)}
             </dd>
           </div>
@@ -297,11 +303,12 @@ export function DetailPane({
             <div>
               <dt>Tokens</dt>
               <dd
-                title={[
-                  `Input:           ${formatTokensExact(session.tokens_in)}`,
-                  `Output:          ${formatTokensExact(session.tokens_out)}`,
-                  `Cache read:      ${formatTokensExact(session.tokens_cache_read)}`,
-                  `Cache created:   ${formatTokensExact(session.tokens_cache_create)}`,
+                className="sesh-tt"
+                data-tooltip={[
+                  `Input:         ${formatTokensExact(session.tokens_in)}`,
+                  `Output:        ${formatTokensExact(session.tokens_out)}`,
+                  `Cache read:    ${formatTokensExact(session.tokens_cache_read)}`,
+                  `Cache created: ${formatTokensExact(session.tokens_cache_create)}`,
                 ].join("\n")}
               >
                 {formatTokens(session.tokens_in)} in /{" "}
@@ -320,13 +327,22 @@ export function DetailPane({
         </dl>
         <div className="sesh-detail-folder">
           <span className="sesh-detail-folder-label">Folder</span>
-          <span
+          <button
+            type="button"
             className="sesh-detail-folder-path"
-            title={session.project_path}
-            dir="rtl"
+            title={`Open ${session.project_path} in a new VSCode window`}
+            onClick={() =>
+              postToHost({
+                kind: "openFolderInNewWindow",
+                path: session.project_path,
+              })
+            }
           >
-            {session.project_path}
-          </span>
+            <span className="sesh-detail-folder-path-text">
+              {session.project_path}
+            </span>
+            <Icon name="link-external" />
+          </button>
         </div>
 
         <div className="sesh-detail-actions">

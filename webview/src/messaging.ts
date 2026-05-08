@@ -81,7 +81,8 @@ export type ToHost =
   | { kind: "openClaudeCodePanel"; sessionId?: string }
   | { kind: "addRemap"; fromPath: string; toPath: string }
   | { kind: "listRemaps" }
-  | { kind: "generateTitle"; id: string };
+  | { kind: "generateTitle"; id: string }
+  | { kind: "openFolderInNewWindow"; path: string };
 
 export type ToWebview =
   | { kind: "workspace"; currentPath: string | null }
