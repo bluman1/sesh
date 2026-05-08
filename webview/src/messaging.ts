@@ -114,8 +114,7 @@ declare global {
 const vscode = window.acquireVsCodeApi?.();
 
 export function postToHost(msg: ToHost): void {
-  if (vscode) vscode.postMessage(msg);
-  else console.log("[sesh] (no host)", msg);
+  vscode?.postMessage(msg);
 }
 
 export function onHostMessage(handler: (msg: ToWebview) => void): () => void {
