@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { Toolbar } from "./components/Toolbar";
 import { SessionList } from "./components/SessionList";
+import { DetailPane } from "./components/DetailPane";
 import { useSessions } from "./hooks/useSessions";
+import { useSessionDetail } from "./hooks/useSessionDetail";
 
 export function App(): JSX.Element {
   const { sessions, scope, setScope, error } = useSessions();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const detail = useSessionDetail(selectedId);
 
   return (
     <div className="sesh-root">
@@ -25,13 +28,11 @@ export function App(): JSX.Element {
           />
         </div>
         <div className="sesh-pane sesh-pane-detail">
-          {selectedId ? (
-            <div className="sesh-detail-placeholder">
-              Selected: {selectedId} (detail pane in next task)
-            </div>
-          ) : (
-            <div className="sesh-detail-empty">Select a session.</div>
-          )}
+          <DetailPane
+            session={detail.session}
+            transcript={detail.transcript}
+            loading={detail.loading}
+          />
         </div>
       </div>
     </div>
