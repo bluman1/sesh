@@ -38,6 +38,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   try {
     await host.start();
+    const cfg = vscode.workspace.getConfiguration("sesh");
+    if (cfg.get<boolean>("openOnActivation", false)) {
+      SeshPanel.openOrFocus(context, host);
+    }
   } catch (err) {
     output.appendLine(`[sesh] activation error: ${(err as Error).message}`);
     vscode.window.showErrorMessage(`Sesh failed to start: ${(err as Error).message}`);

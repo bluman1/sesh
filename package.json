@@ -28,7 +28,22 @@
         "command": "sesh.rescan",
         "title": "Sesh: Rescan all projects"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Sesh",
+      "properties": {
+        "sesh.openOnActivation": {
+          "type": "boolean",
+          "default": false,
+          "description": "Open the Sesh panel automatically when VSCode starts."
+        },
+        "sesh.transcriptLimit": {
+          "type": "number",
+          "default": 200,
+          "description": "Maximum number of transcript messages to load in the detail pane."
+        }
+      }
+    }
   },
   "scripts": {
     "build": "npm run build:webview && npm run build:extension",
