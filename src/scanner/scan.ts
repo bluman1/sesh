@@ -79,6 +79,7 @@ export async function scanProjectsRoot(
         archived: 0,
         orphaned: 0,
         content_indexed: 0,
+        last_parsed_offset: 0,
       });
       result.upserted++;
     }

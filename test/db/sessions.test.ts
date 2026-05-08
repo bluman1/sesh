@@ -22,6 +22,7 @@ function makeRow(overrides: Partial<SessionRow> = {}): SessionRow {
     archived: 0,
     orphaned: 0,
     content_indexed: 0,
+    last_parsed_offset: 0,
     ...overrides,
   };
 }

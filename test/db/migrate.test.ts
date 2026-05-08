@@ -25,7 +25,7 @@ describe("runMigrations", () => {
     const v = db
       .prepare("SELECT MAX(version) as v FROM schema_version")
       .get() as { v: number };
-    expect(v.v).toBe(1);
+    expect(v.v).toBe(2);
     db.close();
   });
 });

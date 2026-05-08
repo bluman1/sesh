@@ -18,10 +18,11 @@ export interface SessionRow {
   archived: 0 | 1;
   orphaned: 0 | 1;
   content_indexed: 0 | 1;
+  last_parsed_offset: number;
 }
 
 const COLUMNS =
-  "id, source, project_path, file_path, file_mtime, file_size, created_at, last_active_at, message_count, auto_title, custom_title, category_id, notes, favorited, archived, orphaned, content_indexed";
+  "id, source, project_path, file_path, file_mtime, file_size, created_at, last_active_at, message_count, auto_title, custom_title, category_id, notes, favorited, archived, orphaned, content_indexed, last_parsed_offset";
 
 export class SessionRepository {
   constructor(private db: Db) {}
@@ -32,7 +33,8 @@ export class SessionRepository {
         `INSERT INTO sessions (${COLUMNS}) VALUES (
            @id, @source, @project_path, @file_path, @file_mtime, @file_size,
            @created_at, @last_active_at, @message_count, @auto_title, @custom_title,
-           @category_id, @notes, @favorited, @archived, @orphaned, @content_indexed
+           @category_id, @notes, @favorited, @archived, @orphaned, @content_indexed,
+           @last_parsed_offset
          )
          ON CONFLICT(id) DO UPDATE SET
            file_mtime = excluded.file_mtime,
@@ -115,5 +117,21 @@ export class SessionRepository {
     this.db
       .prepare("UPDATE sessions SET archived = ? WHERE id = ?")
       .run(archived ? 1 : 0, id);
+  }
+
+  setIndexProgress(id: string, offset: number, indexed: boolean): void {
+    this.db
+      .prepare(
+        "UPDATE sessions SET last_parsed_offset = ?, content_indexed = ? WHERE id = ?",
+      )
+      .run(offset, indexed ? 1 : 0, id);
+  }
+
+  listForIndexing(): { id: string; file_path: string; last_parsed_offset: number }[] {
+    return this.db
+      .prepare(
+        "SELECT id, file_path, last_parsed_offset FROM sessions WHERE content_indexed = 0 AND orphaned = 0 ORDER BY last_active_at DESC",
+      )
+      .all() as { id: string; file_path: string; last_parsed_offset: number }[];
   }
 }
