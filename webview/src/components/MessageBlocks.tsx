@@ -1,3 +1,4 @@
+import { diffLines } from "diff";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { TranscriptBlock } from "../messaging";
@@ -85,7 +86,7 @@ interface ToolUseProps {
 
 function ToolUseBlock({ name, input }: ToolUseProps): JSX.Element {
   const formatted = formatToolInput(name, input);
-  const hasBody = Boolean(formatted.body);
+  const hasBody = formatted.body !== undefined;
   return (
     <details className="sesh-block-tool sesh-block-tool-use">
       <summary className="sesh-tool-header">
@@ -99,26 +100,84 @@ function ToolUseBlock({ name, input }: ToolUseProps): JSX.Element {
         )}
         {!hasBody && <span className="sesh-tool-empty">no input</span>}
       </summary>
-      {hasBody && <pre className="sesh-tool-body">{formatted.body}</pre>}
+      {hasBody && renderBody(formatted.body!)}
     </details>
   );
 }
 
+type DiffKind = "add" | "remove" | "context";
+interface DiffLine {
+  kind: DiffKind;
+  text: string;
+}
+
+type FormattedBody =
+  | { kind: "plain"; text: string }
+  | { kind: "diff"; lines: DiffLine[] };
+
 interface FormattedTool {
   summary?: string;
-  body?: string;
+  body?: FormattedBody;
+}
+
+function renderBody(body: FormattedBody): JSX.Element {
+  if (body.kind === "diff") {
+    return (
+      <pre className="sesh-tool-body sesh-diff">
+        {body.lines.map((l, i) => (
+          <div key={i} className={`sesh-diff-line is-${l.kind}`}>
+            <span className="sesh-diff-marker">
+              {l.kind === "add" ? "+" : l.kind === "remove" ? "-" : " "}
+            </span>
+            <span className="sesh-diff-text">{l.text || " "}</span>
+          </div>
+        ))}
+      </pre>
+    );
+  }
+  return <pre className="sesh-tool-body">{body.text}</pre>;
+}
+
+function buildDiff(
+  oldStr: string | null,
+  newStr: string | null,
+  content: string | null,
+): DiffLine[] {
+  if (oldStr !== null && newStr !== null) {
+    const lines: DiffLine[] = [];
+    for (const part of diffLines(oldStr, newStr)) {
+      const kind: DiffKind = part.added
+        ? "add"
+        : part.removed
+          ? "remove"
+          : "context";
+      const segments = part.value.split("\n");
+      // diffLines preserves trailing newline as a final empty segment — drop it
+      // so we don't render a phantom blank line between parts.
+      if (segments.length && segments[segments.length - 1] === "") {
+        segments.pop();
+      }
+      for (const s of segments) lines.push({ kind, text: s });
+    }
+    return lines;
+  }
+  const text = content ?? newStr ?? "";
+  return text.split("\n").map((s) => ({ kind: "add" as const, text: s }));
 }
 
 function formatToolInput(name: string, input: unknown): FormattedTool {
   if (!input || typeof input !== "object") {
-    return { body: String(input ?? "") };
+    const v = String(input ?? "");
+    return v ? { body: { kind: "plain", text: v } } : {};
   }
   const i = input as Record<string, unknown>;
   switch (name) {
     case "Bash": {
       const desc = typeof i.description === "string" ? i.description : "";
       const cmd = typeof i.command === "string" ? i.command : "";
-      return { summary: desc, body: cmd };
+      return cmd
+        ? { summary: desc, body: { kind: "plain", text: cmd } }
+        : { summary: desc };
     }
     case "Read": {
       const fp = typeof i.file_path === "string" ? i.file_path : "";
@@ -131,13 +190,11 @@ function formatToolInput(name: string, input: unknown): FormattedTool {
       const old = typeof i.old_string === "string" ? i.old_string : null;
       const next = typeof i.new_string === "string" ? i.new_string : null;
       const content = typeof i.content === "string" ? i.content : null;
-      const body =
-        old !== null && next !== null
-          ? `- ${old}\n+ ${next}`
-          : content !== null
-            ? content
-            : "";
-      return { summary: fp, body };
+      if (old === null && next === null && content === null) {
+        return { summary: fp };
+      }
+      const lines = buildDiff(old, next, content);
+      return { summary: fp, body: { kind: "diff", lines } };
     }
     case "Grep":
     case "Glob": {
@@ -157,9 +214,9 @@ function formatToolInput(name: string, input: unknown): FormattedTool {
     }
     default:
       try {
-        return { body: JSON.stringify(input, null, 2) };
+        return { body: { kind: "plain", text: JSON.stringify(input, null, 2) } };
       } catch {
-        return { body: String(input) };
+        return { body: { kind: "plain", text: String(input) } };
       }
   }
 }

@@ -1046,6 +1046,55 @@ body {
   color: var(--vscode-editorError-foreground, #ff6666);
 }
 
+/* Diff rendering for Edit/Write tool blocks */
+.sesh-diff {
+  padding: 0;
+  white-space: normal;
+}
+.sesh-diff-line {
+  display: flex;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: var(--sesh-text-xs);
+  line-height: 1.45;
+  padding: 0 var(--sesh-space-2);
+}
+.sesh-diff-line.is-add {
+  background: color-mix(
+    in srgb,
+    var(--vscode-diffEditor-insertedTextBackground, rgba(46, 160, 67, 0.18))
+      100%,
+    transparent
+  );
+}
+.sesh-diff-line.is-remove {
+  background: color-mix(
+    in srgb,
+    var(--vscode-diffEditor-removedTextBackground, rgba(248, 81, 73, 0.18))
+      100%,
+    transparent
+  );
+}
+.sesh-diff-line.is-context {
+  color: var(--sesh-fg-muted);
+}
+.sesh-diff-marker {
+  flex: 0 0 auto;
+  width: 1.25em;
+  user-select: none;
+  opacity: 0.7;
+}
+.sesh-diff-line.is-add .sesh-diff-marker {
+  color: var(--vscode-gitDecoration-addedResourceForeground, #4ec9b0);
+}
+.sesh-diff-line.is-remove .sesh-diff-marker {
+  color: var(--vscode-gitDecoration-deletedResourceForeground, #f48771);
+}
+.sesh-diff-text {
+  flex: 1 1 auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* Search hit highlight */
 .sesh-hl {
   background: var(--vscode-editor-findMatchHighlightBackground, rgba(255, 200, 0, 0.35));
