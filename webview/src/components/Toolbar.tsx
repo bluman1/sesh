@@ -26,6 +26,10 @@ function basename(path: string): string {
   return idx >= 0 ? path.slice(idx + 1) : path;
 }
 
+function pluralize(n: number, singular: string, plural = `${singular}s`): string {
+  return `${n} ${n === 1 ? singular : plural}`;
+}
+
 export function Toolbar(props: Props): JSX.Element {
   const {
     filters,
@@ -102,7 +106,9 @@ export function Toolbar(props: Props): JSX.Element {
           )}
         </select>
         <span className="sesh-count">
-          {filtered === count ? `${count} sessions` : `${filtered} of ${count}`}
+          {filtered === count
+            ? pluralize(count, "session")
+            : `${filtered} of ${count}`}
         </span>
       </div>
       <div className="sesh-toolbar-row sesh-toolbar-chips">

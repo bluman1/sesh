@@ -41,6 +41,11 @@ export class SeshPanel {
         ],
       },
     );
+    this.panel.iconPath = vscode.Uri.joinPath(
+      context.extensionUri,
+      "resources",
+      "sesh-icon.svg",
+    );
 
     this.panel.webview.html = this.buildHtml();
     this.panel.webview.onDidReceiveMessage(

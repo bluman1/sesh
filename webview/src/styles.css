@@ -472,9 +472,9 @@ body {
 
 .sesh-detail-meta-strip {
   margin: 0;
-  display: grid;
-  grid-template-columns: auto auto auto auto 1fr;
-  gap: var(--sesh-space-1) var(--sesh-space-4);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sesh-space-1) var(--sesh-space-5);
   font-size: var(--sesh-text-xs);
 }
 .sesh-detail-meta-strip > div {
@@ -493,17 +493,32 @@ body {
   margin: 0;
   font-size: var(--sesh-text-sm);
 }
-.sesh-detail-meta-path {
+.sesh-detail-folder {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sesh-space-2);
   min-width: 0;
+  margin-top: var(--sesh-space-1);
+  font-size: var(--sesh-text-xs);
 }
-.sesh-detail-meta-path dd {
+.sesh-detail-folder-label {
+  color: var(--sesh-fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 10px;
+  flex: 0 0 auto;
+}
+.sesh-detail-folder-path {
   font-family: var(--vscode-editor-font-family, monospace);
   color: var(--sesh-fg-muted);
-}
-.sesh-path-truncate {
+  font-size: var(--sesh-text-sm);
+  flex: 1 1 auto;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  unicode-bidi: plaintext;
+  text-align: left;
 }
 
 .sesh-detail-actions {
