@@ -174,6 +174,33 @@ export class SeshPanel {
           this.refreshDetail(msg.id);
           this.refreshList();
           break;
+        case "resumeInTerminal": {
+          const row = this.host.sessions.findById(msg.sessionId);
+          if (!row) {
+            this.send({ kind: "error", message: `Session not found: ${msg.sessionId}` });
+            return;
+          }
+          const terminal = vscode.window.createTerminal({
+            name: `Sesh: resume ${msg.sessionId.slice(0, 8)}`,
+            cwd: row.project_path,
+          });
+          terminal.show(true);
+          // Use the JSONL file's session id with claude --resume.
+          terminal.sendText(`claude --resume ${msg.sessionId}`, true);
+          break;
+        }
+        case "openClaudeCodePanel": {
+          try {
+            await vscode.commands.executeCommand("claude-vscode.editor.open");
+          } catch {
+            this.send({
+              kind: "error",
+              message:
+                "Claude Code VSCode extension not installed. Install it from the Marketplace, or use 'Resume in terminal' instead.",
+            });
+          }
+          break;
+        }
         case "setTags":
           this.host.tags!.setTags(msg.id, msg.tags);
           this.refreshDetail(msg.id);

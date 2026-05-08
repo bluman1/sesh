@@ -204,6 +204,24 @@ export function DetailPane({ session, transcript, loading }: Props): JSX.Element
             {session.project_path}
           </div>
         </div>
+        <div className="sesh-detail-actions">
+          <button
+            className="sesh-action-btn sesh-action-primary"
+            onClick={() =>
+              postToHost({ kind: "resumeInTerminal", sessionId: session.id })
+            }
+            title="Run claude --resume in a new terminal in this session's cwd"
+          >
+            ▶ Resume in terminal
+          </button>
+          <button
+            className="sesh-action-btn"
+            onClick={() => postToHost({ kind: "openClaudeCodePanel" })}
+            title="Open the Claude Code extension panel (doesn't resume this specific session)"
+          >
+            Open Claude Code panel
+          </button>
+        </div>
       </div>
       <div className="sesh-detail-notes">
         <div className="sesh-detail-notes-label">Notes</div>

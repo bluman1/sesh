@@ -52,7 +52,9 @@ export type ToHost =
   | { kind: "renameCategory"; id: number; name: string }
   | { kind: "deleteCategory"; id: number }
   | { kind: "listCategories" }
-  | { kind: "listAllTags" };
+  | { kind: "listAllTags" }
+  | { kind: "resumeInTerminal"; sessionId: string }
+  | { kind: "openClaudeCodePanel" };
 
 export type ToWebview =
   | { kind: "workspace"; currentPath: string | null }
