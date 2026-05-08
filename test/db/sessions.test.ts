@@ -71,4 +71,20 @@ describe("SessionRepository", () => {
       size: 4096,
     });
   });
+
+  it("listAllNonArchived returns only non-archived sessions ordered by last_active_at desc", () => {
+    repo.upsert(makeRow({ id: "a", last_active_at: 1, archived: 0 }));
+    repo.upsert(makeRow({ id: "b", last_active_at: 3, archived: 1 }));
+    repo.upsert(makeRow({ id: "c", last_active_at: 2, archived: 0 }));
+    const got = repo.listAllNonArchived().map((s) => s.id);
+    expect(got).toEqual(["c", "a"]);
+  });
+
+  it("listByProjectNonArchived filters by project_path AND non-archived", () => {
+    repo.upsert(makeRow({ id: "a", project_path: "/p1", archived: 0 }));
+    repo.upsert(makeRow({ id: "b", project_path: "/p1", archived: 1 }));
+    repo.upsert(makeRow({ id: "c", project_path: "/p2", archived: 0 }));
+    const got = repo.listByProjectNonArchived("/p1").map((s) => s.id);
+    expect(got).toEqual(["a"]);
+  });
 });

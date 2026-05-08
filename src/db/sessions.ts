@@ -60,6 +60,22 @@ export class SessionRepository {
       .all(projectPath) as SessionRow[];
   }
 
+  listAllNonArchived(): SessionRow[] {
+    return this.db
+      .prepare(
+        `SELECT ${COLUMNS} FROM sessions WHERE archived = 0 ORDER BY last_active_at DESC`,
+      )
+      .all() as SessionRow[];
+  }
+
+  listByProjectNonArchived(projectPath: string): SessionRow[] {
+    return this.db
+      .prepare(
+        `SELECT ${COLUMNS} FROM sessions WHERE project_path = ? AND archived = 0 ORDER BY last_active_at DESC`,
+      )
+      .all(projectPath) as SessionRow[];
+  }
+
   countAll(): number {
     return (this.db.prepare("SELECT COUNT(*) as c FROM sessions").get() as { c: number }).c;
   }
