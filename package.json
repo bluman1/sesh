@@ -93,11 +93,11 @@
     "viewsWelcome": [
       {
         "view": "sesh.welcome",
-        "contents": "Browse, annotate, and resume saved Claude Code sessions.\n[Open Sesh panel](command:sesh.open)\n\nA full editor tab opens with your session list, search, filters, and transcript preview."
+        "contents": "Browse, annotate, and resume saved Claude Code and Codex CLI sessions.\n[Open Sesh panel](command:sesh.open)\n\nA full editor tab opens with your session list, search, filters, and transcript preview."
       },
       {
         "view": "sesh.welcomeSecondary",
-        "contents": "Browse, annotate, and resume saved Claude Code sessions.\n[Open Sesh panel](command:sesh.open)"
+        "contents": "Browse, annotate, and resume saved Claude Code and Codex CLI sessions.\n[Open Sesh panel](command:sesh.open)"
       }
     ],
     "menus": {
