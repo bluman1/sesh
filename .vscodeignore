@@ -1,0 +1,35 @@
+# Source — only the bundled out/extension.js ships
+src/**
+test/**
+webview/src/**
+webview/test/**
+webview/index.html
+webview/vite.config.ts
+webview/tsconfig.json
+webview/package.json
+webview/package-lock.json
+webview/node_modules/**
+**/*.test.ts
+**/tsconfig.json
+**/.eslintrc*
+**/*.map
+
+# Tooling and dev artefacts
+.vscode/**
+.vscode-test/**
+.gitignore
+.gitattributes
+.editorconfig
+.prettierrc*
+.eslintrc*
+.github/**
+docs/**
+
+# Build artefacts not consumed by the extension
+out/migrations/**.ts
+
+# OS
+.DS_Store
+
+# Misc files only relevant to development
+HANDOFF.md
