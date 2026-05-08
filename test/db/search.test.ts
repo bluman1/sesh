@@ -4,7 +4,11 @@ import { runMigrations } from "../../src/db/migrate";
 import { SessionRepository } from "../../src/db/sessions";
 import { TagRepository } from "../../src/db/tags";
 import { CategoryRepository } from "../../src/db/categories";
-import { searchSessions, type SearchFilters } from "../../src/db/search";
+import {
+  searchSessions,
+  countSessionsInScope,
+  type SearchFilters,
+} from "../../src/db/search";
 
 function baseRow(id: string, overrides: Partial<{
   project_path: string; favorited: 0|1; archived: 0|1;
@@ -177,5 +181,104 @@ describe("searchSessions", () => {
         selectedFolderPath: null,
       }),
     ).toEqual([]);
+  });
+});
+
+describe("countSessionsInScope", () => {
+  let db: Db;
+  let repo: SessionRepository;
+
+  beforeEach(() => {
+    db = openDb(":memory:");
+    runMigrations(db);
+    repo = new SessionRepository(db);
+  });
+
+  it("counts every session when scope=all", () => {
+    repo.upsert(baseRow("a", { project_path: "/p1" }));
+    repo.upsert(baseRow("b", { project_path: "/p2" }));
+    expect(
+      countSessionsInScope(db, {
+        scope: "all",
+        currentPath: null,
+        selectedFolderPath: null,
+      }),
+    ).toBe(2);
+  });
+
+  it("ignores query/chip filters — only scope is honored", () => {
+    repo.upsert(baseRow("a", { archived: 1 }));
+    repo.upsert(baseRow("b", { favorited: 1 }));
+    repo.upsert(baseRow("c"));
+    // Even though searchSessions with archived=false would return 2 rows,
+    // the scope-only count counts everything in the container.
+    expect(
+      countSessionsInScope(db, {
+        scope: "all",
+        currentPath: null,
+        selectedFolderPath: null,
+      }),
+    ).toBe(3);
+  });
+
+  it("scope=current narrows to currentPath", () => {
+    repo.upsert(baseRow("a", { project_path: "/p1" }));
+    repo.upsert(baseRow("b", { project_path: "/p1" }));
+    repo.upsert(baseRow("c", { project_path: "/p2" }));
+    expect(
+      countSessionsInScope(db, {
+        scope: "current",
+        currentPath: "/p1",
+        selectedFolderPath: null,
+      }),
+    ).toBe(2);
+  });
+
+  it("scope=current with null currentPath returns 0", () => {
+    repo.upsert(baseRow("a", { project_path: "/p1" }));
+    expect(
+      countSessionsInScope(db, {
+        scope: "current",
+        currentPath: null,
+        selectedFolderPath: null,
+      }),
+    ).toBe(0);
+  });
+
+  it("scope=folder narrows to selectedFolderPath", () => {
+    repo.upsert(baseRow("a", { project_path: "/p1" }));
+    repo.upsert(baseRow("b", { project_path: "/p2" }));
+    expect(
+      countSessionsInScope(db, {
+        scope: "folder",
+        currentPath: null,
+        selectedFolderPath: "/p1",
+      }),
+    ).toBe(1);
+  });
+
+  it("scope=folder with null selectedFolderPath returns 0", () => {
+    repo.upsert(baseRow("a", { project_path: "/p1" }));
+    expect(
+      countSessionsInScope(db, {
+        scope: "folder",
+        currentPath: null,
+        selectedFolderPath: null,
+      }),
+    ).toBe(0);
+  });
+
+  it("includes remapped from_paths in scope=current", () => {
+    repo.upsert(baseRow("a", { project_path: "/old/path" }));
+    repo.upsert(baseRow("b", { project_path: "/new/path" }));
+    repo.upsert(baseRow("c", { project_path: "/other" }));
+    repo.addRemap("/old/path", "/new/path");
+    expect(
+      countSessionsInScope(db, {
+        scope: "current",
+        currentPath: "/new/path",
+        selectedFolderPath: null,
+      }),
+    ).toBe(2);
   });
 });

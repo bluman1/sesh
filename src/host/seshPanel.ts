@@ -7,7 +7,7 @@ import {
   type ToHost,
   type ToWebview,
 } from "../messaging";
-import { searchSessions } from "../db/search";
+import { searchSessions, countSessionsInScope } from "../db/search";
 import { readTranscript } from "../scanner/transcript";
 
 export class SeshPanel {
@@ -141,6 +141,7 @@ export class SeshPanel {
             scope: msg.filters.scope,
             currentPath: msg.filters.currentPath,
             sessions: items,
+            totalInScope: countSessionsInScope(this.host.rawDb!, msg.filters),
           });
           this.suggestRemaps();
           break;
@@ -313,6 +314,7 @@ export class SeshPanel {
       scope: this.lastFilters.scope,
       currentPath: this.lastFilters.currentPath,
       sessions: items,
+      totalInScope: countSessionsInScope(this.host.rawDb!, this.lastFilters),
     });
   }
 

@@ -94,3 +94,47 @@ export function searchSessions(db: Db, f: SearchFilters): SessionRow[] {
   const sql = `SELECT ${COLUMNS} FROM sessions s ${where} ORDER BY s.last_active_at DESC`;
   return db.prepare(sql).all(params) as SessionRow[];
 }
+
+// Counts sessions in scope only (ignores query, chips, archived, favorited).
+// Used by the toolbar to render "n of m" — m is the size of the container the
+// user is searching within, n is what's left after their filters.
+export function countSessionsInScope(
+  db: Db,
+  f: Pick<SearchFilters, "scope" | "currentPath" | "selectedFolderPath">,
+): number {
+  const conditions: string[] = [];
+  const params: Record<string, unknown> = {};
+
+  if (f.scope === "current") {
+    if (!f.currentPath) return 0;
+    const remapRows = db
+      .prepare("SELECT from_path FROM project_remap WHERE to_path = ?")
+      .all(f.currentPath) as { from_path: string }[];
+    const paths = [f.currentPath, ...remapRows.map((r) => r.from_path)];
+    const placeholders = paths.map((_, i) => `@p${i}`).join(", ");
+    conditions.push(`s.project_path IN (${placeholders})`);
+    paths.forEach((p, i) => {
+      params[`p${i}`] = p;
+    });
+  } else if (f.scope === "folder") {
+    if (!f.selectedFolderPath) return 0;
+    const remapRows = db
+      .prepare("SELECT from_path FROM project_remap WHERE to_path = ?")
+      .all(f.selectedFolderPath) as { from_path: string }[];
+    const paths = [
+      f.selectedFolderPath,
+      ...remapRows.map((r) => r.from_path),
+    ];
+    const placeholders = paths.map((_, i) => `@p${i}`).join(", ");
+    conditions.push(`s.project_path IN (${placeholders})`);
+    paths.forEach((p, i) => {
+      params[`p${i}`] = p;
+    });
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const row = db
+    .prepare(`SELECT COUNT(*) AS c FROM sessions s ${where}`)
+    .get(params) as { c: number };
+  return Number(row.c);
+}

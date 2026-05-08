@@ -29,7 +29,7 @@ export function App(): JSX.Element {
         onToggleFavorited={sessionsApi.toggleFavorited}
         onToggleCategory={sessionsApi.toggleCategory}
         onToggleTag={sessionsApi.toggleTag}
-        count={sessionsApi.sessions.length}
+        count={sessionsApi.totalInScope}
         filtered={sessionsApi.sessions.length}
         categories={categories}
         allTags={allTags}

@@ -9,6 +9,7 @@ import {
 
 export function useSessions(): {
   sessions: SessionListItem[];
+  totalInScope: number;
   filters: SearchFilters;
   setFilters: (f: SearchFilters) => void;
   setQuery: (q: string) => void;
@@ -23,6 +24,7 @@ export function useSessions(): {
   indexProgress: { indexed: number; total: number };
 } {
   const [sessions, setSessions] = useState<SessionListItem[]>([]);
+  const [totalInScope, setTotalInScope] = useState(0);
   const [currentPath, setCurrentPath] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [indexProgress, setIndexProgress] = useState({ indexed: 0, total: 0 });
@@ -41,6 +43,7 @@ export function useSessions(): {
     const dispose = onHostMessage((msg) => {
       if (msg.kind === "sessionList") {
         setSessions(msg.sessions);
+        setTotalInScope(msg.totalInScope);
         setError(null);
       } else if (msg.kind === "workspace") {
         setCurrentPath(msg.currentPath);
@@ -107,6 +110,7 @@ export function useSessions(): {
 
   return {
     sessions,
+    totalInScope,
     filters,
     setFilters,
     setQuery,

@@ -86,6 +86,7 @@ export type ToWebview =
       scope: Scope;
       currentPath: string | null;
       sessions: SessionListItem[];
+      totalInScope: number;
     }
   | { kind: "sessionDetail"; session: SessionDetail }
   | { kind: "transcript"; id: string; messages: TranscriptMessage[] }
