@@ -1,0 +1,44 @@
+{
+  "name": "sesh",
+  "displayName": "Sesh",
+  "description": "Browse, annotate, and resume saved Claude Code sessions.",
+  "version": "0.0.1",
+  "publisher": "michael",
+  "engines": {
+    "vscode": "^1.94.0"
+  },
+  "categories": ["Other"],
+  "main": "./out/extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "commands": [
+      {
+        "command": "sesh.open",
+        "title": "Sesh: Open"
+      },
+      {
+        "command": "sesh.showStats",
+        "title": "Sesh: Show stats"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --platform=node --target=node20 --external:vscode --external:better-sqlite3 --outfile=out/extension.js",
+    "watch": "npm run build -- --watch",
+    "test": "vitest run",
+    "rebuild-native": "electron-rebuild -f -w better-sqlite3",
+    "vscode:prepublish": "npm run build"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.9.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.6.0",
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.94.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}
