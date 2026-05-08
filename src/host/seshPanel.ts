@@ -263,6 +263,16 @@ export class SeshPanel {
         }
         case "openFolderInNewWindow": {
           try {
+            // Drop a short-lived marker in globalState (shared across all
+            // VSCode windows) so the extension activating in the new window
+            // can see "we just got opened from a Sesh row, please re-open
+            // Sesh in this window" and call SeshPanel.openOrFocus on its
+            // own. The 60s expiry means a stale marker won't surface a Sesh
+            // panel in an unrelated window opened minutes later.
+            await this.context.globalState.update("sesh.pendingOpenForPath", {
+              path: msg.path,
+              expiresAt: Date.now() + 60_000,
+            });
             await vscode.commands.executeCommand(
               "vscode.openFolder",
               vscode.Uri.file(msg.path),

@@ -73,13 +73,46 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   try {
     await host.start();
     const cfg = vscode.workspace.getConfiguration("sesh");
-    if (cfg.get<boolean>("openOnActivation", false)) {
+    const shouldOpenFromMarker = consumePendingOpenMarker(context, output);
+    if (shouldOpenFromMarker || cfg.get<boolean>("openOnActivation", false)) {
       SeshPanel.openOrFocus(context, host);
     }
   } catch (err) {
     output.appendLine(`[sesh] activation error: ${(err as Error).message}`);
     vscode.window.showErrorMessage(`Sesh failed to start: ${(err as Error).message}`);
   }
+}
+
+interface PendingOpenMarker {
+  path: string;
+  expiresAt: number;
+}
+
+// True if the user just clicked a folder row in a Sesh panel of another
+// VSCode window, the new window opened to that folder, and the marker is
+// still fresh + matches our current workspace. Any other case clears the
+// marker as housekeeping and returns false.
+function consumePendingOpenMarker(
+  context: vscode.ExtensionContext,
+  output: vscode.OutputChannel,
+): boolean {
+  const marker = context.globalState.get<PendingOpenMarker>(
+    "sesh.pendingOpenForPath",
+  );
+  if (!marker) return false;
+  // Always clear once consumed/inspected — markers are one-shot.
+  void context.globalState.update("sesh.pendingOpenForPath", undefined);
+  if (Date.now() > marker.expiresAt) {
+    return false;
+  }
+  const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (!folder || folder !== marker.path) {
+    return false;
+  }
+  output.appendLine(
+    `[sesh] auto-opening panel — followed folder click from another window`,
+  );
+  return true;
 }
 
 export async function deactivate(): Promise<void> {
