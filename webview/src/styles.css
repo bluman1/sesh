@@ -479,6 +479,10 @@ body {
   display: inline-block;
 }
 
+.sesh-token-cache {
+  color: var(--sesh-fg-muted);
+}
+
 .sesh-title-error {
   display: flex;
   align-items: center;
@@ -849,13 +853,23 @@ body {
 .sesh-msg-assistant {
   border-left-color: color-mix(in srgb, var(--vscode-charts-purple, #c8a4e8) 60%, transparent);
 }
+.sesh-msg-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sesh-space-2);
+  margin-bottom: var(--sesh-space-1);
+}
 .sesh-msg-role {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--sesh-fg-muted);
-  margin-bottom: var(--sesh-space-1);
   font-weight: 600;
+}
+.sesh-msg-time {
+  font-size: 10px;
+  color: var(--sesh-fg-muted);
+  cursor: help;
 }
 .sesh-msg-user .sesh-msg-role {
   color: var(--vscode-charts-blue, #4daafc);

@@ -95,6 +95,106 @@ describe("extractMetadata", () => {
   });
 });
 
+describe("extractMetadata token + ai-title fields", () => {
+  it("aggregates assistant.message.usage across the session", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const tmp = path.join(os.tmpdir(), `sesh-extract-tokens-${Date.now()}.jsonl`);
+    fs.writeFileSync(
+      tmp,
+      [
+        JSON.stringify({
+          type: "user",
+          cwd: "/tmp/p",
+          message: { role: "user", content: "go" },
+          timestamp: "2026-05-01T10:00:00.000Z",
+        }),
+        JSON.stringify({
+          type: "assistant",
+          message: {
+            role: "assistant",
+            content: "ok",
+            usage: {
+              input_tokens: 100,
+              output_tokens: 50,
+              cache_read_input_tokens: 1000,
+              cache_creation_input_tokens: 200,
+            },
+          },
+          timestamp: "2026-05-01T10:00:01.000Z",
+        }),
+        JSON.stringify({
+          type: "assistant",
+          message: {
+            role: "assistant",
+            content: "more",
+            usage: {
+              input_tokens: 300,
+              output_tokens: 75,
+              cache_read_input_tokens: 1100,
+              cache_creation_input_tokens: 0,
+            },
+          },
+          timestamp: "2026-05-01T10:00:02.000Z",
+        }),
+      ].join("\n") + "\n",
+    );
+    try {
+      const meta = await extractMetadata(tmp, "tok-id");
+      expect(meta.tokens.tokens_in).toBe(400);
+      expect(meta.tokens.tokens_out).toBe(125);
+      expect(meta.tokens.tokens_cache_read).toBe(2100);
+      expect(meta.tokens.tokens_cache_create).toBe(200);
+    } finally {
+      fs.unlinkSync(tmp);
+    }
+  });
+
+  it("prefers ai-title records over the first user prompt", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const tmp = path.join(os.tmpdir(), `sesh-extract-aititle-${Date.now()}.jsonl`);
+    fs.writeFileSync(
+      tmp,
+      [
+        JSON.stringify({
+          type: "user",
+          cwd: "/tmp/p",
+          message: { role: "user", content: "raw first prompt with lots of noise" },
+          timestamp: "2026-05-01T10:00:00.000Z",
+        }),
+        JSON.stringify({
+          type: "ai-title",
+          aiTitle: "Refactor the auth middleware",
+          sessionId: "x",
+        }),
+      ].join("\n") + "\n",
+    );
+    try {
+      const meta = await extractMetadata(tmp, "ai-title-id");
+      expect(meta.auto_title).toBe("Refactor the auth middleware");
+    } finally {
+      fs.unlinkSync(tmp);
+    }
+  });
+
+  it("falls back to stripped first prompt when no ai-title is present", async () => {
+    const meta = await extractMetadata(FIXTURE, "sample-id");
+    // Sample fixture has no ai-title record, so we should fall back to the
+    // existing behavior (first user message).
+    expect(meta.auto_title).toBe("first prompt");
+  });
+
+  it("returns zero tokens for a session with only user messages", async () => {
+    const meta = await extractMetadata(FIXTURE, "sample-id");
+    // sample fixture has one assistant reply but no usage object
+    expect(meta.tokens.tokens_in).toBe(0);
+    expect(meta.tokens.tokens_out).toBe(0);
+    expect(meta.tokens.tokens_cache_read).toBe(0);
+    expect(meta.tokens.tokens_cache_create).toBe(0);
+  });
+});
+
 describe("truncateGraphemes", () => {
   it("returns input unchanged when shorter than max", () => {
     expect(truncateGraphemes("hello", 10)).toBe("hello");

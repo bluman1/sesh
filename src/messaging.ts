@@ -20,6 +20,10 @@ export interface SessionDetail extends SessionListItem {
   auto_title: string | null;
   notes: string | null;
   file_path: string;
+  tokens_in: number;
+  tokens_out: number;
+  tokens_cache_read: number;
+  tokens_cache_create: number;
 }
 
 export type TranscriptBlock =
@@ -134,5 +138,9 @@ export function rowToDetail(row: SessionRow, tags: string[]): SessionDetail {
     auto_title: row.auto_title,
     notes: row.notes,
     file_path: row.file_path,
+    tokens_in: row.tokens_in,
+    tokens_out: row.tokens_out,
+    tokens_cache_read: row.tokens_cache_read,
+    tokens_cache_create: row.tokens_cache_create,
   };
 }

@@ -92,6 +92,7 @@ export class ProjectsWatcher {
       orphaned: 0,
       content_indexed: 0,
       last_parsed_offset: 0,
+      ...meta.tokens,
     });
     try {
       await this.indexer.indexOne(id, filePath);

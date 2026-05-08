@@ -40,6 +40,17 @@ function formatRelative(ms: number): string {
   return `${Math.floor(mo / 12)}y ago`;
 }
 
+function formatTokens(n: number): string {
+  if (n < 1000) return String(n);
+  if (n < 1_000_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0)}k`;
+  if (n < 1_000_000_000) return `${(n / 1_000_000).toFixed(n < 10_000_000 ? 1 : 0)}M`;
+  return `${(n / 1_000_000_000).toFixed(1)}B`;
+}
+
+function formatTokensExact(n: number): string {
+  return n.toLocaleString();
+}
+
 export function DetailPane({
   session,
   transcript,
@@ -279,6 +290,33 @@ export function DetailPane({
             <dt>Messages</dt>
             <dd>{session.message_count}</dd>
           </div>
+          {(session.tokens_in > 0 ||
+            session.tokens_out > 0 ||
+            session.tokens_cache_read > 0 ||
+            session.tokens_cache_create > 0) && (
+            <div>
+              <dt>Tokens</dt>
+              <dd
+                title={[
+                  `Input:           ${formatTokensExact(session.tokens_in)}`,
+                  `Output:          ${formatTokensExact(session.tokens_out)}`,
+                  `Cache read:      ${formatTokensExact(session.tokens_cache_read)}`,
+                  `Cache created:   ${formatTokensExact(session.tokens_cache_create)}`,
+                ].join("\n")}
+              >
+                {formatTokens(session.tokens_in)} in /{" "}
+                {formatTokens(session.tokens_out)} out
+                {session.tokens_cache_read > 0 && (
+                  <>
+                    {" / "}
+                    <span className="sesh-token-cache">
+                      {formatTokens(session.tokens_cache_read)} cached
+                    </span>
+                  </>
+                )}
+              </dd>
+            </div>
+          )}
         </dl>
         <div className="sesh-detail-folder">
           <span className="sesh-detail-folder-label">Folder</span>

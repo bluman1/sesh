@@ -23,6 +23,10 @@ function makeRow(overrides: Partial<SessionRow> = {}): SessionRow {
     orphaned: 0,
     content_indexed: 0,
     last_parsed_offset: 0,
+    tokens_in: 0,
+    tokens_out: 0,
+    tokens_cache_read: 0,
+    tokens_cache_create: 0,
     ...overrides,
   };
 }

@@ -34,6 +34,10 @@ function baseRow(id: string, overrides: Partial<{
     orphaned: 0 as 0|1,
     content_indexed: 0 as 0|1,
     last_parsed_offset: 0,
+    tokens_in: 0,
+    tokens_out: 0,
+    tokens_cache_read: 0,
+    tokens_cache_create: 0,
     ...overrides,
   };
 }

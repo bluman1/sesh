@@ -87,6 +87,7 @@ export async function scanProjectsRoot(
         orphaned: 0,
         content_indexed: 0,
         last_parsed_offset: 0,
+        ...meta.tokens,
       });
       result.upserted++;
     }

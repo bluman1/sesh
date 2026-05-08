@@ -19,10 +19,14 @@ export interface SessionRow {
   orphaned: 0 | 1;
   content_indexed: 0 | 1;
   last_parsed_offset: number;
+  tokens_in: number;
+  tokens_out: number;
+  tokens_cache_read: number;
+  tokens_cache_create: number;
 }
 
 const COLUMNS =
-  "id, source, project_path, file_path, file_mtime, file_size, created_at, last_active_at, message_count, auto_title, custom_title, category_id, notes, favorited, archived, orphaned, content_indexed, last_parsed_offset";
+  "id, source, project_path, file_path, file_mtime, file_size, created_at, last_active_at, message_count, auto_title, custom_title, category_id, notes, favorited, archived, orphaned, content_indexed, last_parsed_offset, tokens_in, tokens_out, tokens_cache_read, tokens_cache_create";
 
 export class SessionRepository {
   constructor(private db: Db) {}
@@ -34,7 +38,8 @@ export class SessionRepository {
            @id, @source, @project_path, @file_path, @file_mtime, @file_size,
            @created_at, @last_active_at, @message_count, @auto_title, @custom_title,
            @category_id, @notes, @favorited, @archived, @orphaned, @content_indexed,
-           @last_parsed_offset
+           @last_parsed_offset, @tokens_in, @tokens_out, @tokens_cache_read,
+           @tokens_cache_create
          )
          ON CONFLICT(id) DO UPDATE SET
            file_mtime = excluded.file_mtime,
@@ -42,6 +47,10 @@ export class SessionRepository {
            last_active_at = excluded.last_active_at,
            message_count = excluded.message_count,
            auto_title = excluded.auto_title,
+           tokens_in = excluded.tokens_in,
+           tokens_out = excluded.tokens_out,
+           tokens_cache_read = excluded.tokens_cache_read,
+           tokens_cache_create = excluded.tokens_cache_create,
            orphaned = 0`,
       )
       .run(row);
@@ -101,12 +110,60 @@ export class SessionRepository {
       .run(title, id);
   }
 
-  listIdsWithDirtyAutoTitle(): { id: string; file_path: string }[] {
+  setExtractedMetadata(
+    id: string,
+    autoTitle: string | null,
+    tokens: {
+      tokens_in: number;
+      tokens_out: number;
+      tokens_cache_read: number;
+      tokens_cache_create: number;
+    },
+  ): void {
+    this.db
+      .prepare(
+        `UPDATE sessions SET
+           auto_title = ?,
+           tokens_in = ?,
+           tokens_out = ?,
+           tokens_cache_read = ?,
+           tokens_cache_create = ?
+         WHERE id = ?`,
+      )
+      .run(
+        autoTitle,
+        tokens.tokens_in,
+        tokens.tokens_out,
+        tokens.tokens_cache_read,
+        tokens.tokens_cache_create,
+        id,
+      );
+  }
+
+  listIdsWithDirtyAutoTitle(): { id: string; file_path: string; source: string }[] {
     return this.db
       .prepare(
-        "SELECT id, file_path FROM sessions WHERE auto_title LIKE '<%' AND orphaned = 0",
+        "SELECT id, file_path, source FROM sessions WHERE auto_title LIKE '<%' AND orphaned = 0",
       )
-      .all() as { id: string; file_path: string }[];
+      .all() as { id: string; file_path: string; source: string }[];
+  }
+
+  // Sessions that pre-date the tokens migration: their tokens_* columns are
+  // zero but message_count > 0 implies the source JSONL has usage data we
+  // never read. Safe to re-extract once at activation; the WHERE clause
+  // becomes a no-op after the backfill lands.
+  listIdsNeedingTokenBackfill(): { id: string; file_path: string; source: string }[] {
+    return this.db
+      .prepare(
+        `SELECT id, file_path, source FROM sessions
+         WHERE orphaned = 0
+           AND message_count > 0
+           AND tokens_in = 0
+           AND tokens_out = 0
+           AND tokens_cache_read = 0
+           AND tokens_cache_create = 0`,
+      )
+      .all() as { id: string; file_path: string; source: string }[];
   }
 
   setCategory(id: string, categoryId: number | null): void {

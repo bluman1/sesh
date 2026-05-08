@@ -10,6 +10,7 @@ import { CategoryRepository } from "../db/categories";
 import { scanProjectsRoot } from "../scanner/scan";
 import { scanSessionsIndex } from "../scanner/sessionsIndex";
 import { scanCodexSessionsRoot } from "../scanner/codex/scan";
+import { extractCodexMetadata } from "../scanner/codex/extract";
 import { extractMetadata } from "../scanner/extract";
 import { ContentIndexer } from "../scanner/contentIndexer";
 import { ProjectsWatcher } from "../scanner/watcher";
@@ -60,7 +61,7 @@ export class SeshHost {
     this.scanPromise = this.runScan();
     await this.scanPromise;
 
-    void this.healDirtyAutoTitles();
+    void this.healSessionMetadata();
 
     this.indexer = new ContentIndexer(this.db, this.sessions);
     this.indexer.setProgressHandler((indexed, total) => {
@@ -135,25 +136,50 @@ export class SeshHost {
     }
   }
 
-  private async healDirtyAutoTitles(): Promise<void> {
+  private async healSessionMetadata(): Promise<void> {
     if (!this.sessions) return;
+    // Two reasons a session might need a re-extract: an auto_title that
+    // still contains a `<system-tag>` we now strip, OR token columns that
+    // pre-date the 003_tokens migration (zero across all four columns even
+    // though the session has messages). Combine into one pass.
     const dirty = this.sessions.listIdsWithDirtyAutoTitle();
-    if (dirty.length === 0) return;
+    const needTokens = this.sessions.listIdsNeedingTokenBackfill();
+    const seen = new Set<string>();
+    const rows: { id: string; file_path: string; source: string }[] = [];
+    for (const r of [...dirty, ...needTokens]) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      rows.push(r);
+    }
+    if (rows.length === 0) return;
     this.output.appendLine(
-      `[sesh] re-extracting auto_title for ${dirty.length} session${dirty.length === 1 ? "" : "s"}…`,
+      `[sesh] re-extracting metadata for ${rows.length} session${rows.length === 1 ? "" : "s"}…`,
     );
     let healed = 0;
-    for (const row of dirty) {
+    for (const row of rows) {
       try {
-        const meta = await extractMetadata(row.file_path, row.id);
-        this.sessions.setAutoTitle(row.id, meta.auto_title);
+        if (row.source === "codex") {
+          const meta = await extractCodexMetadata(row.file_path);
+          this.sessions.setExtractedMetadata(
+            row.id,
+            meta.auto_title,
+            meta.tokens,
+          );
+        } else {
+          const meta = await extractMetadata(row.file_path, row.id);
+          this.sessions.setExtractedMetadata(
+            row.id,
+            meta.auto_title,
+            meta.tokens,
+          );
+        }
         healed++;
       } catch {
         // ignore — file may be unreadable; leave the row as-is
       }
     }
     this.output.appendLine(
-      `[sesh] auto_title heal complete: ${healed}/${dirty.length}`,
+      `[sesh] metadata heal complete: ${healed}/${rows.length}`,
     );
     this.onSessionChanged?.("");
   }

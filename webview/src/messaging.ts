@@ -18,6 +18,10 @@ export interface SessionDetail extends SessionListItem {
   auto_title: string | null;
   notes: string | null;
   file_path: string;
+  tokens_in: number;
+  tokens_out: number;
+  tokens_cache_read: number;
+  tokens_cache_create: number;
 }
 
 export type TranscriptBlock =

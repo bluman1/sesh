@@ -1,12 +1,20 @@
 import { streamJsonl } from "../jsonl";
 import { truncateGraphemes } from "../extract";
 
+export interface CodexTokens {
+  tokens_in: number;
+  tokens_out: number;
+  tokens_cache_read: number;
+  tokens_cache_create: number;
+}
+
 export interface CodexMetadata {
   cwd: string;
   auto_title: string | null;
   created_at: number;
   last_active_at: number;
   message_count: number;
+  tokens: CodexTokens;
 }
 
 const TITLE_MAX = 80;
@@ -49,6 +57,10 @@ function userTextFromContent(content: unknown): string | null {
   return null;
 }
 
+function numberOrZero(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
 export async function extractCodexMetadata(
   filePath: string,
 ): Promise<CodexMetadata> {
@@ -57,6 +69,14 @@ export async function extractCodexMetadata(
   let createdAt: number | null = null;
   let lastActiveAt: number | null = null;
   let messageCount = 0;
+  // Codex emits a token_count event_msg after every turn. The latest one
+  // carries the cumulative total — we just track the most recent.
+  const tokens: CodexTokens = {
+    tokens_in: 0,
+    tokens_out: 0,
+    tokens_cache_read: 0,
+    tokens_cache_create: 0,
+  };
 
   for await (const rec of streamJsonl(filePath)) {
     const r = rec as Record<string, unknown>;
@@ -70,6 +90,37 @@ export async function extractCodexMetadata(
       const payload = r.payload as Record<string, unknown> | undefined;
       if (payload && typeof payload.cwd === "string" && cwd === null) {
         cwd = payload.cwd;
+      }
+      continue;
+    }
+
+    if (r.type === "event_msg") {
+      const payload = r.payload as Record<string, unknown> | undefined;
+      if (
+        payload?.type === "token_count" &&
+        payload.info &&
+        typeof payload.info === "object"
+      ) {
+        const info = payload.info as Record<string, unknown>;
+        const total = info.total_token_usage as
+          | Record<string, unknown>
+          | undefined;
+        if (total) {
+          // Codex's input_tokens is total input INCLUDING cached. Subtract
+          // cached_input_tokens so tokens_in is comparable to Claude's
+          // cache-excluded input_tokens. reasoning_output_tokens is
+          // counted as output for parity with Claude (Claude folds
+          // reasoning into output_tokens implicitly).
+          const inputAll = numberOrZero(total.input_tokens);
+          const cached = numberOrZero(total.cached_input_tokens);
+          tokens.tokens_in = Math.max(0, inputAll - cached);
+          tokens.tokens_out =
+            numberOrZero(total.output_tokens) +
+            numberOrZero(total.reasoning_output_tokens);
+          tokens.tokens_cache_read = cached;
+          // Codex doesn't expose a cache-creation breakdown.
+          tokens.tokens_cache_create = 0;
+        }
       }
       continue;
     }
@@ -102,6 +153,7 @@ export async function extractCodexMetadata(
     created_at: createdAt ?? 0,
     last_active_at: lastActiveAt ?? 0,
     message_count: messageCount,
+    tokens,
   };
 }
 

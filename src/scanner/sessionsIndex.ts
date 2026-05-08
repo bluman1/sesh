@@ -114,6 +114,11 @@ export async function scanSessionsIndex(
         orphaned: 1,
         content_indexed: 0,
         last_parsed_offset: 0,
+        // Ghost rows have no transcript on disk to extract usage from.
+        tokens_in: 0,
+        tokens_out: 0,
+        tokens_cache_read: 0,
+        tokens_cache_create: 0,
       });
       result.imported++;
     }
