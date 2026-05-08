@@ -3,6 +3,7 @@ import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import type { TranscriptMessage } from "../messaging";
 import { Icon } from "./Icon";
 import { MessageBlock } from "./MessageBlocks";
+import { Tooltip } from "./Tooltip";
 
 interface Props {
   messages: TranscriptMessage[];
@@ -78,12 +79,11 @@ export function Transcript({ messages, searchQuery = "" }: Props): JSX.Element {
             <div className="sesh-msg-header">
               <span className="sesh-msg-role">{m.type}</span>
               {m.timestamp > 0 && (
-                <span
-                  className="sesh-msg-time sesh-tt"
-                  data-tooltip={formatAbsolute(m.timestamp)}
-                >
-                  {formatRelative(m.timestamp)}
-                </span>
+                <Tooltip content={formatAbsolute(m.timestamp)}>
+                  <span className="sesh-msg-time">
+                    {formatRelative(m.timestamp)}
+                  </span>
+                </Tooltip>
               )}
             </div>
             <div className="sesh-msg-blocks">

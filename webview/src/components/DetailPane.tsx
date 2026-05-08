@@ -9,6 +9,7 @@ import { Transcript } from "./Transcript";
 import { Icon } from "./Icon";
 import { Dropdown, type DropdownItem } from "./Dropdown";
 import { SourceBadge } from "./SourceBadge";
+import { Tooltip } from "./Tooltip";
 import { useCategories } from "../hooks/useCategories";
 import { useAllTags } from "../hooks/useAllTags";
 
@@ -295,21 +296,15 @@ export function DetailPane({
           </div>
           <div>
             <dt>Last active</dt>
-            <dd
-              className="sesh-tt"
-              data-tooltip={formatAbsolute(session.last_active_at)}
-            >
-              {formatRelative(session.last_active_at)}
-            </dd>
+            <Tooltip content={formatAbsolute(session.last_active_at)}>
+              <dd>{formatRelative(session.last_active_at)}</dd>
+            </Tooltip>
           </div>
           <div>
             <dt>Created</dt>
-            <dd
-              className="sesh-tt"
-              data-tooltip={formatAbsolute(session.created_at)}
-            >
-              {formatRelative(session.created_at)}
-            </dd>
+            <Tooltip content={formatAbsolute(session.created_at)}>
+              <dd>{formatRelative(session.created_at)}</dd>
+            </Tooltip>
           </div>
           <div>
             <dt>Messages</dt>
@@ -321,26 +316,27 @@ export function DetailPane({
             session.tokens_cache_create > 0) && (
             <div>
               <dt>Tokens</dt>
-              <dd
-                className="sesh-tt"
-                data-tooltip={[
+              <Tooltip
+                content={[
                   `Input:         ${formatTokensExact(session.tokens_in)}`,
                   `Output:        ${formatTokensExact(session.tokens_out)}`,
                   `Cache read:    ${formatTokensExact(session.tokens_cache_read)}`,
                   `Cache created: ${formatTokensExact(session.tokens_cache_create)}`,
                 ].join("\n")}
               >
-                {formatTokens(session.tokens_in)} in /{" "}
-                {formatTokens(session.tokens_out)} out
-                {session.tokens_cache_read > 0 && (
-                  <>
-                    {" / "}
-                    <span className="sesh-token-cache">
-                      {formatTokens(session.tokens_cache_read)} cached
-                    </span>
-                  </>
-                )}
-              </dd>
+                <dd>
+                  {formatTokens(session.tokens_in)} in /{" "}
+                  {formatTokens(session.tokens_out)} out
+                  {session.tokens_cache_read > 0 && (
+                    <>
+                      {" / "}
+                      <span className="sesh-token-cache">
+                        {formatTokens(session.tokens_cache_read)} cached
+                      </span>
+                    </>
+                  )}
+                </dd>
+              </Tooltip>
             </div>
           )}
         </dl>

@@ -366,40 +366,38 @@ body {
   background: color-mix(in srgb, var(--sesh-accent) 8%, transparent);
 }
 
-/* ─── CSS-only tooltip ──────────────────────────────── */
+/* ─── Tooltip (fixed-positioned, JS-driven) ─────────── */
 
-/* Use `data-tooltip="..."` instead of the native `title` attribute when you
- * want a styled, instantly-visible tooltip. Multi-line tooltips work via
- * literal "\A" in the data-tooltip value (white-space: pre below preserves
- * newlines too, so just embed real \n characters).
+/* Rendered by the <Tooltip> component as a sibling of its trigger using
+ * position: fixed so it isn't clipped by ancestor overflow:hidden (the
+ * meta strip lives inside .sesh-detail which clips its children).
  */
-.sesh-tt {
-  position: relative;
-}
-.sesh-tt::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
+.sesh-tooltip {
+  position: fixed;
   background: var(--vscode-editorHoverWidget-background, #252526);
   color: var(--vscode-editorHoverWidget-foreground, var(--sesh-fg));
   border: 1px solid var(--vscode-editorHoverWidget-border, var(--sesh-border));
-  padding: var(--sesh-space-1) var(--sesh-space-2);
+  padding: var(--sesh-space-2) var(--sesh-space-3);
   border-radius: var(--sesh-radius-md);
   white-space: pre;
   font-size: var(--sesh-text-xs);
   font-family: var(--vscode-editor-font-family, monospace);
   line-height: 1.5;
   pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.12s ease;
-  z-index: 50;
+  z-index: 1000;
   box-shadow: var(--sesh-shadow-md);
   max-width: 360px;
+  animation: sesh-tooltip-fade 0.12s ease-out;
 }
-.sesh-tt:hover::after {
-  opacity: 1;
+.sesh-tooltip-top {
+  transform: translate(-50%, -100%);
+}
+.sesh-tooltip-bottom {
+  transform: translate(-50%, 0);
+}
+@keyframes sesh-tooltip-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* ─── Status / errors ───────────────────────────────── */
@@ -456,39 +454,53 @@ body {
 
 .sesh-list {
   height: 100%;
-  padding: var(--sesh-space-2) var(--sesh-space-1);
+  padding: var(--sesh-space-2) var(--sesh-space-2);
 }
 .sesh-list-row {
   position: relative;
-  margin: 2px var(--sesh-space-1);
-  padding: 10px var(--sesh-space-3) 10px var(--sesh-space-3);
-  cursor: pointer;
+  /* Outer 4px gap between cards rendered as a transparent border so
+   * react-virtuoso's row measurement includes it. Inner padding gives
+   * the actual card breathing room. */
   border: 1px solid transparent;
+  border-bottom-width: 5px;
+  padding: 11px var(--sesh-space-3) 11px var(--sesh-space-3);
+  cursor: pointer;
   border-radius: var(--sesh-radius-md);
+  /* The bottom-border can't carry the radius, so use background-clip to
+   * keep the rounded card look while the border itself is just a gap. */
+  background-clip: padding-box;
   display: flex;
   flex-direction: column;
   gap: 5px;
-  transition: background-color 0.1s ease, border-color 0.1s ease,
-    box-shadow 0.12s ease;
+  transition: background-color 0.12s ease, border-color 0.12s ease,
+    box-shadow 0.14s ease;
 }
 .sesh-list-row::before {
   content: "";
   position: absolute;
-  top: 12px;
-  bottom: 12px;
-  left: -1px;
+  top: 11px;
+  bottom: 11px;
+  left: 0;
   width: 3px;
   background: transparent;
   border-radius: 0 2px 2px 0;
-  transition: background-color 0.1s ease;
+  transition: background-color 0.12s ease, height 0.12s ease;
 }
 .sesh-list-row:hover {
-  background: var(--sesh-fill-subtle);
+  background: color-mix(in srgb, var(--sesh-accent) 5%, var(--sesh-fill-subtle));
+  border-top-color: var(--sesh-border-subtle);
+  border-left-color: var(--sesh-border-subtle);
+  border-right-color: var(--sesh-border-subtle);
 }
 .sesh-list-row.is-selected {
-  background: color-mix(in srgb, var(--sesh-accent) 14%, transparent);
-  border-color: color-mix(in srgb, var(--sesh-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--sesh-accent) 18%, transparent);
+  border-top-color: color-mix(in srgb, var(--sesh-accent) 55%, transparent);
+  border-left-color: color-mix(in srgb, var(--sesh-accent) 55%, transparent);
+  border-right-color: color-mix(in srgb, var(--sesh-accent) 55%, transparent);
   box-shadow: var(--sesh-shadow-sm);
+}
+.sesh-list-row.is-selected:hover {
+  background: color-mix(in srgb, var(--sesh-accent) 22%, transparent);
 }
 .sesh-list-row.is-selected::before {
   background: var(--sesh-accent);
