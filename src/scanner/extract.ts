@@ -16,7 +16,7 @@ export interface ExtractOptions {
 const TITLE_MAX = 80;
 
 const SYSTEM_TAG_RE =
-  /<(system-reminder|command-name|command-message|command-args|env|local-command-stdout|local-command-stderr|ide_selection|ide_diagnostics)>[\s\S]*?<\/\1>/g;
+  /<(system-reminder|command-name|command-message|command-args|env|local-command-stdout|local-command-stderr|ide_selection|ide_diagnostics|ide_opened_file|task-notification|task-id|tool-use-id)>[\s\S]*?<\/\1>/g;
 
 function cleanTitleText(text: string): string {
   return text.replace(SYSTEM_TAG_RE, "").trim();

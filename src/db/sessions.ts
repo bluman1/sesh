@@ -95,6 +95,20 @@ export class SessionRepository {
       .run(title, id);
   }
 
+  setAutoTitle(id: string, title: string | null): void {
+    this.db
+      .prepare("UPDATE sessions SET auto_title = ? WHERE id = ?")
+      .run(title, id);
+  }
+
+  listIdsWithDirtyAutoTitle(): { id: string; file_path: string }[] {
+    return this.db
+      .prepare(
+        "SELECT id, file_path FROM sessions WHERE auto_title LIKE '<%' AND orphaned = 0",
+      )
+      .all() as { id: string; file_path: string }[];
+  }
+
   setCategory(id: string, categoryId: number | null): void {
     this.db
       .prepare("UPDATE sessions SET category_id = ? WHERE id = ?")

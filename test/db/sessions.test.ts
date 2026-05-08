@@ -128,6 +128,23 @@ describe("SessionRepository", () => {
     expect(repo.findById("abc-123")?.archived).toBe(1);
   });
 
+  it("setAutoTitle updates the column", () => {
+    repo.upsert(makeRow());
+    repo.setAutoTitle("abc-123", "cleaned title");
+    expect(repo.findById("abc-123")?.auto_title).toBe("cleaned title");
+    repo.setAutoTitle("abc-123", null);
+    expect(repo.findById("abc-123")?.auto_title).toBeNull();
+  });
+
+  it("listIdsWithDirtyAutoTitle returns sessions whose auto_title starts with '<' and aren't orphaned", () => {
+    repo.upsert(makeRow({ id: "clean", auto_title: "Real prompt" }));
+    repo.upsert(makeRow({ id: "dirty1", auto_title: "<ide_opened_file>The user opened…" }));
+    repo.upsert(makeRow({ id: "dirty2", auto_title: "<system-reminder>foo" }));
+    repo.upsert(makeRow({ id: "dirty-orphan", auto_title: "<ide_opened_file>foo", orphaned: 1 }));
+    const ids = repo.listIdsWithDirtyAutoTitle().map((r) => r.id).sort();
+    expect(ids).toEqual(["dirty1", "dirty2"]);
+  });
+
   it("user fields are preserved across re-upsert", () => {
     repo.upsert(makeRow());
     repo.setCustomTitle("abc-123", "Pinned");

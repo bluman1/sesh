@@ -17,6 +17,12 @@ const ALL_SYSTEM_PROMPT = path.join(
   "fixtures",
   "all-system-prompt.jsonl",
 );
+const IDE_OPENED_FILE_PROMPT = path.join(
+  __dirname,
+  "..",
+  "fixtures",
+  "ide-opened-file-prompt.jsonl",
+);
 
 describe("extractMetadata", () => {
   it("extracts cwd, auto_title, timestamps, and message count", async () => {
@@ -55,5 +61,10 @@ describe("extractMetadata", () => {
   it("falls through to next user record when first is only system tags", async () => {
     const meta = await extractMetadata(ALL_SYSTEM_PROMPT, "all-sys-id");
     expect(meta.auto_title).toBe("real first prompt");
+  });
+
+  it("strips ide_opened_file blocks from auto_title", async () => {
+    const meta = await extractMetadata(IDE_OPENED_FILE_PROMPT, "ide-id");
+    expect(meta.auto_title).toBe("Fix the typo in the README");
   });
 });

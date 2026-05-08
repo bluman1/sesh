@@ -8,6 +8,7 @@ import { SessionRepository } from "../db/sessions";
 import { TagRepository } from "../db/tags";
 import { CategoryRepository } from "../db/categories";
 import { scanProjectsRoot } from "../scanner/scan";
+import { extractMetadata } from "../scanner/extract";
 import { ContentIndexer } from "../scanner/contentIndexer";
 import { ProjectsWatcher } from "../scanner/watcher";
 
@@ -45,6 +46,8 @@ export class SeshHost {
     this.scanPromise = this.runScan();
     await this.scanPromise;
 
+    void this.healDirtyAutoTitles();
+
     this.indexer = new ContentIndexer(this.db, this.sessions);
     this.indexer.setProgressHandler((indexed, total) => {
       this.indexProgress = { indexed, total };
@@ -69,6 +72,29 @@ export class SeshHost {
     this.output.appendLine(
       `[sesh] scan complete: scanned=${result.scanned} upserted=${result.upserted} skipped=${result.skipped}`,
     );
+  }
+
+  private async healDirtyAutoTitles(): Promise<void> {
+    if (!this.sessions) return;
+    const dirty = this.sessions.listIdsWithDirtyAutoTitle();
+    if (dirty.length === 0) return;
+    this.output.appendLine(
+      `[sesh] re-extracting auto_title for ${dirty.length} session${dirty.length === 1 ? "" : "s"}…`,
+    );
+    let healed = 0;
+    for (const row of dirty) {
+      try {
+        const meta = await extractMetadata(row.file_path, row.id);
+        this.sessions.setAutoTitle(row.id, meta.auto_title);
+        healed++;
+      } catch {
+        // ignore — file may be unreadable; leave the row as-is
+      }
+    }
+    this.output.appendLine(
+      `[sesh] auto_title heal complete: ${healed}/${dirty.length}`,
+    );
+    this.onSessionChanged?.("");
   }
 
   async rescan(): Promise<void> {
