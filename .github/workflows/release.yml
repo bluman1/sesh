@@ -1,10 +1,15 @@
 name: Release
 
 # Triggered when you push a tag matching v* (e.g. `git tag v0.0.2 && git push --tags`).
-# The release flow: build per-platform .vsix files in parallel runners (so each
-# one bundles the correct better-sqlite3 native binary), then a single publish
-# job uploads all of them to the Marketplace and attaches them to a GitHub
-# release with auto-generated notes.
+#
+# Currently a BUILD-ONLY workflow: each runner produces a platform-specific
+# .vsix (so better-sqlite3's native binary matches the user's OS), and they're
+# all attached to a GitHub Release with auto-generated notes. Marketplace
+# upload is manual — open the publisher dashboard and drop each .vsix in.
+# (The Azure DevOps PAT path that vsce auto-publish needs is currently
+# blocked on the Microsoft account side. To re-enable auto-publish later:
+# add a publish job that runs `vsce publish --packagePath` per .vsix with
+# VSCE_PAT in repo secrets — see git history for commit 1f5d028.)
 
 on:
   push:
@@ -59,8 +64,8 @@ jobs:
           path: sesh-${{ matrix.target }}.vsix
           if-no-files-found: error
 
-  publish:
-    name: Publish to Marketplace + GitHub Release
+  release:
+    name: Attach .vsix files to GitHub Release
     needs: package
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
@@ -68,10 +73,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # full history so the GH release notes can diff against the previous tag
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
 
       - uses: actions/download-artifact@v4
         with:
@@ -82,15 +83,6 @@ jobs:
       - name: List downloaded artifacts
         run: ls -la dist/
 
-      - name: Publish each platform .vsix to the Marketplace
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: |
-          for vsix in dist/*.vsix; do
-            echo "Publishing $vsix"
-            npx --yes @vscode/vsce publish --packagePath "$vsix"
-          done
-
       - name: Create GitHub Release with .vsix files attached
         uses: softprops/action-gh-release@v2
         with:
@@ -98,3 +90,14 @@ jobs:
           generate_release_notes: true
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
+          body: |
+            ## Manual marketplace upload
+
+            Auto-publish to the Marketplace is currently disabled. Download each
+            `.vsix` below and upload it at:
+
+            https://marketplace.visualstudio.com/manage/publishers/MichaelOgundare
+
+            (Click ⋯ on the Sesh entry → **Upload extension**, then drop in each
+            platform's .vsix. The Marketplace accepts multiple platform-specific
+            uploads under the same version and serves the right one per user.)
