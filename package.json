@@ -19,7 +19,8 @@
     "commands": [
       {
         "command": "sesh.open",
-        "title": "Sesh: Open"
+        "title": "Sesh: Open",
+        "icon": "$(history)"
       },
       {
         "command": "sesh.showStats",
@@ -30,6 +31,38 @@
         "title": "Sesh: Rescan all projects"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sesh",
+          "title": "Sesh",
+          "icon": "resources/sesh-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "sesh": [
+        {
+          "type": "tree",
+          "id": "sesh.welcome",
+          "name": "Saved sessions"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "sesh.welcome",
+        "contents": "Browse, annotate, and resume saved Claude Code sessions.\n[Open Sesh panel](command:sesh.open)\n\nA full editor tab opens with your session list, search, filters, and transcript preview."
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "sesh.open",
+          "group": "navigation@9"
+        }
+      ]
+    },
     "configuration": {
       "title": "Sesh",
       "properties": {

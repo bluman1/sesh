@@ -10,6 +10,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   host = new SeshHost(output);
 
+  // Empty tree-data provider so the activity bar view renders its
+  // viewsWelcome content (a clickable 'Open Sesh panel' button).
+  context.subscriptions.push(
+    vscode.window.registerTreeDataProvider("sesh.welcome", {
+      getChildren: () => [],
+      getTreeItem: () => new vscode.TreeItem(""),
+    }),
+  );
+
   context.subscriptions.push(
     vscode.commands.registerCommand("sesh.open", () => {
       if (!host) {
