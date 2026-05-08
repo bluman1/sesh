@@ -38,8 +38,11 @@
   --sesh-fg-muted: color-mix(in srgb, var(--vscode-foreground, #cccccc) 62%, transparent);
   --sesh-bg: var(--vscode-editor-background, #1e1e1e);
   --sesh-bg-elevated: var(--vscode-editorWidget-background, #252526);
-  /* Used only for major structural separators (toolbar↔body, list↔detail) */
-  --sesh-border: var(--vscode-widget-border, var(--vscode-panel-border, rgba(128, 128, 128, 0.25)));
+  /* Major structural separators (toolbar↔body, list↔detail).
+   * Deliberately NOT --vscode-widget-border / --vscode-panel-border —
+   * those resolve to a saturated accent (yellow, blue, etc.) on some
+   * themes and paint visible neon hairlines around the layout. */
+  --sesh-border: rgba(128, 128, 128, 0.28);
   /* Theme-independent hairline so we don't paint yellow lines around every chip */
   --sesh-border-subtle: rgba(128, 128, 128, 0.15);
   /* Subtle filled-pill backgrounds */
@@ -279,7 +282,7 @@ body {
   min-width: 180px;
   max-width: 380px;
   background: var(--vscode-editorWidget-background, var(--sesh-bg-elevated));
-  border: 1px solid var(--vscode-editorWidget-border, var(--sesh-border));
+  border: 1px solid var(--sesh-border);
   border-radius: var(--sesh-radius-lg);
   box-shadow: var(--sesh-shadow-md);
   padding: var(--sesh-space-1);
@@ -376,7 +379,7 @@ body {
   position: fixed;
   background: var(--vscode-editorHoverWidget-background, #252526);
   color: var(--vscode-editorHoverWidget-foreground, var(--sesh-fg));
-  border: 1px solid var(--vscode-editorHoverWidget-border, var(--sesh-border));
+  border: 1px solid var(--sesh-border);
   padding: var(--sesh-space-2) var(--sesh-space-3);
   border-radius: var(--sesh-radius-md);
   white-space: pre;
@@ -475,17 +478,6 @@ body {
   transition: background-color 0.12s ease, border-color 0.12s ease,
     box-shadow 0.14s ease;
 }
-.sesh-list-row::before {
-  content: "";
-  position: absolute;
-  top: 11px;
-  bottom: 11px;
-  left: 0;
-  width: 3px;
-  background: transparent;
-  border-radius: 0 2px 2px 0;
-  transition: background-color 0.12s ease, height 0.12s ease;
-}
 .sesh-list-row:hover {
   background: color-mix(in srgb, var(--sesh-accent) 5%, var(--sesh-fill-subtle));
   border-top-color: var(--sesh-border-subtle);
@@ -501,9 +493,6 @@ body {
 }
 .sesh-list-row.is-selected:hover {
   background: color-mix(in srgb, var(--sesh-accent) 22%, transparent);
-}
-.sesh-list-row.is-selected::before {
-  background: var(--sesh-accent);
 }
 
 .sesh-list-line-1 {
@@ -1072,7 +1061,7 @@ body {
   left: 0;
   margin-top: 2px;
   background: var(--sesh-bg-elevated);
-  border: 1px solid var(--vscode-editorWidget-border, var(--sesh-border));
+  border: 1px solid var(--sesh-border);
   border-radius: var(--sesh-radius-sm);
   display: flex;
   flex-direction: column;
@@ -1504,7 +1493,7 @@ body {
 
 .sesh-remap-banner {
   background: var(--sesh-bg-elevated);
-  border-bottom: 1px solid var(--vscode-editorWidget-border, var(--sesh-border));
+  border-bottom: 1px solid var(--sesh-border);
   padding: var(--sesh-space-2) var(--sesh-space-3);
 }
 .sesh-remap-row {
@@ -1517,7 +1506,7 @@ body {
 .sesh-remap-row + .sesh-remap-row {
   margin-top: var(--sesh-space-1);
   padding-top: var(--sesh-space-1);
-  border-top: 1px solid var(--vscode-editorWidget-border, var(--sesh-border-subtle));
+  border-top: 1px solid var(--sesh-border-subtle);
 }
 .sesh-remap-text code {
   background: var(--vscode-textPreformat-background, rgba(255, 255, 255, 0.04));
