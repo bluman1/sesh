@@ -96,7 +96,7 @@ export class SeshPanel {
         this.send({ kind: "workspace", currentPath });
         return;
       }
-      if (!this.host.sessions || !this.host.tags) {
+      if (!this.host.sessions || !this.host.tags || !this.host.categories) {
         this.send({ kind: "error", message: "Sesh is still starting up." });
         return;
       }
@@ -109,6 +109,7 @@ export class SeshPanel {
           const items = rows.map((row) =>
             rowToListItem(row, this.host.tags!.getTags(row.id)),
           );
+          this.lastListScope = { scope: msg.scope, currentPath: msg.currentPath };
           this.send({
             kind: "sessionList",
             scope: msg.scope,
@@ -137,6 +138,59 @@ export class SeshPanel {
           this.send({ kind: "transcript", id: msg.id, messages });
           break;
         }
+        case "setCustomTitle":
+          this.host.sessions.setCustomTitle(msg.id, msg.title);
+          this.refreshDetail(msg.id);
+          this.refreshList();
+          break;
+        case "setCategory":
+          this.host.sessions.setCategory(msg.id, msg.categoryId);
+          this.refreshDetail(msg.id);
+          this.refreshList();
+          break;
+        case "setNotes":
+          this.host.sessions.setNotes(msg.id, msg.notes);
+          this.refreshDetail(msg.id);
+          break;
+        case "setFavorited":
+          this.host.sessions.setFavorited(msg.id, msg.favorited);
+          this.refreshDetail(msg.id);
+          this.refreshList();
+          break;
+        case "setArchived":
+          this.host.sessions.setArchived(msg.id, msg.archived);
+          this.refreshDetail(msg.id);
+          this.refreshList();
+          break;
+        case "setTags":
+          this.host.tags!.setTags(msg.id, msg.tags);
+          this.refreshDetail(msg.id);
+          this.refreshList();
+          this.broadcastAllTags();
+          break;
+        case "createCategory":
+          this.host.categories!.create({
+            name: msg.name,
+            color: msg.color,
+            sort_order: 0,
+          });
+          this.broadcastCategories();
+          break;
+        case "renameCategory":
+          this.host.categories!.rename(msg.id, msg.name);
+          this.broadcastCategories();
+          break;
+        case "deleteCategory":
+          this.host.categories!.delete(msg.id);
+          this.broadcastCategories();
+          this.refreshList();
+          break;
+        case "listCategories":
+          this.broadcastCategories();
+          break;
+        case "listAllTags":
+          this.broadcastAllTags();
+          break;
       }
     } catch (err) {
       this.send({
@@ -144,5 +198,46 @@ export class SeshPanel {
         message: `Sesh host error: ${(err as Error).message}`,
       });
     }
+  }
+
+  private refreshDetail(id: string): void {
+    if (!this.host.sessions || !this.host.tags) return;
+    const row = this.host.sessions.findById(id);
+    if (!row) return;
+    this.send({
+      kind: "sessionDetail",
+      session: rowToDetail(row, this.host.tags.getTags(id)),
+    });
+  }
+
+  private lastListScope: { scope: import("../messaging").Scope; currentPath: string | null } | null = null;
+
+  private refreshList(): void {
+    if (!this.host.sessions || !this.host.tags) return;
+    const last = this.lastListScope;
+    if (!last) return;
+    const rows =
+      last.scope === "all" || !last.currentPath
+        ? this.host.sessions.listAllNonArchived()
+        : this.host.sessions.listByProjectNonArchived(last.currentPath);
+    const items = rows.map((row) =>
+      rowToListItem(row, this.host.tags!.getTags(row.id)),
+    );
+    this.send({
+      kind: "sessionList",
+      scope: last.scope,
+      currentPath: last.currentPath,
+      sessions: items,
+    });
+  }
+
+  private broadcastCategories(): void {
+    if (!this.host.categories) return;
+    this.send({ kind: "categoriesList", categories: this.host.categories.listAll() });
+  }
+
+  private broadcastAllTags(): void {
+    if (!this.host.tags) return;
+    this.send({ kind: "allTags", tags: this.host.tags.listAllTags() });
   }
 }

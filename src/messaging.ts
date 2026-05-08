@@ -33,7 +33,18 @@ export type ToHost =
   | { kind: "ready" }
   | { kind: "listSessions"; scope: Scope; currentPath: string | null }
   | { kind: "getSession"; id: string }
-  | { kind: "getTranscript"; id: string; limit: number };
+  | { kind: "getTranscript"; id: string; limit: number }
+  | { kind: "setCustomTitle"; id: string; title: string | null }
+  | { kind: "setCategory"; id: string; categoryId: number | null }
+  | { kind: "setNotes"; id: string; notes: string | null }
+  | { kind: "setFavorited"; id: string; favorited: boolean }
+  | { kind: "setArchived"; id: string; archived: boolean }
+  | { kind: "setTags"; id: string; tags: string[] }
+  | { kind: "createCategory"; name: string; color: string | null }
+  | { kind: "renameCategory"; id: number; name: string }
+  | { kind: "deleteCategory"; id: number }
+  | { kind: "listCategories" }
+  | { kind: "listAllTags" };
 
 export type ToWebview =
   | { kind: "workspace"; currentPath: string | null }
@@ -45,6 +56,8 @@ export type ToWebview =
     }
   | { kind: "sessionDetail"; session: SessionDetail }
   | { kind: "transcript"; id: string; messages: TranscriptMessage[] }
+  | { kind: "categoriesList"; categories: { id: number; name: string; color: string | null; sort_order: number }[] }
+  | { kind: "allTags"; tags: string[] }
   | { kind: "error"; message: string };
 
 export function rowToListItem(row: SessionRow, tags: string[]): SessionListItem {
