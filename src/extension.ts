@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { SeshHost } from "./host/seshHost";
+import { SeshPanel } from "./host/seshPanel";
 
 let host: SeshHost | null = null;
 
@@ -11,7 +12,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(
     vscode.commands.registerCommand("sesh.open", () => {
-      vscode.window.showInformationMessage("Sesh: Open (UI ships in Plan B)");
+      if (!host) {
+        vscode.window.showWarningMessage("Sesh is not running.");
+        return;
+      }
+      SeshPanel.openOrFocus(context, host);
     }),
     vscode.commands.registerCommand("sesh.showStats", () => {
       if (!host?.sessions) {

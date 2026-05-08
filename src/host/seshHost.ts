@@ -5,6 +5,8 @@ import * as vscode from "vscode";
 import { openDb, type Db } from "../db/connection";
 import { runMigrations } from "../db/migrate";
 import { SessionRepository } from "../db/sessions";
+import { TagRepository } from "../db/tags";
+import { CategoryRepository } from "../db/categories";
 import { scanProjectsRoot } from "../scanner/scan";
 
 const DEFAULT_DB_DIR = path.join(os.homedir(), ".sesh");
@@ -14,6 +16,8 @@ const CLAUDE_PROJECTS_DIR = path.join(os.homedir(), ".claude", "projects");
 export class SeshHost {
   private db: Db | null = null;
   public sessions: SessionRepository | null = null;
+  public tags: TagRepository | null = null;
+  public categories: CategoryRepository | null = null;
   private scanPromise: Promise<void> | null = null;
 
   constructor(public readonly output: vscode.OutputChannel) {}
@@ -23,6 +27,8 @@ export class SeshHost {
     this.db = openDb(DEFAULT_DB_FILE);
     runMigrations(this.db);
     this.sessions = new SessionRepository(this.db);
+    this.tags = new TagRepository(this.db);
+    this.categories = new CategoryRepository(this.db);
     this.output.appendLine(`[sesh] db open: ${DEFAULT_DB_FILE}`);
 
     this.scanPromise = this.runScan();
@@ -49,6 +55,8 @@ export class SeshHost {
       this.db.close();
       this.db = null;
       this.sessions = null;
+      this.tags = null;
+      this.categories = null;
     }
   }
 }
