@@ -23,6 +23,10 @@
       {
         "command": "sesh.showStats",
         "title": "Sesh: Show stats"
+      },
+      {
+        "command": "sesh.rescan",
+        "title": "Sesh: Rescan all projects"
       }
     ]
   },

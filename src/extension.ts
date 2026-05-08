@@ -26,6 +26,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const total = host.sessions.countAll();
       vscode.window.showInformationMessage(`Sesh: ${total} sessions indexed.`);
     }),
+    vscode.commands.registerCommand("sesh.rescan", async () => {
+      if (!host) {
+        vscode.window.showWarningMessage("Sesh is not running.");
+        return;
+      }
+      await host.rescan();
+      vscode.window.showInformationMessage("Sesh: rescan complete.");
+    }),
   );
 
   try {

@@ -71,6 +71,16 @@ export class SeshHost {
     );
   }
 
+  async rescan(): Promise<void> {
+    if (!this.sessions || !this.indexer) return;
+    const result = await scanProjectsRoot(CLAUDE_PROJECTS_DIR, this.sessions);
+    this.output.appendLine(
+      `[sesh] manual rescan: scanned=${result.scanned} upserted=${result.upserted} skipped=${result.skipped}`,
+    );
+    void this.indexer.run();
+    this.onSessionChanged?.("");
+  }
+
   async stop(): Promise<void> {
     if (this.scanPromise) {
       try {
