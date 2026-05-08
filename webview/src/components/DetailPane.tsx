@@ -240,11 +240,15 @@ export function DetailPane({
                 onClick={() =>
                   postToHost({ kind: "resumeInTerminal", sessionId: session.id })
                 }
-                title="Run claude --resume in a new terminal in this session's cwd"
+                title={
+                  session.source === "codex"
+                    ? "Run codex resume in a new terminal in this session's cwd"
+                    : "Run claude --resume in a new terminal in this session's cwd"
+                }
               >
                 <Icon name="terminal" /> Resume in terminal
               </button>
-              {sameWorkspace && (
+              {sameWorkspace && session.source !== "codex" && (
                 <button
                   className="sesh-action-btn"
                   onClick={() =>

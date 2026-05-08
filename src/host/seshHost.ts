@@ -9,6 +9,7 @@ import { TagRepository } from "../db/tags";
 import { CategoryRepository } from "../db/categories";
 import { scanProjectsRoot } from "../scanner/scan";
 import { scanSessionsIndex } from "../scanner/sessionsIndex";
+import { scanCodexSessionsRoot } from "../scanner/codex/scan";
 import { extractMetadata } from "../scanner/extract";
 import { ContentIndexer } from "../scanner/contentIndexer";
 import { ProjectsWatcher } from "../scanner/watcher";
@@ -18,6 +19,7 @@ const DEFAULT_DB_DIR = path.join(os.homedir(), ".sesh");
 const DEFAULT_DB_FILE = path.join(DEFAULT_DB_DIR, "db.sqlite");
 const DEFAULT_ARCHIVE_DIR = path.join(DEFAULT_DB_DIR, "transcripts");
 const CLAUDE_PROJECTS_DIR = path.join(os.homedir(), ".claude", "projects");
+const CODEX_SESSIONS_DIR = path.join(os.homedir(), ".codex", "sessions");
 
 export class SeshHost {
   private db: Db | null = null;
@@ -101,6 +103,15 @@ export class SeshHost {
         `[sesh] sessions-index: indexFiles=${ghosts.indexFiles} importedGhosts=${ghosts.imported} skippedExisting=${ghosts.skippedExisting} skippedSidechain=${ghosts.skippedSidechain}`,
       );
     }
+    const codex = await scanCodexSessionsRoot(
+      CODEX_SESSIONS_DIR,
+      this.sessions,
+    );
+    if (codex.scanned > 0 || codex.upserted > 0) {
+      this.output.appendLine(
+        `[sesh] codex scan: scanned=${codex.scanned} upserted=${codex.upserted} skipped=${codex.skipped} errored=${codex.errored}`,
+      );
+    }
     if (this.archiveEnabled()) {
       void this.runArchive();
     }
@@ -153,6 +164,15 @@ export class SeshHost {
     this.output.appendLine(
       `[sesh] manual rescan: scanned=${result.scanned} upserted=${result.upserted} skipped=${result.skipped}`,
     );
+    const codex = await scanCodexSessionsRoot(
+      CODEX_SESSIONS_DIR,
+      this.sessions,
+    );
+    if (codex.scanned > 0) {
+      this.output.appendLine(
+        `[sesh] manual rescan codex: scanned=${codex.scanned} upserted=${codex.upserted} skipped=${codex.skipped} errored=${codex.errored}`,
+      );
+    }
     void this.indexer.run();
     this.onSessionChanged?.("");
   }

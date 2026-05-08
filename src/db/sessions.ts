@@ -147,12 +147,22 @@ export class SessionRepository {
       .run(offset, indexed ? 1 : 0, id);
   }
 
-  listForIndexing(): { id: string; file_path: string; last_parsed_offset: number }[] {
+  listForIndexing(): {
+    id: string;
+    file_path: string;
+    source: string;
+    last_parsed_offset: number;
+  }[] {
     return this.db
       .prepare(
-        "SELECT id, file_path, last_parsed_offset FROM sessions WHERE content_indexed = 0 AND orphaned = 0 ORDER BY last_active_at DESC",
+        "SELECT id, file_path, source, last_parsed_offset FROM sessions WHERE content_indexed = 0 AND orphaned = 0 ORDER BY last_active_at DESC",
       )
-      .all() as { id: string; file_path: string; last_parsed_offset: number }[];
+      .all() as {
+      id: string;
+      file_path: string;
+      source: string;
+      last_parsed_offset: number;
+    }[];
   }
 
   listRemaps(): { from_path: string; to_path: string }[] {

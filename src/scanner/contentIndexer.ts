@@ -1,4 +1,5 @@
 import { streamJsonl } from "./jsonl";
+import { streamCodexSessionText } from "./codex/sessionText";
 import type { Db } from "../db/connection";
 import type { SessionRepository } from "../db/sessions";
 
@@ -18,6 +19,20 @@ function asText(content: unknown): string | null {
     return parts.length ? parts.join("\n") : null;
   }
   return null;
+}
+
+async function* streamClaudeSessionText(
+  filePath: string,
+): AsyncIterable<string> {
+  for await (const rec of streamJsonl(filePath)) {
+    const r = rec as Record<string, unknown>;
+    if (r.type !== "user" && r.type !== "assistant") continue;
+    const msg = r.message as { content?: unknown } | undefined;
+    const raw = asText(msg?.content);
+    if (raw === null) continue;
+    const cleaned = raw.replace(SYSTEM_TAG_RE, "").trim();
+    if (cleaned) yield cleaned;
+  }
 }
 
 export class ContentIndexer {
@@ -59,7 +74,7 @@ export class ContentIndexer {
     for (const job of queue) {
       if (this.cancelled) return;
       try {
-        await this.indexOne(job.id, job.file_path);
+        await this.indexOne(job.id, job.file_path, job.source);
       } catch {
         // ignore single-file failures; indexer continues
       }
@@ -68,17 +83,14 @@ export class ContentIndexer {
     }
   }
 
-  async indexOne(id: string, filePath: string): Promise<void> {
+  async indexOne(id: string, filePath: string, source = "claude-code"): Promise<void> {
     const parts: string[] = [];
     let bytes = 0;
-    for await (const rec of streamJsonl(filePath)) {
-      const r = rec as Record<string, unknown>;
-      if (r.type !== "user" && r.type !== "assistant") continue;
-      const msg = r.message as { content?: unknown } | undefined;
-      const raw = asText(msg?.content);
-      if (raw === null) continue;
-      const cleaned = raw.replace(SYSTEM_TAG_RE, "").trim();
-      if (!cleaned) continue;
+    const stream =
+      source === "codex"
+        ? streamCodexSessionText(filePath)
+        : streamClaudeSessionText(filePath);
+    for await (const cleaned of stream) {
       const len = Buffer.byteLength(cleaned, "utf8");
       if (bytes + len > FTS_PER_SESSION_MAX_BYTES) break;
       bytes += len;

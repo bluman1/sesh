@@ -9,6 +9,7 @@ import {
 } from "../messaging";
 import { searchSessions, countSessionsInScope } from "../db/search";
 import { readTranscript } from "../scanner/transcript";
+import { readCodexTranscript } from "../scanner/codex/transcript";
 
 export class SeshPanel {
   private static instance: SeshPanel | null = null;
@@ -170,8 +171,10 @@ export class SeshPanel {
           } else if (this.host.archive.has(row.id)) {
             sourcePath = this.host.archive.pathFor(row.id);
           }
+          const reader =
+            row.source === "codex" ? readCodexTranscript : readTranscript;
           const messages = sourcePath
-            ? await readTranscript(sourcePath, limit)
+            ? await reader(sourcePath, limit)
             : [];
           this.send({ kind: "transcript", id: msg.id, messages });
           break;
@@ -211,8 +214,11 @@ export class SeshPanel {
             cwd: row.project_path,
           });
           terminal.show(true);
-          // Use the JSONL file's session id with claude --resume.
-          terminal.sendText(`claude --resume ${msg.sessionId}`, true);
+          const cmd =
+            row.source === "codex"
+              ? `codex resume ${msg.sessionId}`
+              : `claude --resume ${msg.sessionId}`;
+          terminal.sendText(cmd, true);
           break;
         }
         case "openClaudeCodePanel": {
