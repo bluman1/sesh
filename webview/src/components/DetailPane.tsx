@@ -5,6 +5,7 @@ import {
   type TranscriptMessage,
 } from "../messaging";
 import { Transcript } from "./Transcript";
+import { Icon } from "./Icon";
 import { useCategories } from "../hooks/useCategories";
 import { useAllTags } from "../hooks/useAllTags";
 
@@ -134,7 +135,7 @@ export function DetailPane({ session, transcript, loading, currentPath }: Props)
             onClick={toggleFavorite}
             title={session.favorited ? "Unfavorite" : "Favorite"}
           >
-            {session.favorited ? "★" : "☆"}
+            <Icon name={session.favorited ? "star-full" : "star-empty"} />
           </button>
           <input
             className="sesh-title-input"
@@ -148,7 +149,7 @@ export function DetailPane({ session, transcript, loading, currentPath }: Props)
             onClick={toggleArchive}
             title={session.archived ? "Unarchive" : "Archive"}
           >
-            {session.archived ? "📥" : "📤"}
+            <Icon name="archive" />
           </button>
         </div>
         <div className="sesh-detail-meta">
@@ -252,7 +253,7 @@ export function DetailPane({ session, transcript, loading, currentPath }: Props)
             }
             title="Run claude --resume in a new terminal in this session's cwd"
           >
-            ▶ Resume in terminal
+            <Icon name="terminal" /> Resume in terminal
           </button>
           {currentPath && session.project_path === currentPath && (
             <button
@@ -262,7 +263,7 @@ export function DetailPane({ session, transcript, loading, currentPath }: Props)
               }
               title="Resume this session in the Claude Code editor panel"
             >
-              ▶ Resume in panel
+              <Icon name="play" /> Resume in panel
             </button>
           )}
           {currentPath && session.project_path !== currentPath && (

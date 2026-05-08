@@ -1,5 +1,54 @@
 :root {
   color-scheme: light dark;
+
+  /* Spacing scale */
+  --sesh-space-1: 4px;
+  --sesh-space-2: 8px;
+  --sesh-space-3: 12px;
+  --sesh-space-4: 16px;
+  --sesh-space-5: 20px;
+  --sesh-space-6: 24px;
+
+  /* Typography scale */
+  --sesh-text-xs: 11px;
+  --sesh-text-sm: 12px;
+  --sesh-text-base: 13px;
+  --sesh-text-md: 14px;
+  --sesh-text-lg: 16px;
+
+  /* Radii (between Linear's 4 and Notion's 8) */
+  --sesh-radius-sm: 4px;
+  --sesh-radius-md: 6px;
+  --sesh-radius-pill: 999px;
+
+  /* Semantic colors — all driven by VSCode theme vars */
+  --sesh-fg: var(--vscode-foreground, #cccccc);
+  --sesh-fg-muted: var(--vscode-descriptionForeground, #888);
+  --sesh-bg: var(--vscode-editor-background, #1e1e1e);
+  --sesh-bg-elevated: var(--vscode-editorWidget-background, #252526);
+  --sesh-border: var(--vscode-widget-border, var(--vscode-panel-border, rgba(128, 128, 128, 0.25)));
+  --sesh-border-subtle: var(--vscode-panel-border, rgba(128, 128, 128, 0.15));
+  --sesh-hover: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.08));
+  --sesh-selected-bg: var(--vscode-list-activeSelectionBackground, #094771);
+  --sesh-selected-fg: var(--vscode-list-activeSelectionForeground, #fff);
+  --sesh-accent: var(--vscode-textLink-foreground, var(--vscode-charts-blue, #4daafc));
+  --sesh-warning: var(--vscode-charts-yellow, #fc0);
+}
+
+/* Codicon sizing inside common containers */
+.codicon {
+  vertical-align: text-bottom;
+}
+.sesh-icon-btn .codicon {
+  font-size: var(--sesh-text-md);
+  line-height: 1;
+}
+.sesh-action-btn .codicon {
+  font-size: var(--sesh-text-base);
+  margin-right: 2px;
+}
+.sesh-list-star .codicon {
+  font-size: var(--sesh-text-sm);
 }
 
 html, body, #root {

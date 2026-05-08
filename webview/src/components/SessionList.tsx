@@ -1,6 +1,7 @@
 import { Virtuoso } from "react-virtuoso";
 import type { SessionListItem } from "../messaging";
 import type { Category } from "../hooks/useCategories";
+import { Icon } from "./Icon";
 
 interface Props {
   sessions: SessionListItem[];
@@ -41,7 +42,9 @@ export function SessionList({ sessions, selectedId, onSelect, categories }: Prop
             className={`sesh-list-row ${selectedId === s.id ? "is-selected" : ""}`}
             onClick={() => onSelect(s.id)}
           >
-            <span className="sesh-list-star">{s.favorited ? "★" : ""}</span>
+            <span className="sesh-list-star">
+              {s.favorited ? <Icon name="star-full" /> : null}
+            </span>
             <span className="sesh-list-title">{s.title}</span>
             <span className="sesh-list-meta">
               {s.message_count} msg · {relativeTime(s.last_active_at)}
