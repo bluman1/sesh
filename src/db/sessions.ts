@@ -119,6 +119,12 @@ export class SessionRepository {
       .run(archived ? 1 : 0, id);
   }
 
+  markOrphaned(id: string): void {
+    this.db
+      .prepare("UPDATE sessions SET orphaned = 1 WHERE id = ?")
+      .run(id);
+  }
+
   setIndexProgress(id: string, offset: number, indexed: boolean): void {
     this.db
       .prepare(
