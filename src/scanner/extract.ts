@@ -1,4 +1,5 @@
 import { streamJsonl } from "./jsonl";
+import { stripSystemTags } from "./systemTags";
 
 export interface SessionMetadata {
   id: string;
@@ -14,13 +15,6 @@ export interface ExtractOptions {
 }
 
 const TITLE_MAX = 80;
-
-const SYSTEM_TAG_RE =
-  /<(system-reminder|command-name|command-message|command-args|env|local-command-stdout|local-command-stderr|ide_selection|ide_diagnostics|ide_opened_file|task-notification|task-id|tool-use-id)>[\s\S]*?<\/\1>/g;
-
-function cleanTitleText(text: string): string {
-  return text.replace(SYSTEM_TAG_RE, "").trim();
-}
 
 function decodeEncodedDir(encoded: string): string {
   // Claude Code replaces slashes with dashes; we make a best-effort decode.
@@ -67,7 +61,7 @@ export async function extractMetadata(
         const msg = r.message as { content?: unknown } | undefined;
         const text = asText(msg?.content);
         if (text) {
-          const cleaned = cleanTitleText(text);
+          const cleaned = stripSystemTags(text);
           if (cleaned) {
             autoTitle = cleaned.slice(0, TITLE_MAX);
           }

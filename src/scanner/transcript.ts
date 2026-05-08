@@ -1,12 +1,11 @@
 import { streamJsonl } from "./jsonl";
+import { SYSTEM_TAG_RE } from "./systemTags";
 
 export interface TranscriptMessage {
   type: "user" | "assistant";
   text: string;
   timestamp: number;
 }
-
-const SYSTEM_TAG_RE = /<(system-reminder|command-name|command-message|command-args|env|local-command-stdout|local-command-stderr|ide_selection|ide_diagnostics)>[\s\S]*?<\/\1>/g;
 
 function asText(content: unknown): string | null {
   if (typeof content === "string") return content;

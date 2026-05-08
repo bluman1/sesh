@@ -5,7 +5,8 @@
   "version": "0.0.1",
   "publisher": "michael",
   "engines": {
-    "vscode": "^1.94.0"
+    "vscode": "^1.94.0",
+    "node": ">=20"
   },
   "categories": [
     "Other"
@@ -47,10 +48,11 @@
   },
   "scripts": {
     "build": "npm run build:webview && npm run build:extension",
-    "build:extension": "esbuild src/extension.ts --bundle --platform=node --target=node20 --external:vscode --external:better-sqlite3 --external:fsevents --outfile=out/extension.js && node -e \"require('fs').cpSync('src/db/migrations', 'out/migrations', {recursive:true})\"",
+    "build:extension": "esbuild src/extension.ts --bundle --platform=node --target=node20 --sourcemap --external:vscode --external:better-sqlite3 --external:fsevents --outfile=out/extension.js && node -e \"require('fs').cpSync('src/db/migrations', 'out/migrations', {recursive:true})\"",
     "build:webview": "cd webview && npm install --no-audit --no-fund && npm run build",
     "watch": "npm run build:extension -- --watch",
     "test": "vitest run",
+    "typecheck": "tsc --noEmit",
     "rebuild-native": "electron-rebuild -f -w better-sqlite3",
     "vscode:prepublish": "npm run build"
   },

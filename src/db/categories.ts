@@ -27,11 +27,17 @@ export class CategoryRepository {
       .all() as Category[];
   }
 
-  rename(id: number, name: string): void {
-    this.db.prepare("UPDATE categories SET name = ? WHERE id = ?").run(name, id);
+  rename(id: number, name: string): number {
+    const result = this.db
+      .prepare("UPDATE categories SET name = ? WHERE id = ?")
+      .run(name, id);
+    return Number(result.changes);
   }
 
-  delete(id: number): void {
-    this.db.prepare("DELETE FROM categories WHERE id = ?").run(id);
+  delete(id: number): number {
+    const result = this.db
+      .prepare("DELETE FROM categories WHERE id = ?")
+      .run(id);
+    return Number(result.changes);
   }
 }
