@@ -26,8 +26,13 @@
   --sesh-fg-muted: var(--vscode-descriptionForeground, #888);
   --sesh-bg: var(--vscode-editor-background, #1e1e1e);
   --sesh-bg-elevated: var(--vscode-editorWidget-background, #252526);
+  /* Used only for major structural separators (toolbar↔body, list↔detail) */
   --sesh-border: var(--vscode-widget-border, var(--vscode-panel-border, rgba(128, 128, 128, 0.25)));
-  --sesh-border-subtle: var(--vscode-panel-border, rgba(128, 128, 128, 0.15));
+  /* Theme-independent hairline so we don't paint yellow lines around every chip */
+  --sesh-border-subtle: rgba(128, 128, 128, 0.15);
+  /* Subtle filled-pill backgrounds */
+  --sesh-fill-subtle: rgba(128, 128, 128, 0.08);
+  --sesh-fill: rgba(128, 128, 128, 0.16);
   --sesh-hover: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.08));
   --sesh-selected-bg: var(--vscode-list-activeSelectionBackground, #094771);
   --sesh-selected-fg: var(--vscode-list-activeSelectionForeground, #fff);
@@ -151,10 +156,10 @@ body {
   gap: var(--sesh-space-1);
 }
 .sesh-chip {
-  background: transparent;
-  border: 1px solid var(--sesh-border-subtle);
+  background: var(--sesh-fill-subtle);
+  border: none;
   color: var(--sesh-fg-muted);
-  padding: 2px var(--sesh-space-2);
+  padding: 3px var(--sesh-space-2);
   font-size: var(--sesh-text-xs);
   border-radius: var(--sesh-radius-pill);
   cursor: pointer;
@@ -162,24 +167,22 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  transition: color 0.08s ease, background-color 0.08s ease, border-color 0.08s ease;
+  transition: color 0.08s ease, background-color 0.08s ease;
 }
 .sesh-chip .codicon {
   font-size: var(--sesh-text-sm);
 }
 .sesh-chip:hover {
   color: var(--sesh-fg);
-  border-color: var(--sesh-border);
-  background: var(--sesh-hover);
+  background: var(--sesh-fill);
 }
 .sesh-chip.is-on {
   background: var(--vscode-button-background, var(--sesh-accent));
   color: var(--vscode-button-foreground, #fff);
-  border-color: transparent;
 }
 .sesh-chip.is-on:hover {
   background: var(--vscode-button-hoverBackground, var(--sesh-accent));
-  filter: brightness(1.1);
+  filter: brightness(1.05);
 }
 
 /* ─── Status / errors ───────────────────────────────── */
@@ -336,12 +339,12 @@ body {
   overflow: hidden;
 }
 
-/* Tag: outlined with subtle border, # is in the rendered text */
+/* Tag: subtle filled pill, # is in the rendered text */
 .sesh-tag {
-  background: transparent;
+  background: var(--sesh-fill-subtle);
   color: var(--sesh-fg-muted);
-  border: 1px solid var(--sesh-border-subtle);
-  padding: 0 var(--sesh-space-2);
+  border: none;
+  padding: 1px var(--sesh-space-2);
   border-radius: var(--sesh-radius-pill);
   font-size: var(--sesh-text-xs);
   line-height: 1.6;
@@ -391,7 +394,7 @@ body {
 .sesh-detail-header {
   flex: 0 0 auto;
   padding: var(--sesh-space-4) var(--sesh-space-5);
-  border-bottom: 1px solid var(--sesh-border);
+  border-bottom: 1px solid var(--sesh-border-subtle);
   display: flex;
   flex-direction: column;
   gap: var(--sesh-space-3);
@@ -422,7 +425,7 @@ body {
 
 .sesh-text-btn {
   background: transparent;
-  border: 1px solid var(--sesh-border-subtle);
+  border: none;
   color: var(--sesh-fg-muted);
   cursor: pointer;
   padding: var(--sesh-space-1) var(--sesh-space-2);
@@ -434,14 +437,12 @@ body {
   font-size: var(--sesh-text-xs);
 }
 .sesh-text-btn:hover {
-  background: var(--sesh-hover);
+  background: var(--sesh-fill-subtle);
   color: var(--sesh-fg);
-  border-color: var(--sesh-border);
 }
 .sesh-text-btn.is-on {
-  background: color-mix(in srgb, var(--sesh-accent) 15%, transparent);
+  background: var(--sesh-fill);
   color: var(--sesh-fg);
-  border-color: color-mix(in srgb, var(--sesh-accent) 40%, transparent);
 }
 .sesh-text-btn .codicon {
   font-size: var(--sesh-text-sm);
@@ -546,7 +547,7 @@ body {
 .sesh-detail-section {
   flex: 0 0 auto;
   padding: var(--sesh-space-4) var(--sesh-space-5);
-  border-bottom: 1px solid var(--sesh-border);
+  border-bottom: 1px solid var(--sesh-border-subtle);
   display: flex;
   flex-direction: column;
   gap: var(--sesh-space-3);
@@ -621,8 +622,8 @@ body {
   flex: 0 1 160px;
   min-width: 100px;
   max-width: 240px;
-  background: transparent;
-  border: 1px dashed var(--sesh-border);
+  background: var(--sesh-fill-subtle);
+  border: 1px solid transparent;
   color: inherit;
   font: inherit;
   font-size: var(--sesh-text-xs);
@@ -631,9 +632,8 @@ body {
 }
 .sesh-tag-input:focus {
   outline: none;
-  border-style: solid;
-  border-color: var(--vscode-focusBorder, var(--sesh-accent));
   background: var(--vscode-input-background, var(--sesh-bg));
+  border-color: var(--vscode-focusBorder, var(--sesh-accent));
 }
 .sesh-input {
   background: var(--vscode-input-background, var(--sesh-bg));
@@ -713,12 +713,9 @@ body {
 }
 .sesh-transcript {
   flex: 1 1 auto;
-  border: 1px solid var(--sesh-border);
-  border-radius: var(--sesh-radius-sm);
 }
 .sesh-msg {
-  padding: var(--sesh-space-2) var(--sesh-space-3) var(--sesh-space-2) var(--sesh-space-4);
-  border-bottom: 1px solid var(--sesh-border-subtle);
+  padding: var(--sesh-space-3) var(--sesh-space-3) var(--sesh-space-3) var(--sesh-space-4);
   border-left: 2px solid transparent;
 }
 .sesh-msg-user {
