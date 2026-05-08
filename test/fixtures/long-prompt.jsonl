@@ -1,0 +1,2 @@
+{"type":"user","cwd":"/tmp/proj","message":{"role":"user","content":"This is a very long initial prompt that runs well past the eighty character truncation limit and should be cut off cleanly without crashing the extractor logic or losing the rest of the session."},"uuid":"u1","timestamp":"2026-04-22T10:00:00.000Z"}
+{"type":"assistant","message":{"role":"assistant","content":"ok"},"uuid":"a1","timestamp":"2026-04-22T10:00:01.000Z"}
