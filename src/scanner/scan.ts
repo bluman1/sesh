@@ -39,14 +39,20 @@ export async function scanProjectsRoot(
     for (const fileName of files) {
       if (!fileName.endsWith(".jsonl")) continue;
       const filePath = path.join(dirPath, fileName);
-      const fileStat = await fs.stat(filePath);
+      let fileStat;
+      try {
+        fileStat = await fs.stat(filePath);
+      } catch {
+        continue;
+      }
       const id = fileName.replace(/\.jsonl$/, "");
       result.scanned++;
 
-      const existingMtime = repo.getMtime(id);
+      const existing = repo.getFileStat(id);
       if (
-        existingMtime !== null &&
-        existingMtime === fileStat.mtimeMs
+        existing !== null &&
+        existing.mtime === fileStat.mtimeMs &&
+        existing.size === fileStat.size
       ) {
         result.skipped++;
         continue;

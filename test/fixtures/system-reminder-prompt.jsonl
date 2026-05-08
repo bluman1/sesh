@@ -1,0 +1,2 @@
+{"type":"user","cwd":"/tmp/proj","message":{"role":"user","content":"<system-reminder>You are running in test mode.</system-reminder>\n\nactual prompt here"},"uuid":"u1","timestamp":"2026-04-24T10:00:00.000Z"}
+{"type":"user","message":{"role":"user","content":"second prompt"},"uuid":"u2","timestamp":"2026-04-24T10:01:00.000Z"}

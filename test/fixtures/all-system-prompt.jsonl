@@ -1,0 +1,2 @@
+{"type":"user","cwd":"/tmp/proj","message":{"role":"user","content":"<system-reminder>Only a system reminder, nothing else.</system-reminder>"},"uuid":"u1","timestamp":"2026-04-24T11:00:00.000Z"}
+{"type":"user","message":{"role":"user","content":"real first prompt"},"uuid":"u2","timestamp":"2026-04-24T11:01:00.000Z"}

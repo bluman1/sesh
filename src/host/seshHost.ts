@@ -14,6 +14,7 @@ const CLAUDE_PROJECTS_DIR = path.join(os.homedir(), ".claude", "projects");
 export class SeshHost {
   private db: Db | null = null;
   public sessions: SessionRepository | null = null;
+  private scanPromise: Promise<void> | null = null;
 
   constructor(public readonly output: vscode.OutputChannel) {}
 
@@ -24,13 +25,26 @@ export class SeshHost {
     this.sessions = new SessionRepository(this.db);
     this.output.appendLine(`[sesh] db open: ${DEFAULT_DB_FILE}`);
 
+    this.scanPromise = this.runScan();
+    await this.scanPromise;
+  }
+
+  private async runScan(): Promise<void> {
+    if (!this.sessions) return;
     const result = await scanProjectsRoot(CLAUDE_PROJECTS_DIR, this.sessions);
     this.output.appendLine(
       `[sesh] scan complete: scanned=${result.scanned} upserted=${result.upserted} skipped=${result.skipped}`,
     );
   }
 
-  stop(): void {
+  async stop(): Promise<void> {
+    if (this.scanPromise) {
+      try {
+        await this.scanPromise;
+      } catch {
+        // surfaced separately by start()
+      }
+    }
     if (this.db) {
       this.db.close();
       this.db = null;

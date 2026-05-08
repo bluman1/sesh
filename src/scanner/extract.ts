@@ -15,6 +15,13 @@ export interface ExtractOptions {
 
 const TITLE_MAX = 80;
 
+const SYSTEM_TAG_RE =
+  /<(system-reminder|command-name|command-message|command-args|env|local-command-stdout|local-command-stderr|ide_selection|ide_diagnostics)>[\s\S]*?<\/\1>/g;
+
+function cleanTitleText(text: string): string {
+  return text.replace(SYSTEM_TAG_RE, "").trim();
+}
+
 function decodeEncodedDir(encoded: string): string {
   // Claude Code replaces slashes with dashes; we make a best-effort decode.
   return "/" + encoded.replace(/^-/, "").replaceAll("-", "/");
@@ -60,15 +67,28 @@ export async function extractMetadata(
         const msg = r.message as { content?: unknown } | undefined;
         const text = asText(msg?.content);
         if (text) {
-          autoTitle = text.slice(0, TITLE_MAX);
+          const cleaned = cleanTitleText(text);
+          if (cleaned) {
+            autoTitle = cleaned.slice(0, TITLE_MAX);
+          }
         }
       }
     }
   }
 
+  const resolvedCwd =
+    cwd ??
+    (opts.fallbackEncodedDir ? decodeEncodedDir(opts.fallbackEncodedDir) : null);
+
+  if (resolvedCwd === null) {
+    throw new Error(
+      `extractMetadata: no cwd in JSONL and no fallbackEncodedDir provided for ${filePath}`,
+    );
+  }
+
   return {
     id,
-    cwd: cwd ?? (opts.fallbackEncodedDir ? decodeEncodedDir(opts.fallbackEncodedDir) : ""),
+    cwd: resolvedCwd,
     auto_title: autoTitle,
     created_at: createdAt ?? 0,
     last_active_at: lastActiveAt ?? 0,

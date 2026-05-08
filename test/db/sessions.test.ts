@@ -59,4 +59,16 @@ describe("SessionRepository", () => {
   it("returns null for a missing id", () => {
     expect(repo.findById("missing")).toBeNull();
   });
+
+  it("getFileStat returns null for a missing id", () => {
+    expect(repo.getFileStat("missing")).toBeNull();
+  });
+
+  it("getFileStat returns mtime and size for a present session", () => {
+    repo.upsert(makeRow({ file_mtime: 1700000123456, file_size: 4096 }));
+    expect(repo.getFileStat("abc-123")).toEqual({
+      mtime: 1700000123456,
+      size: 4096,
+    });
+  });
 });

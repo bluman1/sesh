@@ -31,7 +31,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 }
 
-export function deactivate(): void {
-  host?.stop();
+export async function deactivate(): Promise<void> {
+  await host?.stop();
   host = null;
 }

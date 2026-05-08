@@ -46,4 +46,41 @@ describe("scanProjectsRoot", () => {
     expect(second.scanned).toBe(1);
     expect(second.upserted).toBe(0);
   });
+
+  it("re-upserts when size differs even if mtime matches", async () => {
+    const first = await scanProjectsRoot(tmpRoot, repo);
+    expect(first.upserted).toBe(1);
+
+    // Simulate a backup/restore scenario: same mtime, different size.
+    // Patch the persisted row so file_mtime still matches the on-disk mtime
+    // exactly, but file_size is stale. The scanner must NOT skip in that case.
+    const filePath = path.join(tmpRoot, "-tmp-proj", "sample-id.jsonl");
+    const stat = fs.statSync(filePath);
+    db.prepare("UPDATE sessions SET file_size = ? WHERE id = ?").run(
+      stat.size + 999,
+      "sample-id",
+    );
+    const before = repo.getFileStat("sample-id");
+    expect(before).not.toBeNull();
+    expect(before!.mtime).toBe(stat.mtimeMs);
+    expect(before!.size).not.toBe(stat.size);
+
+    const second = await scanProjectsRoot(tmpRoot, repo);
+    expect(second.scanned).toBe(1);
+    expect(second.upserted).toBe(1);
+    expect(second.skipped).toBe(0);
+    expect(repo.getFileStat("sample-id")?.size).toBe(stat.size);
+  });
+
+  it("does not throw when a .jsonl entry is a broken symlink", async () => {
+    fs.symlinkSync(
+      "/nonexistent-sesh-target",
+      path.join(tmpRoot, "-tmp-proj", "ghost-id.jsonl"),
+    );
+    const result = await scanProjectsRoot(tmpRoot, repo);
+    // The real sample is still scanned/upserted; the ghost is silently skipped.
+    expect(result.scanned).toBe(1);
+    expect(result.upserted).toBe(1);
+    expect(repo.findById("ghost-id")).toBeNull();
+  });
 });

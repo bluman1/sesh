@@ -64,10 +64,10 @@ export class SessionRepository {
     return (this.db.prepare("SELECT COUNT(*) as c FROM sessions").get() as { c: number }).c;
   }
 
-  getMtime(id: string): number | null {
-    const row = this.db.prepare("SELECT file_mtime FROM sessions WHERE id = ?").get(id) as
-      | { file_mtime: number }
-      | undefined;
-    return row?.file_mtime ?? null;
+  getFileStat(id: string): { mtime: number; size: number } | null {
+    const row = this.db
+      .prepare("SELECT file_mtime, file_size FROM sessions WHERE id = ?")
+      .get(id) as { file_mtime: number; file_size: number } | undefined;
+    return row ? { mtime: row.file_mtime, size: row.file_size } : null;
   }
 }
