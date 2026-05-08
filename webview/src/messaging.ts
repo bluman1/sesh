@@ -20,9 +20,20 @@ export interface SessionDetail extends SessionListItem {
   file_path: string;
 }
 
+export type TranscriptBlock =
+  | { kind: "text"; text: string }
+  | { kind: "thinking"; text: string }
+  | { kind: "tool_use"; id: string; name: string; input: unknown }
+  | {
+      kind: "tool_result";
+      toolUseId: string;
+      content: string;
+      isError: boolean;
+    };
+
 export interface TranscriptMessage {
   type: "user" | "assistant";
-  text: string;
+  blocks: TranscriptBlock[];
   timestamp: number;
 }
 

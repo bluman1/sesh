@@ -1,8 +1,8 @@
 import { useRef } from "react";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import type { TranscriptMessage } from "../messaging";
-import { Highlight } from "./Highlight";
 import { Icon } from "./Icon";
+import { MessageBlock } from "./MessageBlocks";
 
 interface Props {
   messages: TranscriptMessage[];
@@ -55,9 +55,11 @@ export function Transcript({ messages, searchQuery = "" }: Props): JSX.Element {
         itemContent={(_, m) => (
           <div className={`sesh-msg sesh-msg-${m.type}`}>
             <div className="sesh-msg-role">{m.type}</div>
-            <pre className="sesh-msg-text">
-              <Highlight text={m.text} query={searchQuery} />
-            </pre>
+            <div className="sesh-msg-blocks">
+              {m.blocks.map((block, i) => (
+                <MessageBlock key={i} block={block} searchQuery={searchQuery} />
+              ))}
+            </div>
           </div>
         )}
       />
