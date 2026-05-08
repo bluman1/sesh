@@ -170,11 +170,16 @@ export function DetailPane({ session, transcript, loading, currentPath }: Props)
             spellCheck={false}
           />
           <button
-            className={`sesh-icon-btn ${session.archived ? "is-on" : ""}`}
+            className={`sesh-text-btn ${session.archived ? "is-on" : ""}`}
             onClick={toggleArchive}
-            title={session.archived ? "Unarchive" : "Archive"}
+            title={
+              session.archived
+                ? "Restore from archive"
+                : "Move to archive"
+            }
           >
             <Icon name="archive" />
+            <span>{session.archived ? "Archived" : "Archive"}</span>
           </button>
         </div>
 

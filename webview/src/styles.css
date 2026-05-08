@@ -152,8 +152,8 @@ body {
 }
 .sesh-chip {
   background: transparent;
-  border: 1px solid var(--sesh-border);
-  color: var(--sesh-fg);
+  border: 1px solid var(--sesh-border-subtle);
+  color: var(--sesh-fg-muted);
   padding: 2px var(--sesh-space-2);
   font-size: var(--sesh-text-xs);
   border-radius: var(--sesh-radius-pill);
@@ -162,21 +162,24 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  transition: color 0.08s ease, background-color 0.08s ease, border-color 0.08s ease;
 }
 .sesh-chip .codicon {
   font-size: var(--sesh-text-sm);
 }
 .sesh-chip:hover {
+  color: var(--sesh-fg);
+  border-color: var(--sesh-border);
   background: var(--sesh-hover);
 }
 .sesh-chip.is-on {
-  background: var(--sesh-selected-bg);
-  color: var(--sesh-selected-fg);
+  background: var(--vscode-button-background, var(--sesh-accent));
+  color: var(--vscode-button-foreground, #fff);
   border-color: transparent;
 }
-.sesh-chip-tag.is-on {
-  background: var(--vscode-charts-purple, #c5f);
-  color: #000;
+.sesh-chip.is-on:hover {
+  background: var(--vscode-button-hoverBackground, var(--sesh-accent));
+  filter: brightness(1.1);
 }
 
 /* ─── Status / errors ───────────────────────────────── */
@@ -274,9 +277,16 @@ body {
 .sesh-list-line-2 {
   display: flex;
   align-items: center;
-  gap: var(--sesh-space-1);
+  gap: var(--sesh-space-2);
   color: var(--sesh-fg-muted);
   font-size: var(--sesh-text-xs);
+  min-width: 0;
+}
+.sesh-list-msg-project {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sesh-space-1);
+  flex: 1 1 auto;
   min-width: 0;
 }
 .sesh-list-msgcount {
@@ -298,30 +308,36 @@ body {
   text-align: left;
   unicode-bidi: plaintext;
 }
-
-.sesh-list-line-3 {
-  display: flex;
-  flex-wrap: wrap;
+.sesh-list-meta-chips {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
   gap: var(--sesh-space-1);
-  margin-top: 2px;
+  max-width: 60%;
+  overflow: hidden;
 }
 
+/* Tag: outlined with subtle border, # is in the rendered text */
 .sesh-tag {
-  background: var(--vscode-badge-background, rgba(128, 128, 128, 0.18));
-  color: var(--vscode-badge-foreground, var(--sesh-fg));
-  padding: 1px var(--sesh-space-2);
+  background: transparent;
+  color: var(--sesh-fg-muted);
+  border: 1px solid var(--sesh-border-subtle);
+  padding: 0 var(--sesh-space-2);
   border-radius: var(--sesh-radius-pill);
   font-size: var(--sesh-text-xs);
-  line-height: 1.5;
+  line-height: 1.6;
+  white-space: nowrap;
 }
+/* Category: filled solid pill, accent or per-category color */
 .sesh-cat-pill {
-  background: color-mix(in srgb, var(--sesh-accent) 25%, transparent);
+  background: color-mix(in srgb, var(--sesh-accent) 30%, var(--sesh-bg-elevated));
   color: var(--sesh-fg);
-  padding: 1px var(--sesh-space-2);
+  padding: 0 var(--sesh-space-2);
   border-radius: var(--sesh-radius-sm);
   font-size: var(--sesh-text-xs);
   font-weight: 500;
-  line-height: 1.5;
+  line-height: 1.6;
+  white-space: nowrap;
 }
 
 /* ─── Empty states ──────────────────────────────────── */
@@ -383,6 +399,33 @@ body {
 }
 .sesh-icon-btn.is-on {
   color: var(--sesh-warning);
+}
+
+.sesh-text-btn {
+  background: transparent;
+  border: 1px solid var(--sesh-border-subtle);
+  color: var(--sesh-fg-muted);
+  cursor: pointer;
+  padding: var(--sesh-space-1) var(--sesh-space-2);
+  border-radius: var(--sesh-radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sesh-space-1);
+  font: inherit;
+  font-size: var(--sesh-text-xs);
+}
+.sesh-text-btn:hover {
+  background: var(--sesh-hover);
+  color: var(--sesh-fg);
+  border-color: var(--sesh-border);
+}
+.sesh-text-btn.is-on {
+  background: color-mix(in srgb, var(--sesh-accent) 15%, transparent);
+  color: var(--sesh-fg);
+  border-color: color-mix(in srgb, var(--sesh-accent) 40%, transparent);
+}
+.sesh-text-btn .codicon {
+  font-size: var(--sesh-text-sm);
 }
 .sesh-title-input {
   flex: 1 1 auto;
@@ -556,8 +599,9 @@ body {
   font-size: 10px;
 }
 .sesh-tag-input {
-  flex: 1 1 80px;
-  min-width: 80px;
+  flex: 0 1 160px;
+  min-width: 100px;
+  max-width: 240px;
   background: transparent;
   border: 1px dashed var(--sesh-border);
   color: inherit;

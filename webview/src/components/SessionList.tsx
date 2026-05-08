@@ -74,31 +74,33 @@ export function SessionList({
               </span>
             </div>
             <div className="sesh-list-line-2">
-              <span className="sesh-list-msgcount">
-                <Icon name="comment-discussion" /> {s.message_count}
+              <span className="sesh-list-msg-project">
+                <span className="sesh-list-msgcount">
+                  <Icon name="comment-discussion" /> {s.message_count}
+                </span>
+                <span className="sesh-list-sep">·</span>
+                <span className="sesh-list-project" title={s.project_path}>
+                  {basename(s.project_path)}
+                </span>
               </span>
-              <span className="sesh-list-sep">·</span>
-              <span className="sesh-list-project" title={s.project_path}>
-                {basename(s.project_path)}
-              </span>
+              {hasMeta && (
+                <span className="sesh-list-meta-chips">
+                  {cat && (
+                    <span
+                      className="sesh-cat-pill"
+                      style={cat.color ? { background: cat.color } : undefined}
+                    >
+                      {cat.name}
+                    </span>
+                  )}
+                  {s.tags.map((t) => (
+                    <span key={t} className="sesh-tag">
+                      #{t}
+                    </span>
+                  ))}
+                </span>
+              )}
             </div>
-            {hasMeta && (
-              <div className="sesh-list-line-3">
-                {cat && (
-                  <span
-                    className="sesh-cat-pill"
-                    style={cat.color ? { background: cat.color } : undefined}
-                  >
-                    {cat.name}
-                  </span>
-                )}
-                {s.tags.map((t) => (
-                  <span key={t} className="sesh-tag">
-                    {t}
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
         );
       }}
