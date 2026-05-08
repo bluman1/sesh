@@ -285,6 +285,11 @@ body {
 .sesh-new-category .sesh-tag-input {
   width: 100%;
 }
+.sesh-detail-hint {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground, #888);
+  align-self: center;
+}
 .sesh-detail-row > label {
   width: 60px;
   color: var(--vscode-descriptionForeground, #888);

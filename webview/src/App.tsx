@@ -53,6 +53,7 @@ export function App(): JSX.Element {
             session={detail.session}
             transcript={detail.transcript}
             loading={detail.loading}
+            currentPath={sessionsApi.currentPath}
           />
         </div>
       </div>

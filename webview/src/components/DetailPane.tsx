@@ -12,6 +12,7 @@ interface Props {
   session: SessionDetail | null;
   transcript: TranscriptMessage[];
   loading: boolean;
+  currentPath: string | null;
 }
 
 function formatDate(ms: number): string {
@@ -19,7 +20,7 @@ function formatDate(ms: number): string {
   return new Date(ms).toLocaleString();
 }
 
-export function DetailPane({ session, transcript, loading }: Props): JSX.Element {
+export function DetailPane({ session, transcript, loading, currentPath }: Props): JSX.Element {
   const { categories, create: createCategory } = useCategories();
   const allTags = useAllTags();
   const [titleDraft, setTitleDraft] = useState("");
@@ -253,15 +254,25 @@ export function DetailPane({ session, transcript, loading }: Props): JSX.Element
           >
             ▶ Resume in terminal
           </button>
-          <button
-            className="sesh-action-btn"
-            onClick={() =>
-              postToHost({ kind: "openClaudeCodePanel", sessionId: session.id })
-            }
-            title="Resume this session in the Claude Code editor panel"
-          >
-            ▶ Resume in Claude Code panel
-          </button>
+          {currentPath && session.project_path === currentPath && (
+            <button
+              className="sesh-action-btn"
+              onClick={() =>
+                postToHost({ kind: "openClaudeCodePanel", sessionId: session.id })
+              }
+              title="Resume this session in the Claude Code editor panel"
+            >
+              ▶ Resume in panel
+            </button>
+          )}
+          {currentPath && session.project_path !== currentPath && (
+            <span
+              className="sesh-detail-hint"
+              title={`Open ${session.project_path} as a workspace to enable panel resume.`}
+            >
+              Panel resume needs this project's workspace open
+            </span>
+          )}
         </div>
       </div>
       <div className="sesh-detail-notes">
