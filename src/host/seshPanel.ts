@@ -41,11 +41,20 @@ export class SeshPanel {
         ],
       },
     );
-    this.panel.iconPath = vscode.Uri.joinPath(
-      context.extensionUri,
-      "resources",
-      "sesh-icon.svg",
-    );
+    // VSCode does not auto-tint WebviewPanel.iconPath SVGs the way it does
+    // activity-bar icons, so we ship explicit light + dark variants.
+    this.panel.iconPath = {
+      light: vscode.Uri.joinPath(
+        context.extensionUri,
+        "resources",
+        "sesh-icon-light.svg",
+      ),
+      dark: vscode.Uri.joinPath(
+        context.extensionUri,
+        "resources",
+        "sesh-icon-dark.svg",
+      ),
+    };
 
     this.panel.webview.html = this.buildHtml();
     this.panel.webview.onDidReceiveMessage(

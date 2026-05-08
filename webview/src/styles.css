@@ -23,7 +23,14 @@
 
   /* Semantic colors — driven by VSCode theme vars */
   --sesh-fg: var(--vscode-foreground, #cccccc);
-  --sesh-fg-muted: var(--vscode-descriptionForeground, #888);
+  /*
+   * Muted text deliberately does NOT use --vscode-descriptionForeground:
+   * some themes set descriptionForeground to a saturated accent (yellow,
+   * blue, etc.) which made every chip and meta line read as "highlighted."
+   * Alpha-modulating the regular foreground keeps muted text in the same
+   * hue family but visibly dimmer in any theme.
+   */
+  --sesh-fg-muted: color-mix(in srgb, var(--vscode-foreground, #cccccc) 62%, transparent);
   --sesh-bg: var(--vscode-editor-background, #1e1e1e);
   --sesh-bg-elevated: var(--vscode-editorWidget-background, #252526);
   /* Used only for major structural separators (toolbar↔body, list↔detail) */
@@ -207,17 +214,32 @@ body {
   display: flex;
   min-height: 0;
 }
+.sesh-panel-group {
+  flex: 1 1 auto;
+}
 .sesh-pane {
   height: 100%;
   overflow: hidden;
 }
-.sesh-pane-list {
-  flex: 0 0 380px;
-  border-right: 1px solid var(--sesh-border);
+.sesh-resize-handle {
+  position: relative;
+  flex: 0 0 1px;
+  background: var(--sesh-border);
+  cursor: col-resize;
+  outline: none;
 }
-.sesh-pane-detail {
-  flex: 1 1 auto;
-  min-width: 0;
+.sesh-resize-handle::after {
+  /* Wider invisible hit zone so the resize feels easy to grab */
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  right: -3px;
+}
+.sesh-resize-handle[data-resize-handle-active],
+.sesh-resize-handle:hover {
+  background: var(--sesh-accent);
 }
 
 /* ─── Session list ──────────────────────────────────── */

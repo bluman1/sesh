@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Toolbar } from "./components/Toolbar";
 import { SessionList } from "./components/SessionList";
 import { DetailPane } from "./components/DetailPane";
@@ -44,32 +45,44 @@ export function App(): JSX.Element {
           </div>
         )}
       <div className="sesh-body">
-        <div className="sesh-pane sesh-pane-list">
-          <SessionList
-            sessions={sessionsApi.sessions}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            categories={categories}
-            searchQuery={sessionsApi.filters.query}
-            emptyHint={
-              sessionsApi.filters.scope === "current" &&
-              !sessionsApi.filters.currentPath
-                ? "No workspace folder is open. Pick a folder from the dropdown above, or switch to All projects."
-                : sessionsApi.filters.scope === "current"
-                  ? "No sessions yet for this folder."
-                  : undefined
-            }
-          />
-        </div>
-        <div className="sesh-pane sesh-pane-detail">
-          <DetailPane
-            session={detail.session}
-            transcript={detail.transcript}
-            loading={detail.loading}
-            currentPath={sessionsApi.currentPath}
-            searchQuery={sessionsApi.filters.query}
-          />
-        </div>
+        <PanelGroup
+          direction="horizontal"
+          autoSaveId="sesh-main-split"
+          className="sesh-panel-group"
+        >
+          <Panel
+            defaultSize={32}
+            minSize={20}
+            maxSize={50}
+            className="sesh-pane sesh-pane-list"
+          >
+            <SessionList
+              sessions={sessionsApi.sessions}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              categories={categories}
+              searchQuery={sessionsApi.filters.query}
+              emptyHint={
+                sessionsApi.filters.scope === "current" &&
+                !sessionsApi.filters.currentPath
+                  ? "No workspace folder is open. Pick a folder from the dropdown above, or switch to All projects."
+                  : sessionsApi.filters.scope === "current"
+                    ? "No sessions yet for this folder."
+                    : undefined
+              }
+            />
+          </Panel>
+          <PanelResizeHandle className="sesh-resize-handle" />
+          <Panel className="sesh-pane sesh-pane-detail" minSize={40}>
+            <DetailPane
+              session={detail.session}
+              transcript={detail.transcript}
+              loading={detail.loading}
+              currentPath={sessionsApi.currentPath}
+              searchQuery={sessionsApi.filters.query}
+            />
+          </Panel>
+        </PanelGroup>
       </div>
     </div>
   );
