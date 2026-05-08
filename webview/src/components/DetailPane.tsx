@@ -49,8 +49,12 @@ export function DetailPane({
 }: Props): JSX.Element {
   const { categories, create: createCategory } = useCategories();
   const allTags = useAllTags();
-  const [titleDraft, setTitleDraft] = useState("");
-  const [notesDraft, setNotesDraft] = useState("");
+  // titleDraft is `null` when we're showing the server's value as-is;
+  // a string once the user starts editing. This lets the displayed title
+  // re-render automatically on server-side changes (e.g. Generate Title)
+  // without us having to track when to clobber an in-progress edit.
+  const [titleDraft, setTitleDraft] = useState<string | null>(null);
+  const [notesDraft, setNotesDraft] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState("");
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [newCategoryDraft, setNewCategoryDraft] = useState("");
@@ -58,8 +62,8 @@ export function DetailPane({
   const [titleError, setTitleError] = useState<string | null>(null);
 
   useEffect(() => {
-    setTitleDraft(session?.custom_title ?? session?.auto_title ?? "");
-    setNotesDraft(session?.notes ?? "");
+    setTitleDraft(null);
+    setNotesDraft(null);
     setTagInput("");
     setCreatingCategory(false);
     setNewCategoryDraft("");
@@ -96,22 +100,33 @@ export function DetailPane({
     );
   }
 
+  const titleValue =
+    titleDraft ?? session.custom_title ?? session.auto_title ?? "";
+  const notesValue = notesDraft ?? session.notes ?? "";
+
   const commitTitle = () => {
+    if (titleDraft === null) return;
     const trimmed = titleDraft.trim();
     const next =
       trimmed === (session.auto_title ?? "") || trimmed === "" ? null : trimmed;
     postToHost({ kind: "setCustomTitle", id: session.id, title: next });
+    setTitleDraft(null);
   };
 
   const generateTitle = () => {
     if (generatingTitle) return;
     setTitleError(null);
+    // Drop any in-progress edit so the new server-pushed title displays
+    // live as soon as it arrives.
+    setTitleDraft(null);
     postToHost({ kind: "generateTitle", id: session.id });
   };
 
   const commitNotes = () => {
+    if (notesDraft === null) return;
     const next = notesDraft.length === 0 ? null : notesDraft;
     postToHost({ kind: "setNotes", id: session.id, notes: next });
+    setNotesDraft(null);
   };
 
   const toggleFavorite = () =>
@@ -200,7 +215,7 @@ export function DetailPane({
           </button>
           <input
             className="sesh-title-input"
-            value={titleDraft}
+            value={titleValue}
             onChange={(e) => setTitleDraft(e.target.value)}
             onBlur={commitTitle}
             placeholder={session.auto_title ?? "(untitled)"}
@@ -420,7 +435,7 @@ export function DetailPane({
           <label className="sesh-form-label">Notes</label>
           <textarea
             className="sesh-notes-input"
-            value={notesDraft}
+            value={notesValue}
             onChange={(e) => setNotesDraft(e.target.value)}
             onBlur={commitNotes}
             placeholder="Add a note. Saves on blur."
