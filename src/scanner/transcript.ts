@@ -10,7 +10,8 @@ export type TranscriptBlock =
       toolUseId: string;
       content: string;
       isError: boolean;
-    };
+    }
+  | { kind: "image"; mediaType: string; data: string };
 
 export interface TranscriptMessage {
   type: "user" | "assistant";
@@ -68,6 +69,12 @@ function blocksFromContent(content: unknown): TranscriptBlock[] {
         content: toolResultContentAsText(p.content),
         isError: Boolean(p.is_error),
       });
+    } else if (p.type === "image") {
+      const src = p.source as Record<string, unknown> | undefined;
+      const mediaType =
+        typeof src?.media_type === "string" ? src.media_type : "image/png";
+      const data = typeof src?.data === "string" ? src.data : "";
+      if (data) out.push({ kind: "image", mediaType, data });
     }
   }
   return out;

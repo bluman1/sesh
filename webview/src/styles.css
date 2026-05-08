@@ -1046,6 +1046,19 @@ body {
   color: var(--vscode-editorError-foreground, #ff6666);
 }
 
+/* Image content blocks (e.g. user-attached screenshots) */
+.sesh-block-image {
+  margin: 0 0 var(--sesh-space-2);
+  padding: 0;
+}
+.sesh-block-image img {
+  max-width: 100%;
+  max-height: 480px;
+  border-radius: var(--sesh-radius-sm);
+  background: var(--sesh-fill-subtle);
+  display: block;
+}
+
 /* Syntax-highlighted code blocks (prism-react-renderer) */
 .sesh-codeblock {
   margin: 0 0 var(--sesh-space-2);

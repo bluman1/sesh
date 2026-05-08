@@ -114,4 +114,75 @@ describe("readTranscript", () => {
       fs.unlinkSync(tmp);
     }
   });
+
+  it("extracts image content blocks", async () => {
+    const tmp = path.join(
+      os.tmpdir(),
+      `sesh-transcript-image-${Date.now()}.jsonl`,
+    );
+    fs.writeFileSync(
+      tmp,
+      JSON.stringify({
+        type: "user",
+        message: {
+          role: "user",
+          content: [
+            { type: "text", text: "What's in this screenshot?" },
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: "image/png",
+                data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgAAIAAAUAAeImBZsAAAAASUVORK5CYII=",
+              },
+            },
+          ],
+        },
+        timestamp: "2026-05-01T10:00:00.000Z",
+      }) + "\n",
+    );
+    try {
+      const messages = await readTranscript(tmp);
+      expect(messages).toHaveLength(1);
+      const blocks = messages[0].blocks;
+      expect(blocks.map((b) => b.kind)).toEqual(["text", "image"]);
+      const image = blocks[1];
+      if (image.kind === "image") {
+        expect(image.mediaType).toBe("image/png");
+        expect(image.data.length).toBeGreaterThan(0);
+      } else {
+        throw new Error("expected image block");
+      }
+    } finally {
+      fs.unlinkSync(tmp);
+    }
+  });
+
+  it("skips image blocks with no data", async () => {
+    const tmp = path.join(
+      os.tmpdir(),
+      `sesh-transcript-image-empty-${Date.now()}.jsonl`,
+    );
+    fs.writeFileSync(
+      tmp,
+      JSON.stringify({
+        type: "user",
+        message: {
+          role: "user",
+          content: [
+            { type: "text", text: "before" },
+            { type: "image", source: { type: "base64", media_type: "image/png" } },
+            { type: "text", text: "after" },
+          ],
+        },
+        timestamp: "2026-05-01T10:00:00.000Z",
+      }) + "\n",
+    );
+    try {
+      const messages = await readTranscript(tmp);
+      expect(messages[0].blocks.map((b) => b.kind)).toEqual(["text", "text"]);
+    } finally {
+      fs.unlinkSync(tmp);
+    }
+  });
 });

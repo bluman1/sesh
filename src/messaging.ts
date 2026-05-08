@@ -31,7 +31,8 @@ export type TranscriptBlock =
       toolUseId: string;
       content: string;
       isError: boolean;
-    };
+    }
+  | { kind: "image"; mediaType: string; data: string };
 
 export interface TranscriptMessage {
   type: "user" | "assistant";

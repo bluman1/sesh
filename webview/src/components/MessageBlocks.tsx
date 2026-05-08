@@ -31,7 +31,25 @@ export function MessageBlock({ block, searchQuery }: BlockProps): JSX.Element {
           query={searchQuery}
         />
       );
+    case "image":
+      return <ImageBlock mediaType={block.mediaType} data={block.data} />;
   }
+}
+
+/* ─── Image ───────────────────────────────────────────────── */
+
+function ImageBlock({
+  mediaType,
+  data,
+}: {
+  mediaType: string;
+  data: string;
+}): JSX.Element {
+  return (
+    <figure className="sesh-block-image">
+      <img src={`data:${mediaType};base64,${data}`} alt="" loading="lazy" />
+    </figure>
+  );
 }
 
 /* ─── Text (markdown) ─────────────────────────────────────── */
@@ -93,14 +111,31 @@ interface ToolUseProps {
   input: unknown;
 }
 
+const TOOL_ICONS: Record<string, string> = {
+  Bash: "terminal",
+  Read: "file",
+  Write: "new-file",
+  Edit: "edit",
+  Grep: "search",
+  Glob: "folder-opened",
+  TodoWrite: "checklist",
+  TodoRead: "checklist",
+  WebFetch: "cloud-download",
+  WebSearch: "globe",
+  NotebookEdit: "notebook",
+  Task: "robot",
+  Agent: "robot",
+};
+
 function ToolUseBlock({ name, input }: ToolUseProps): JSX.Element {
   const formatted = formatToolInput(name, input);
   const hasBody = formatted.body !== undefined;
+  const icon = TOOL_ICONS[name] ?? "play";
   return (
     <details className="sesh-block-tool sesh-block-tool-use">
       <summary className="sesh-tool-header">
         <Icon name="chevron-right" className="sesh-tool-chevron" />
-        <Icon name="play" />
+        <Icon name={icon} />
         <span className="sesh-tool-name">{name}</span>
         {formatted.summary && (
           <span className="sesh-tool-summary" title={formatted.summary}>
