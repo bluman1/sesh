@@ -1,5 +1,6 @@
 import type { Scope, SearchFilters, ProjectFolder } from "../messaging";
 import type { Category } from "../hooks/useCategories";
+import { Dropdown, type DropdownItem } from "./Dropdown";
 import { Icon } from "./Icon";
 
 interface Props {
@@ -28,6 +29,38 @@ function basename(path: string): string {
 
 function pluralize(n: number, singular: string, plural = `${singular}s`): string {
   return `${n} ${n === 1 ? singular : plural}`;
+}
+
+function buildScopeItems(opts: {
+  currentPath: string | null;
+  currentDisabled: boolean;
+  projects: ProjectFolder[];
+}): DropdownItem[] {
+  const items: DropdownItem[] = [
+    {
+      value: SCOPE_VALUE_CURRENT,
+      label: opts.currentDisabled
+        ? "Current folder (no workspace)"
+        : `Current folder · ${basename(opts.currentPath ?? "")}`,
+      icon: "folder-active",
+      disabled: opts.currentDisabled,
+    },
+    {
+      value: SCOPE_VALUE_ALL,
+      label: "All projects",
+      icon: "globe",
+    },
+  ];
+  for (const p of opts.projects) {
+    items.push({
+      value: p.path,
+      label: basename(p.path),
+      hint: String(p.sessionCount),
+      icon: "folder",
+      group: "Pick a folder",
+    });
+  }
+  return items;
 }
 
 export function Toolbar(props: Props): JSX.Element {
@@ -79,32 +112,29 @@ export function Toolbar(props: Props): JSX.Element {
             onChange={(e) => onQueryChange(e.target.value)}
           />
         </div>
-        <select
-          className="sesh-scope-select"
+        <Dropdown
+          className="sesh-scope-dropdown"
           value={selectValue}
-          onChange={(e) => handleScopeChange(e.target.value)}
+          onChange={handleScopeChange}
+          align="right"
+          triggerIcon={
+            filters.scope === "folder"
+              ? "folder-opened"
+              : filters.scope === "current"
+                ? "folder-active"
+                : "globe"
+          }
           title={
             filters.scope === "current" && filters.currentPath
               ? `Showing sessions started in ${filters.currentPath}`
               : undefined
           }
-        >
-          <option value={SCOPE_VALUE_CURRENT} disabled={currentDisabled}>
-            {currentDisabled
-              ? "Current folder (no workspace)"
-              : `Current folder · ${basename(filters.currentPath ?? "")}`}
-          </option>
-          <option value={SCOPE_VALUE_ALL}>All projects</option>
-          {projects.length > 0 && (
-            <optgroup label="Pick a folder">
-              {projects.map((p) => (
-                <option key={p.path} value={p.path}>
-                  {basename(p.path)} ({p.sessionCount})
-                </option>
-              ))}
-            </optgroup>
-          )}
-        </select>
+          items={buildScopeItems({
+            currentPath: filters.currentPath,
+            currentDisabled,
+            projects,
+          })}
+        />
         <span className="sesh-count">
           {filtered === count
             ? pluralize(count, "session")

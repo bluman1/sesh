@@ -7,6 +7,7 @@ import {
 } from "../messaging";
 import { Transcript } from "./Transcript";
 import { Icon } from "./Icon";
+import { Dropdown, type DropdownItem } from "./Dropdown";
 import { SourceBadge } from "./SourceBadge";
 import { useCategories } from "../hooks/useCategories";
 import { useAllTags } from "../hooks/useAllTags";
@@ -49,6 +50,24 @@ function formatTokens(n: number): string {
 
 function formatTokensExact(n: number): string {
   return n.toLocaleString();
+}
+
+function buildCategoryItems(
+  categories: { id: number; name: string }[],
+): DropdownItem[] {
+  const items: DropdownItem[] = [
+    { value: "__none__", label: "— none —", icon: "circle-slash" },
+  ];
+  for (const c of categories) {
+    items.push({ value: c.id.toString(), label: c.name, icon: "tag" });
+  }
+  items.push({
+    value: "__create__",
+    label: "Create new category…",
+    icon: "add",
+    group: " ",
+  });
+  return items;
 }
 
 export function DetailPane({
@@ -400,19 +419,12 @@ export function DetailPane({
         <div className="sesh-form-row">
           <label className="sesh-form-label">Category</label>
           <div className="sesh-form-control">
-            <select
-              className="sesh-select"
+            <Dropdown
               value={session.category_id?.toString() ?? "__none__"}
-              onChange={(e) => handleCategoryChange(e.target.value)}
-            >
-              <option value="__none__">— none —</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id.toString()}>
-                  {c.name}
-                </option>
-              ))}
-              <option value="__create__">+ Create new…</option>
-            </select>
+              onChange={handleCategoryChange}
+              items={buildCategoryItems(categories)}
+              triggerIcon="tag"
+            />
             {creatingCategory && (
               <input
                 className="sesh-input sesh-new-category-input"
