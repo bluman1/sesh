@@ -21,6 +21,27 @@ function decodeEncodedDir(encoded: string): string {
   return "/" + encoded.replace(/^-/, "").replaceAll("-", "/");
 }
 
+const GRAPHEME_SEGMENTER =
+  typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
+    ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
+    : null;
+
+// Truncate by grapheme cluster, not code unit. A naive .slice(0, 80) can
+// split a surrogate pair (emoji) or combining-mark sequence at the boundary
+// and produce a malformed string.
+export function truncateGraphemes(text: string, max: number): string {
+  if (max <= 0) return "";
+  if (!GRAPHEME_SEGMENTER) return text.slice(0, max);
+  let out = "";
+  let count = 0;
+  for (const seg of GRAPHEME_SEGMENTER.segment(text)) {
+    if (count >= max) break;
+    out += seg.segment;
+    count++;
+  }
+  return out;
+}
+
 function asText(content: unknown): string | null {
   if (typeof content === "string") return content;
   if (Array.isArray(content)) {
@@ -63,7 +84,7 @@ export async function extractMetadata(
         if (text) {
           const cleaned = stripSystemTags(text);
           if (cleaned) {
-            autoTitle = cleaned.slice(0, TITLE_MAX);
+            autoTitle = truncateGraphemes(cleaned, TITLE_MAX);
           }
         }
       }

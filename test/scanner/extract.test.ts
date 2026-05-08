@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import * as path from "node:path";
-import { extractMetadata } from "../../src/scanner/extract";
+import {
+  extractMetadata,
+  truncateGraphemes,
+} from "../../src/scanner/extract";
 
 const FIXTURE = path.join(__dirname, "..", "fixtures", "sample.jsonl");
 const LONG_PROMPT = path.join(__dirname, "..", "fixtures", "long-prompt.jsonl");
@@ -23,6 +26,18 @@ const IDE_OPENED_FILE_PROMPT = path.join(
   "fixtures",
   "ide-opened-file-prompt.jsonl",
 );
+const EMOJI_PROMPT = path.join(
+  __dirname,
+  "..",
+  "fixtures",
+  "emoji-prompt.jsonl",
+);
+
+function graphemeCount(s: string): number {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (typeof Intl.Segmenter !== "function") return s.length;
+  return [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(s)].length;
+}
 
 describe("extractMetadata", () => {
   it("extracts cwd, auto_title, timestamps, and message count", async () => {
@@ -66,5 +81,37 @@ describe("extractMetadata", () => {
   it("strips ide_opened_file blocks from auto_title", async () => {
     const meta = await extractMetadata(IDE_OPENED_FILE_PROMPT, "ide-id");
     expect(meta.auto_title).toBe("Fix the typo in the README");
+  });
+
+  it("truncates auto_title at grapheme boundary, not surrogate-pair midpoint", async () => {
+    const meta = await extractMetadata(EMOJI_PROMPT, "emoji-id");
+    expect(meta.auto_title).toBeTruthy();
+    // Each emoji occupies 2 UTF-16 code units, so .slice(0, 80) without
+    // grapheme-awareness would split a surrogate pair right at the boundary.
+    expect(graphemeCount(meta.auto_title!)).toBe(80);
+    // Encoding/decoding should round-trip — broken surrogate halves would
+    // turn into U+FFFD replacement chars.
+    expect(meta.auto_title!.includes("�")).toBe(false);
+  });
+});
+
+describe("truncateGraphemes", () => {
+  it("returns input unchanged when shorter than max", () => {
+    expect(truncateGraphemes("hello", 10)).toBe("hello");
+  });
+
+  it("respects grapheme clusters for emoji", () => {
+    expect(truncateGraphemes("🚀🎉🔥", 2)).toBe("🚀🎉");
+  });
+
+  it("respects combining marks (a + acute = one grapheme)", () => {
+    // "é" written as e + combining acute accent (U+0065 + U+0301)
+    const composed = "café"; // 5 code units, 4 graphemes
+    expect(truncateGraphemes(composed, 4)).toBe(composed);
+    expect(truncateGraphemes(composed, 3)).toBe("caf");
+  });
+
+  it("returns empty string when max is zero", () => {
+    expect(truncateGraphemes("hello", 0)).toBe("");
   });
 });
