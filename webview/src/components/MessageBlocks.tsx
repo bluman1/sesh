@@ -2,8 +2,11 @@ import { diffLines } from "diff";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { TranscriptBlock } from "../messaging";
+import { CodeBlock } from "./CodeBlock";
 import { Highlight } from "./Highlight";
 import { Icon } from "./Icon";
+
+const MARKDOWN_COMPONENTS = { code: CodeBlock } as const;
 
 interface BlockProps {
   block: TranscriptBlock;
@@ -46,7 +49,10 @@ function TextBlock({ text, query }: { text: string; query: string }): JSX.Elemen
   }
   return (
     <div className="sesh-block-text">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={MARKDOWN_COMPONENTS}
+      >{text}</ReactMarkdown>
     </div>
   );
 }
@@ -70,7 +76,10 @@ function ThinkingBlock({
         <Icon name="lightbulb" /> Thinking
       </summary>
       <div className="sesh-block-thinking-body">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+        <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={MARKDOWN_COMPONENTS}
+      >{text}</ReactMarkdown>
       </div>
     </details>
   );

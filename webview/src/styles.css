@@ -1046,6 +1046,25 @@ body {
   color: var(--vscode-editorError-foreground, #ff6666);
 }
 
+/* Syntax-highlighted code blocks (prism-react-renderer) */
+.sesh-codeblock {
+  margin: 0 0 var(--sesh-space-2);
+  padding: var(--sesh-space-2) var(--sesh-space-3);
+  border-radius: var(--sesh-radius-sm);
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: var(--sesh-text-sm);
+  line-height: 1.5;
+  overflow-x: auto;
+}
+.sesh-codeblock-plain {
+  background: var(--sesh-fill-subtle);
+}
+.sesh-codeblock-plain code {
+  background: transparent;
+  padding: 0;
+  font-family: inherit;
+}
+
 /* Diff rendering for Edit/Write tool blocks */
 .sesh-diff {
   padding: 0;
