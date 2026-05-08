@@ -23,3 +23,118 @@ body {
   display: flex;
   flex-direction: column;
 }
+
+.sesh-toolbar {
+  border-bottom: 1px solid var(--vscode-panel-border, #333);
+  padding: 8px 12px;
+  flex: 0 0 auto;
+}
+.sesh-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sesh-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+.sesh-scope-select {
+  background: var(--vscode-input-background, #1e1e1e);
+  color: var(--vscode-input-foreground, #ccc);
+  border: 1px solid var(--vscode-input-border, #555);
+  border-radius: 2px;
+  padding: 2px 6px;
+  font-family: inherit;
+  font-size: inherit;
+}
+.sesh-count {
+  margin-left: auto;
+  color: var(--vscode-descriptionForeground, #888);
+  font-size: 12px;
+}
+
+.sesh-error {
+  background: var(--vscode-inputValidation-errorBackground, #5a1d1d);
+  color: var(--vscode-inputValidation-errorForeground, #ffaaaa);
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.sesh-body {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
+.sesh-pane {
+  height: 100%;
+  overflow: hidden;
+}
+.sesh-pane-list {
+  flex: 0 0 380px;
+  border-right: 1px solid var(--vscode-panel-border, #333);
+}
+.sesh-pane-detail {
+  flex: 1 1 auto;
+  padding: 16px;
+}
+
+.sesh-list {
+  height: 100%;
+}
+.sesh-list-row {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 2px 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.15));
+}
+.sesh-list-row:hover {
+  background: var(--vscode-list-hoverBackground, rgba(128,128,128,0.1));
+}
+.sesh-list-row.is-selected {
+  background: var(--vscode-list-activeSelectionBackground, #094771);
+  color: var(--vscode-list-activeSelectionForeground, #fff);
+}
+.sesh-list-star {
+  grid-row: 1;
+  color: var(--vscode-charts-yellow, #fc0);
+}
+.sesh-list-title {
+  grid-row: 1;
+  grid-column: 2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+.sesh-list-meta {
+  grid-row: 1;
+  grid-column: 3;
+  color: var(--vscode-descriptionForeground, #888);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.sesh-list-tags {
+  grid-row: 2;
+  grid-column: 2 / 4;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.sesh-tag {
+  background: var(--vscode-badge-background, #4d4d4d);
+  color: var(--vscode-badge-foreground, #fff);
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+}
+
+.sesh-empty,
+.sesh-detail-empty,
+.sesh-detail-placeholder {
+  padding: 24px;
+  color: var(--vscode-descriptionForeground, #888);
+  text-align: center;
+}
