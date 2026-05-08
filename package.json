@@ -23,7 +23,7 @@
     ]
   },
   "scripts": {
-    "build": "esbuild src/extension.ts --bundle --platform=node --target=node20 --external:vscode --external:better-sqlite3 --outfile=out/extension.js",
+    "build": "esbuild src/extension.ts --bundle --platform=node --target=node20 --external:vscode --external:better-sqlite3 --outfile=out/extension.js && node -e \"require('fs').cpSync('src/db/migrations', 'out/db/migrations', {recursive:true})\"",
     "watch": "npm run build -- --watch",
     "test": "vitest run",
     "rebuild-native": "electron-rebuild -f -w better-sqlite3",
