@@ -191,8 +191,15 @@ export class SeshPanel {
           break;
         }
         case "openClaudeCodePanel": {
+          // The Claude Code extension's `claude-vscode.editor.open` command accepts
+          // (sessionId, initialPrompt, viewColumn) at runtime even though only the
+          // command id is declared in its package.json. Passing sessionId resumes
+          // that specific session in a new editor tab.
           try {
-            await vscode.commands.executeCommand("claude-vscode.editor.open");
+            await vscode.commands.executeCommand(
+              "claude-vscode.editor.open",
+              msg.sessionId,
+            );
           } catch {
             this.send({
               kind: "error",
@@ -220,14 +227,20 @@ export class SeshPanel {
           this.refreshList();
           this.broadcastAllTags();
           break;
-        case "createCategory":
-          this.host.categories!.create({
+        case "createCategory": {
+          const cat = this.host.categories!.create({
             name: msg.name,
             color: msg.color,
             sort_order: 0,
           });
           this.broadcastCategories();
+          if (msg.assignToSessionId) {
+            this.host.sessions.setCategory(msg.assignToSessionId, cat.id);
+            this.refreshDetail(msg.assignToSessionId);
+            this.refreshList();
+          }
           break;
+        }
         case "renameCategory":
           this.host.categories!.rename(msg.id, msg.name);
           this.broadcastCategories();

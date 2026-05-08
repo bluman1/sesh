@@ -277,6 +277,14 @@ body {
   gap: 8px;
   font-size: 12px;
 }
+.sesh-new-category {
+  display: inline-flex;
+  align-items: center;
+  flex: 1;
+}
+.sesh-new-category .sesh-tag-input {
+  width: 100%;
+}
 .sesh-detail-row > label {
   width: 60px;
   color: var(--vscode-descriptionForeground, #888);

@@ -25,11 +25,15 @@ export function DetailPane({ session, transcript, loading }: Props): JSX.Element
   const [titleDraft, setTitleDraft] = useState("");
   const [notesDraft, setNotesDraft] = useState("");
   const [tagInput, setTagInput] = useState("");
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [newCategoryDraft, setNewCategoryDraft] = useState("");
 
   useEffect(() => {
     setTitleDraft(session?.custom_title ?? session?.auto_title ?? "");
     setNotesDraft(session?.notes ?? "");
     setTagInput("");
+    setCreatingCategory(false);
+    setNewCategoryDraft("");
   }, [session?.id]);
 
   if (loading && !session) {
@@ -70,10 +74,8 @@ export function DetailPane({ session, transcript, loading }: Props): JSX.Element
 
   const handleCategoryChange = (raw: string) => {
     if (raw === "__create__") {
-      const name = window.prompt("New category name?");
-      if (!name) return;
-      createCategory(name.trim(), null);
-      // session retains its current category until user re-selects after create.
+      setCreatingCategory(true);
+      setNewCategoryDraft("");
       return;
     }
     if (raw === "__none__") {
@@ -84,6 +86,22 @@ export function DetailPane({ session, transcript, loading }: Props): JSX.Element
     if (!Number.isNaN(id)) {
       postToHost({ kind: "setCategory", id: session.id, categoryId: id });
     }
+  };
+
+  const submitNewCategory = () => {
+    const name = newCategoryDraft.trim();
+    if (!name) {
+      setCreatingCategory(false);
+      return;
+    }
+    createCategory(name, null, session.id);
+    setCreatingCategory(false);
+    setNewCategoryDraft("");
+  };
+
+  const cancelNewCategory = () => {
+    setCreatingCategory(false);
+    setNewCategoryDraft("");
   };
 
   const addTag = (raw: string) => {
@@ -148,6 +166,27 @@ export function DetailPane({ session, transcript, loading }: Props): JSX.Element
               ))}
               <option value="__create__">+ Create new…</option>
             </select>
+            {creatingCategory && (
+              <span className="sesh-new-category">
+                <input
+                  className="sesh-tag-input"
+                  autoFocus
+                  value={newCategoryDraft}
+                  onChange={(e) => setNewCategoryDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      submitNewCategory();
+                    } else if (e.key === "Escape") {
+                      e.preventDefault();
+                      cancelNewCategory();
+                    }
+                  }}
+                  onBlur={submitNewCategory}
+                  placeholder="new category name…"
+                />
+              </span>
+            )}
           </div>
           <div className="sesh-detail-row sesh-tags-row">
             <label>Tags</label>
@@ -216,10 +255,12 @@ export function DetailPane({ session, transcript, loading }: Props): JSX.Element
           </button>
           <button
             className="sesh-action-btn"
-            onClick={() => postToHost({ kind: "openClaudeCodePanel" })}
-            title="Open the Claude Code extension panel (doesn't resume this specific session)"
+            onClick={() =>
+              postToHost({ kind: "openClaudeCodePanel", sessionId: session.id })
+            }
+            title="Resume this session in the Claude Code editor panel"
           >
-            Open Claude Code panel
+            ▶ Resume in Claude Code panel
           </button>
         </div>
       </div>

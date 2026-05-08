@@ -10,7 +10,7 @@ export interface Category {
 
 export function useCategories(): {
   categories: Category[];
-  create: (name: string, color: string | null) => void;
+  create: (name: string, color: string | null, assignToSessionId?: string) => void;
   rename: (id: number, name: string) => void;
   remove: (id: number) => void;
 } {
@@ -26,7 +26,8 @@ export function useCategories(): {
 
   return {
     categories,
-    create: (name, color) => postToHost({ kind: "createCategory", name, color }),
+    create: (name, color, assignToSessionId) =>
+      postToHost({ kind: "createCategory", name, color, assignToSessionId }),
     rename: (id, name) => postToHost({ kind: "renameCategory", id, name }),
     remove: (id) => postToHost({ kind: "deleteCategory", id }),
   };

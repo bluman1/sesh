@@ -50,13 +50,13 @@ export type ToHost =
   | { kind: "setFavorited"; id: string; favorited: boolean }
   | { kind: "setArchived"; id: string; archived: boolean }
   | { kind: "setTags"; id: string; tags: string[] }
-  | { kind: "createCategory"; name: string; color: string | null }
+  | { kind: "createCategory"; name: string; color: string | null; assignToSessionId?: string }
   | { kind: "renameCategory"; id: number; name: string }
   | { kind: "deleteCategory"; id: number }
   | { kind: "listCategories" }
   | { kind: "listAllTags" }
   | { kind: "resumeInTerminal"; sessionId: string }
-  | { kind: "openClaudeCodePanel" }
+  | { kind: "openClaudeCodePanel"; sessionId?: string }
   | { kind: "addRemap"; fromPath: string; toPath: string }
   | { kind: "listRemaps" };
 
