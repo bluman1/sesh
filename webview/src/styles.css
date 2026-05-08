@@ -947,6 +947,7 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
+  user-select: none;
 }
 .sesh-block-thinking summary::-webkit-details-marker {
   display: none;
@@ -974,10 +975,34 @@ body {
   padding: var(--sesh-space-1) var(--sesh-space-2);
   background: color-mix(in srgb, var(--sesh-fill) 60%, transparent);
   font-size: var(--sesh-text-xs);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.sesh-tool-header::-webkit-details-marker {
+  display: none;
+}
+.sesh-tool-header:hover {
+  background: var(--sesh-fill);
+}
+.sesh-block-tool[open] .sesh-tool-header {
   border-bottom: 1px solid var(--sesh-border-subtle);
 }
 .sesh-tool-header .codicon {
   font-size: var(--sesh-text-sm);
+}
+.sesh-tool-chevron {
+  transition: transform 0.12s ease;
+  flex: 0 0 auto;
+  opacity: 0.7;
+}
+.sesh-block-tool[open] .sesh-tool-chevron,
+.sesh-block-thinking[open] .sesh-tool-chevron {
+  transform: rotate(90deg);
+}
+.sesh-tool-empty {
+  color: var(--sesh-fg-muted);
+  font-style: italic;
 }
 .sesh-tool-name {
   font-weight: 600;

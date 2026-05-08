@@ -1,4 +1,3 @@
-import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { TranscriptBlock } from "../messaging";
@@ -15,7 +14,7 @@ export function MessageBlock({ block, searchQuery }: BlockProps): JSX.Element {
     case "text":
       return <TextBlock text={block.text} query={searchQuery} />;
     case "thinking":
-      return <ThinkingBlock text={block.text} />;
+      return <ThinkingBlock text={block.text} query={searchQuery} />;
     case "tool_use":
       return (
         <ToolUseBlock id={block.id} name={block.name} input={block.input} />
@@ -53,10 +52,20 @@ function TextBlock({ text, query }: { text: string; query: string }): JSX.Elemen
 
 /* ─── Thinking (collapsed) ────────────────────────────────── */
 
-function ThinkingBlock({ text }: { text: string }): JSX.Element {
+function ThinkingBlock({
+  text,
+  query,
+}: {
+  text: string;
+  query?: string;
+}): JSX.Element {
+  const open =
+    !!query?.trim() &&
+    text.toLowerCase().includes(query.trim().toLowerCase());
   return (
-    <details className="sesh-block-thinking">
+    <details open={open} className="sesh-block-thinking">
       <summary>
+        <Icon name="chevron-right" className="sesh-tool-chevron" />
         <Icon name="lightbulb" /> Thinking
       </summary>
       <div className="sesh-block-thinking-body">
@@ -76,9 +85,11 @@ interface ToolUseProps {
 
 function ToolUseBlock({ name, input }: ToolUseProps): JSX.Element {
   const formatted = formatToolInput(name, input);
+  const hasBody = Boolean(formatted.body);
   return (
-    <div className="sesh-block-tool sesh-block-tool-use">
-      <div className="sesh-tool-header">
+    <details className="sesh-block-tool sesh-block-tool-use">
+      <summary className="sesh-tool-header">
+        <Icon name="chevron-right" className="sesh-tool-chevron" />
         <Icon name="play" />
         <span className="sesh-tool-name">{name}</span>
         {formatted.summary && (
@@ -86,11 +97,10 @@ function ToolUseBlock({ name, input }: ToolUseProps): JSX.Element {
             {formatted.summary}
           </span>
         )}
-      </div>
-      {formatted.body && (
-        <pre className="sesh-tool-body">{formatted.body}</pre>
-      )}
-    </div>
+        {!hasBody && <span className="sesh-tool-empty">no input</span>}
+      </summary>
+      {hasBody && <pre className="sesh-tool-body">{formatted.body}</pre>}
+    </details>
   );
 }
 
@@ -156,8 +166,6 @@ function formatToolInput(name: string, input: unknown): FormattedTool {
 
 /* ─── Tool result ─────────────────────────────────────────── */
 
-const RESULT_PREVIEW_LINES = 12;
-
 function ToolResultBlock({
   content,
   isError,
@@ -167,47 +175,28 @@ function ToolResultBlock({
   isError: boolean;
   query: string;
 }): JSX.Element {
-  const [expanded, setExpanded] = useState(false);
-  const lines = content.split("\n");
-  const long = lines.length > RESULT_PREVIEW_LINES;
-  const display = expanded || !long
-    ? content
-    : lines.slice(0, RESULT_PREVIEW_LINES).join("\n");
-
+  const lineCount = content ? content.split("\n").length : 0;
+  // Auto-expand when there's an active search query AND the body matches —
+  // collapsed-by-default would hide the very thing the user searched for.
+  const open = query.trim() !== "" && content.toLowerCase().includes(query.trim().toLowerCase());
   return (
-    <div
+    <details
+      open={open}
       className={`sesh-block-tool sesh-block-tool-result ${
         isError ? "is-error" : ""
       }`}
     >
-      <div className="sesh-tool-header">
+      <summary className="sesh-tool-header">
+        <Icon name="chevron-right" className="sesh-tool-chevron" />
         <Icon name={isError ? "error" : "check"} />
-        <span className="sesh-tool-name">
-          {isError ? "Error" : "Result"}
-        </span>
+        <span className="sesh-tool-name">{isError ? "Error" : "Result"}</span>
         <span className="sesh-tool-summary">
-          {lines.length} line{lines.length === 1 ? "" : "s"}
+          {lineCount} line{lineCount === 1 ? "" : "s"}
         </span>
-      </div>
+      </summary>
       <pre className="sesh-tool-body">
-        <Highlight text={display} query={query} />
-        {long && !expanded && (
-          <span className="sesh-tool-truncate">
-            {"\n…"}
-            {lines.length - RESULT_PREVIEW_LINES} more line
-            {lines.length - RESULT_PREVIEW_LINES === 1 ? "" : "s"}
-          </span>
-        )}
+        <Highlight text={content} query={query} />
       </pre>
-      {long && (
-        <button
-          className="sesh-text-btn sesh-tool-toggle"
-          onClick={() => setExpanded((v) => !v)}
-        >
-          <Icon name={expanded ? "chevron-up" : "chevron-down"} />
-          {expanded ? "Collapse" : "Show all"}
-        </button>
-      )}
-    </div>
+    </details>
   );
 }
