@@ -28,7 +28,7 @@
   },
   "scripts": {
     "build": "npm run build:webview && npm run build:extension",
-    "build:extension": "esbuild src/extension.ts --bundle --platform=node --target=node20 --external:vscode --external:better-sqlite3 --outfile=out/extension.js && node -e \"require('fs').cpSync('src/db/migrations', 'out/migrations', {recursive:true})\"",
+    "build:extension": "esbuild src/extension.ts --bundle --platform=node --target=node20 --external:vscode --external:better-sqlite3 --external:fsevents --outfile=out/extension.js && node -e \"require('fs').cpSync('src/db/migrations', 'out/migrations', {recursive:true})\"",
     "build:webview": "cd webview && npm install --no-audit --no-fund && npm run build",
     "watch": "npm run build:extension -- --watch",
     "test": "vitest run",

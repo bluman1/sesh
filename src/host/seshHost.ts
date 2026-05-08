@@ -8,6 +8,8 @@ import { SessionRepository } from "../db/sessions";
 import { TagRepository } from "../db/tags";
 import { CategoryRepository } from "../db/categories";
 import { scanProjectsRoot } from "../scanner/scan";
+import { ContentIndexer } from "../scanner/contentIndexer";
+import { ProjectsWatcher } from "../scanner/watcher";
 
 const DEFAULT_DB_DIR = path.join(os.homedir(), ".sesh");
 const DEFAULT_DB_FILE = path.join(DEFAULT_DB_DIR, "db.sqlite");
@@ -18,9 +20,18 @@ export class SeshHost {
   public sessions: SessionRepository | null = null;
   public tags: TagRepository | null = null;
   public categories: CategoryRepository | null = null;
+  public indexer: ContentIndexer | null = null;
+  private watcher: ProjectsWatcher | null = null;
+  public indexProgress: { indexed: number; total: number } = { indexed: 0, total: 0 };
+  public onIndexProgress?: () => void;
+  public onSessionChanged?: (id: string) => void;
   private scanPromise: Promise<void> | null = null;
 
   constructor(public readonly output: vscode.OutputChannel) {}
+
+  get rawDb(): Db | null {
+    return this.db;
+  }
 
   async start(): Promise<void> {
     fs.mkdirSync(DEFAULT_DB_DIR, { recursive: true });
@@ -33,6 +44,23 @@ export class SeshHost {
 
     this.scanPromise = this.runScan();
     await this.scanPromise;
+
+    this.indexer = new ContentIndexer(this.db, this.sessions);
+    this.indexer.setProgressHandler((indexed, total) => {
+      this.indexProgress = { indexed, total };
+      this.onIndexProgress?.();
+    });
+    void this.indexer.run().then(() => {
+      this.output.appendLine(`[sesh] content index complete`);
+    });
+
+    this.watcher = new ProjectsWatcher(
+      CLAUDE_PROJECTS_DIR,
+      this.sessions,
+      this.indexer,
+      { onSessionChanged: (id) => this.onSessionChanged?.(id) },
+    );
+    void this.watcher.start();
   }
 
   private async runScan(): Promise<void> {
@@ -51,12 +79,18 @@ export class SeshHost {
         // surfaced separately by start()
       }
     }
+    this.indexer?.cancel();
+    if (this.watcher) {
+      await this.watcher.stop();
+      this.watcher = null;
+    }
     if (this.db) {
       this.db.close();
       this.db = null;
       this.sessions = null;
       this.tags = null;
       this.categories = null;
+      this.indexer = null;
     }
   }
 }

@@ -3,9 +3,11 @@ import type { SeshHost } from "./seshHost";
 import {
   rowToDetail,
   rowToListItem,
+  type SearchFilters,
   type ToHost,
   type ToWebview,
 } from "../messaging";
+import { searchSessions } from "../db/search";
 import { readTranscript } from "../scanner/transcript";
 
 export class SeshPanel {
@@ -21,6 +23,7 @@ export class SeshPanel {
 
   private readonly panel: vscode.WebviewPanel;
   private disposed = false;
+  private lastFilters: SearchFilters | null = null;
 
   private constructor(
     private readonly context: vscode.ExtensionContext,
@@ -47,9 +50,21 @@ export class SeshPanel {
       null,
       context.subscriptions,
     );
+    host.onIndexProgress = () => {
+      this.send({
+        kind: "indexProgress",
+        indexed: host.indexProgress.indexed,
+        total: host.indexProgress.total,
+      });
+    };
+    host.onSessionChanged = () => {
+      this.refreshList();
+    };
     this.panel.onDidDispose(() => {
       this.disposed = true;
       SeshPanel.instance = null;
+      host.onIndexProgress = undefined;
+      host.onSessionChanged = undefined;
     });
   }
 
@@ -101,19 +116,16 @@ export class SeshPanel {
         return;
       }
       switch (msg.kind) {
-        case "listSessions": {
-          const rows =
-            msg.scope === "all" || !msg.currentPath
-              ? this.host.sessions.listAllNonArchived()
-              : this.host.sessions.listByProjectNonArchived(msg.currentPath);
+        case "searchSessions": {
+          this.lastFilters = msg.filters;
+          const rows = searchSessions(this.host.rawDb!, msg.filters);
           const items = rows.map((row) =>
             rowToListItem(row, this.host.tags!.getTags(row.id)),
           );
-          this.lastListScope = { scope: msg.scope, currentPath: msg.currentPath };
           this.send({
             kind: "sessionList",
-            scope: msg.scope,
-            currentPath: msg.currentPath,
+            scope: msg.filters.scope,
+            currentPath: msg.filters.currentPath,
             sessions: items,
           });
           break;
@@ -210,23 +222,16 @@ export class SeshPanel {
     });
   }
 
-  private lastListScope: { scope: import("../messaging").Scope; currentPath: string | null } | null = null;
-
   private refreshList(): void {
-    if (!this.host.sessions || !this.host.tags) return;
-    const last = this.lastListScope;
-    if (!last) return;
-    const rows =
-      last.scope === "all" || !last.currentPath
-        ? this.host.sessions.listAllNonArchived()
-        : this.host.sessions.listByProjectNonArchived(last.currentPath);
+    if (!this.host.sessions || !this.host.tags || !this.lastFilters) return;
+    const rows = searchSessions(this.host.rawDb!, this.lastFilters);
     const items = rows.map((row) =>
       rowToListItem(row, this.host.tags!.getTags(row.id)),
     );
     this.send({
       kind: "sessionList",
-      scope: last.scope,
-      currentPath: last.currentPath,
+      scope: this.lastFilters.scope,
+      currentPath: this.lastFilters.currentPath,
       sessions: items,
     });
   }

@@ -29,9 +29,19 @@ export interface TranscriptMessage {
 
 export type Scope = "current" | "all";
 
+export interface SearchFilters {
+  scope: Scope;
+  currentPath: string | null;
+  query: string;
+  category_ids: number[];
+  tags: string[];
+  favorited: boolean | null;
+  archived: boolean | null;
+}
+
 export type ToHost =
   | { kind: "ready" }
-  | { kind: "listSessions"; scope: Scope; currentPath: string | null }
+  | { kind: "searchSessions"; filters: SearchFilters }
   | { kind: "getSession"; id: string }
   | { kind: "getTranscript"; id: string; limit: number }
   | { kind: "setCustomTitle"; id: string; title: string | null }
@@ -58,6 +68,7 @@ export type ToWebview =
   | { kind: "transcript"; id: string; messages: TranscriptMessage[] }
   | { kind: "categoriesList"; categories: { id: number; name: string; color: string | null; sort_order: number }[] }
   | { kind: "allTags"; tags: string[] }
+  | { kind: "indexProgress"; indexed: number; total: number }
   | { kind: "error"; message: string };
 
 export function rowToListItem(row: SessionRow, tags: string[]): SessionListItem {
