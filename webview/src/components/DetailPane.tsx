@@ -377,16 +377,25 @@ export function DetailPane({
       </section>
 
       <section className="sesh-detail-section sesh-detail-transcript">
-        <div className="sesh-section-label">Transcript</div>
-        {isOrphan ? (
+        <div className="sesh-section-label">
+          Transcript
+          {isOrphan && transcript.length > 0 && (
+            <span className="sesh-section-hint">
+              <Icon name="archive" /> Reading from Sesh archive (original
+              pruned)
+            </span>
+          )}
+        </div>
+        {isOrphan && transcript.length === 0 ? (
           <div className="sesh-transcript-empty sesh-transcript-pruned">
             <Icon name="archive" />
             <p>
-              Transcript pruned by Claude Code — only the metadata (title,
-              dates, message count) remains.
+              Transcript pruned by Claude Code, no Sesh archive available — only
+              metadata remains.
             </p>
             <p className="sesh-transcript-pruned-hint">
-              Annotations you add here still persist in Sesh's database.
+              Enable <code>sesh.archiveTranscripts</code> in settings to keep a
+              Sesh-side copy of future sessions.
             </p>
           </div>
         ) : (

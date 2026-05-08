@@ -29,6 +29,10 @@
       {
         "command": "sesh.rescan",
         "title": "Sesh: Rescan all projects"
+      },
+      {
+        "command": "sesh.archiveSize",
+        "title": "Sesh: Show archive size"
       }
     ],
     "viewsContainers": {
@@ -76,6 +80,11 @@
           "default": 10000,
           "minimum": 1,
           "description": "Maximum number of transcript messages to load in the detail pane. Returns the most recent messages first; lower this if very long transcripts feel slow to open."
+        },
+        "sesh.archiveTranscripts": {
+          "type": "boolean",
+          "default": false,
+          "description": "Keep a gzipped copy of every indexed session JSONL at ~/.sesh/transcripts/<id>.jsonl.gz. Survives Claude Code's transcript pruning so old conversations stay readable. Disk cost: roughly 1/6 the raw JSONL size after gzip; run 'Sesh: Show archive size' to inspect."
         }
       }
     }

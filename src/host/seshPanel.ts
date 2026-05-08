@@ -153,7 +153,16 @@ export class SeshPanel {
             return;
           }
           const limit = msg.limit ?? this.transcriptLimitFromSettings();
-          const messages = await readTranscript(row.file_path, limit);
+          // Pick a readable source: original JSONL, archive fallback, or empty.
+          let sourcePath: string | null = null;
+          if (row.orphaned === 0) {
+            sourcePath = row.file_path;
+          } else if (this.host.archive.has(row.id)) {
+            sourcePath = this.host.archive.pathFor(row.id);
+          }
+          const messages = sourcePath
+            ? await readTranscript(sourcePath, limit)
+            : [];
           this.send({ kind: "transcript", id: msg.id, messages });
           break;
         }

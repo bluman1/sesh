@@ -4,9 +4,15 @@ import * as path from "node:path";
 import { extractMetadata } from "./extract";
 import type { SessionRepository } from "../db/sessions";
 import type { ContentIndexer } from "./contentIndexer";
+import type { TranscriptArchive } from "../host/transcriptArchive";
 
 export interface WatcherEvents {
   onSessionChanged?: (id: string) => void;
+}
+
+export interface WatcherDeps {
+  archive?: TranscriptArchive;
+  archiveEnabled?: () => boolean;
 }
 
 export class ProjectsWatcher {
@@ -18,6 +24,7 @@ export class ProjectsWatcher {
     private readonly sessions: SessionRepository,
     private readonly indexer: ContentIndexer,
     private readonly events: WatcherEvents = {},
+    private readonly deps: WatcherDeps = {},
   ) {}
 
   async start(): Promise<void> {
@@ -92,6 +99,13 @@ export class ProjectsWatcher {
       await this.indexer.indexOne(id, filePath);
     } catch {
       // ignore
+    }
+    if (this.deps.archive && this.deps.archiveEnabled?.()) {
+      try {
+        await this.deps.archive.archiveIfNeeded(filePath, id);
+      } catch {
+        // ignore archive failure; the row is still up-to-date
+      }
     }
     this.events.onSessionChanged?.(id);
   }

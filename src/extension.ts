@@ -43,6 +43,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await host.rescan();
       vscode.window.showInformationMessage("Sesh: rescan complete.");
     }),
+    vscode.commands.registerCommand("sesh.archiveSize", async () => {
+      if (!host) {
+        vscode.window.showWarningMessage("Sesh is not running.");
+        return;
+      }
+      const { files, bytes } = await host.archive.size();
+      const enabled = vscode.workspace
+        .getConfiguration("sesh")
+        .get<boolean>("archiveTranscripts", false);
+      const mb = (bytes / 1024 / 1024).toFixed(1);
+      const status = enabled ? "enabled" : "disabled";
+      vscode.window.showInformationMessage(
+        files === 0
+          ? `Sesh archive: empty (${status}).`
+          : `Sesh archive: ${files} transcript${files === 1 ? "" : "s"}, ${mb} MB (${status}).`,
+      );
+    }),
   );
 
   try {

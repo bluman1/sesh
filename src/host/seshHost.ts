@@ -12,9 +12,11 @@ import { scanSessionsIndex } from "../scanner/sessionsIndex";
 import { extractMetadata } from "../scanner/extract";
 import { ContentIndexer } from "../scanner/contentIndexer";
 import { ProjectsWatcher } from "../scanner/watcher";
+import { TranscriptArchive } from "./transcriptArchive";
 
 const DEFAULT_DB_DIR = path.join(os.homedir(), ".sesh");
 const DEFAULT_DB_FILE = path.join(DEFAULT_DB_DIR, "db.sqlite");
+const DEFAULT_ARCHIVE_DIR = path.join(DEFAULT_DB_DIR, "transcripts");
 const CLAUDE_PROJECTS_DIR = path.join(os.homedir(), ".claude", "projects");
 
 export class SeshHost {
@@ -23,13 +25,22 @@ export class SeshHost {
   public tags: TagRepository | null = null;
   public categories: CategoryRepository | null = null;
   public indexer: ContentIndexer | null = null;
+  public archive: TranscriptArchive;
   private watcher: ProjectsWatcher | null = null;
   public indexProgress: { indexed: number; total: number } = { indexed: 0, total: 0 };
   public onIndexProgress?: () => void;
   public onSessionChanged?: (id: string) => void;
   private scanPromise: Promise<void> | null = null;
 
-  constructor(public readonly output: vscode.OutputChannel) {}
+  constructor(public readonly output: vscode.OutputChannel) {
+    this.archive = new TranscriptArchive(DEFAULT_ARCHIVE_DIR);
+  }
+
+  private archiveEnabled(): boolean {
+    return vscode.workspace
+      .getConfiguration("sesh")
+      .get<boolean>("archiveTranscripts", false);
+  }
 
   get rawDb(): Db | null {
     return this.db;
@@ -63,6 +74,10 @@ export class SeshHost {
       this.sessions,
       this.indexer,
       { onSessionChanged: (id) => this.onSessionChanged?.(id) },
+      {
+        archive: this.archive,
+        archiveEnabled: () => this.archiveEnabled(),
+      },
     );
     void this.watcher.start();
   }
@@ -78,6 +93,27 @@ export class SeshHost {
       this.output.appendLine(
         `[sesh] sessions-index: indexFiles=${ghosts.indexFiles} importedGhosts=${ghosts.imported} skippedExisting=${ghosts.skippedExisting} skippedSidechain=${ghosts.skippedSidechain}`,
       );
+    }
+    if (this.archiveEnabled()) {
+      void this.runArchive();
+    }
+  }
+
+  private async runArchive(): Promise<void> {
+    if (!this.sessions) return;
+    const rows = this.sessions.listAllNonArchived();
+    let archived = 0;
+    for (const row of rows) {
+      if (row.orphaned === 1) continue;
+      try {
+        const wrote = await this.archive.archiveIfNeeded(row.file_path, row.id);
+        if (wrote) archived++;
+      } catch {
+        // skip files we can't read
+      }
+    }
+    if (archived > 0) {
+      this.output.appendLine(`[sesh] archive: wrote ${archived} transcripts`);
     }
   }
 
