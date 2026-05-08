@@ -1,10 +1,11 @@
-import type { Scope, SearchFilters } from "../messaging";
+import type { Scope, SearchFilters, ProjectFolder } from "../messaging";
 import type { Category } from "../hooks/useCategories";
 import { Icon } from "./Icon";
 
 interface Props {
   filters: SearchFilters;
   onScopeChange: (s: Scope) => void;
+  onSelectFolder: (path: string) => void;
   onQueryChange: (q: string) => void;
   onToggleArchived: () => void;
   onToggleFavorited: () => void;
@@ -14,12 +15,22 @@ interface Props {
   filtered: number;
   categories: Category[];
   allTags: string[];
+  projects: ProjectFolder[];
+}
+
+const SCOPE_VALUE_CURRENT = "__current__";
+const SCOPE_VALUE_ALL = "__all__";
+
+function basename(path: string): string {
+  const idx = path.lastIndexOf("/");
+  return idx >= 0 ? path.slice(idx + 1) : path;
 }
 
 export function Toolbar(props: Props): JSX.Element {
   const {
     filters,
     onScopeChange,
+    onSelectFolder,
     onQueryChange,
     onToggleArchived,
     onToggleFavorited,
@@ -29,7 +40,27 @@ export function Toolbar(props: Props): JSX.Element {
     filtered,
     categories,
     allTags,
+    projects,
   } = props;
+
+  const selectValue =
+    filters.scope === "current"
+      ? SCOPE_VALUE_CURRENT
+      : filters.scope === "all"
+        ? SCOPE_VALUE_ALL
+        : filters.selectedFolderPath ?? SCOPE_VALUE_ALL;
+
+  const handleScopeChange = (raw: string) => {
+    if (raw === SCOPE_VALUE_CURRENT) {
+      onScopeChange("current");
+    } else if (raw === SCOPE_VALUE_ALL) {
+      onScopeChange("all");
+    } else {
+      onSelectFolder(raw);
+    }
+  };
+
+  const currentDisabled = !filters.currentPath;
 
   return (
     <div className="sesh-toolbar">
@@ -46,11 +77,29 @@ export function Toolbar(props: Props): JSX.Element {
         </div>
         <select
           className="sesh-scope-select"
-          value={filters.scope}
-          onChange={(e) => onScopeChange(e.target.value as Scope)}
+          value={selectValue}
+          onChange={(e) => handleScopeChange(e.target.value)}
+          title={
+            filters.scope === "current" && filters.currentPath
+              ? `Showing sessions started in ${filters.currentPath}`
+              : undefined
+          }
         >
-          <option value="current">Current folder</option>
-          <option value="all">All projects</option>
+          <option value={SCOPE_VALUE_CURRENT} disabled={currentDisabled}>
+            {currentDisabled
+              ? "Current folder (no workspace)"
+              : `Current folder · ${basename(filters.currentPath ?? "")}`}
+          </option>
+          <option value={SCOPE_VALUE_ALL}>All projects</option>
+          {projects.length > 0 && (
+            <optgroup label="Pick a folder">
+              {projects.map((p) => (
+                <option key={p.path} value={p.path}>
+                  {basename(p.path)} ({p.sessionCount})
+                </option>
+              ))}
+            </optgroup>
+          )}
         </select>
         <span className="sesh-count">
           {filtered === count ? `${count} sessions` : `${filtered} of ${count}`}

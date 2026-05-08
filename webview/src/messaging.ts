@@ -25,16 +25,22 @@ export interface TranscriptMessage {
   timestamp: number;
 }
 
-export type Scope = "current" | "all";
+export type Scope = "current" | "all" | "folder";
 
 export interface SearchFilters {
   scope: Scope;
   currentPath: string | null;
+  selectedFolderPath: string | null;
   query: string;
   category_ids: number[];
   tags: string[];
   favorited: boolean | null;
   archived: boolean | null;
+}
+
+export interface ProjectFolder {
+  path: string;
+  sessionCount: number;
 }
 
 export type ToHost =
@@ -53,6 +59,7 @@ export type ToHost =
   | { kind: "deleteCategory"; id: number }
   | { kind: "listCategories" }
   | { kind: "listAllTags" }
+  | { kind: "listProjects" }
   | { kind: "resumeInTerminal"; sessionId: string }
   | { kind: "openClaudeCodePanel"; sessionId?: string }
   | { kind: "addRemap"; fromPath: string; toPath: string }
@@ -77,6 +84,7 @@ export type ToWebview =
       currentPath: string | null;
     }
   | { kind: "remapsList"; remaps: { from_path: string; to_path: string }[] }
+  | { kind: "projectsList"; projects: ProjectFolder[] }
   | { kind: "error"; message: string };
 
 declare global {

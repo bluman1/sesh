@@ -13,6 +13,7 @@ export function useSessions(): {
   setFilters: (f: SearchFilters) => void;
   setQuery: (q: string) => void;
   setScope: (s: Scope) => void;
+  selectFolder: (path: string) => void;
   toggleArchived: () => void;
   toggleFavorited: () => void;
   toggleCategory: (id: number) => void;
@@ -28,6 +29,7 @@ export function useSessions(): {
   const [filters, setFiltersState] = useState<SearchFilters>({
     scope: "current",
     currentPath: null,
+    selectedFolderPath: null,
     query: "",
     category_ids: [],
     tags: [],
@@ -42,7 +44,13 @@ export function useSessions(): {
         setError(null);
       } else if (msg.kind === "workspace") {
         setCurrentPath(msg.currentPath);
-        setFiltersState((f) => ({ ...f, currentPath: msg.currentPath }));
+        setFiltersState((f) => ({
+          ...f,
+          currentPath: msg.currentPath,
+          // If we have no workspace folder open, default to "all" since
+          // "current" would be empty.
+          scope: msg.currentPath ? f.scope : "all",
+        }));
       } else if (msg.kind === "indexProgress") {
         setIndexProgress({ indexed: msg.indexed, total: msg.total });
       } else if (msg.kind === "error") {
@@ -62,7 +70,18 @@ export function useSessions(): {
 
   const setFilters = (f: SearchFilters) => setFiltersState(f);
   const setQuery = (q: string) => setFiltersState((f) => ({ ...f, query: q }));
-  const setScope = (s: Scope) => setFiltersState((f) => ({ ...f, scope: s }));
+  const setScope = (s: Scope) =>
+    setFiltersState((f) => ({
+      ...f,
+      scope: s,
+      selectedFolderPath: s === "folder" ? f.selectedFolderPath : null,
+    }));
+  const selectFolder = (path: string) =>
+    setFiltersState((f) => ({
+      ...f,
+      scope: "folder",
+      selectedFolderPath: path,
+    }));
   const toggleArchived = () =>
     setFiltersState((f) => ({
       ...f,
@@ -92,6 +111,7 @@ export function useSessions(): {
     setFilters,
     setQuery,
     setScope,
+    selectFolder,
     toggleArchived,
     toggleFavorited,
     toggleCategory,

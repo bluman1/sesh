@@ -147,4 +147,35 @@ describe("searchSessions", () => {
     });
     expect(result.map((r) => r.id).sort()).toEqual(["a", "b"]);
   });
+
+  it("scope=current with no currentPath returns [] instead of falling through", () => {
+    repo.upsert(baseRow("a", { project_path: "/p1" }));
+    repo.upsert(baseRow("b", { project_path: "/p2" }));
+    expect(
+      searchSessions(db, { ...NEUTRAL, scope: "current", currentPath: null }),
+    ).toEqual([]);
+  });
+
+  it("scope=folder filters by selectedFolderPath", () => {
+    repo.upsert(baseRow("a", { project_path: "/p1" }));
+    repo.upsert(baseRow("b", { project_path: "/p2" }));
+    expect(
+      searchSessions(db, {
+        ...NEUTRAL,
+        scope: "folder",
+        selectedFolderPath: "/p1",
+      }).map((r) => r.id),
+    ).toEqual(["a"]);
+  });
+
+  it("scope=folder with no selectedFolderPath returns []", () => {
+    repo.upsert(baseRow("a", { project_path: "/p1" }));
+    expect(
+      searchSessions(db, {
+        ...NEUTRAL,
+        scope: "folder",
+        selectedFolderPath: null,
+      }),
+    ).toEqual([]);
+  });
 });

@@ -257,6 +257,9 @@ export class SeshPanel {
         case "listAllTags":
           this.broadcastAllTags();
           break;
+        case "listProjects":
+          this.broadcastProjects();
+          break;
       }
     } catch (err) {
       this.send({
@@ -298,6 +301,20 @@ export class SeshPanel {
   private broadcastAllTags(): void {
     if (!this.host.tags) return;
     this.send({ kind: "allTags", tags: this.host.tags.listAllTags() });
+  }
+
+  private broadcastProjects(): void {
+    if (!this.host.rawDb) return;
+    const rows = this.host.rawDb
+      .prepare(
+        `SELECT project_path AS path, COUNT(*) AS sessionCount
+         FROM sessions
+         WHERE archived = 0
+         GROUP BY project_path
+         ORDER BY MAX(last_active_at) DESC`,
+      )
+      .all() as { path: string; sessionCount: number }[];
+    this.send({ kind: "projectsList", projects: rows });
   }
 
   private transcriptLimitFromSettings(): number {

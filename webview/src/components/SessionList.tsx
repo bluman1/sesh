@@ -11,6 +11,7 @@ interface Props {
   onSelect: (id: string) => void;
   categories: Category[];
   searchQuery: string;
+  emptyHint?: string;
 }
 
 function relativeTime(ms: number): string {
@@ -40,12 +41,13 @@ export function SessionList({
   onSelect,
   categories,
   searchQuery,
+  emptyHint,
 }: Props): JSX.Element {
   if (sessions.length === 0) {
     return (
       <div className="sesh-empty">
         <Icon name="inbox" />
-        <p>No sessions in this view.</p>
+        <p>{emptyHint ?? "No sessions in this view."}</p>
       </div>
     );
   }

@@ -2,8 +2,9 @@ import type { Db } from "./connection";
 import type { SessionRow } from "./sessions";
 
 export interface SearchFilters {
-  scope: "current" | "all";
+  scope: "current" | "all" | "folder";
   currentPath: string | null;
+  selectedFolderPath?: string | null;
   query: string;
   category_ids: number[];
   tags: string[];
@@ -24,12 +25,33 @@ export function searchSessions(db: Db, f: SearchFilters): SessionRow[] {
   if (f.favorited === true) conditions.push("s.favorited = 1");
   else if (f.favorited === false) conditions.push("s.favorited = 0");
 
-  if (f.scope === "current" && f.currentPath) {
+  if (f.scope === "current") {
+    // Without a workspace folder open we can't filter to "current" — return nothing
+    // explicitly rather than silently falling through to all sessions.
+    if (!f.currentPath) {
+      return [];
+    }
     // Find remapped from_paths that point to currentPath, include them in the OR
     const remapRows = db
       .prepare("SELECT from_path FROM project_remap WHERE to_path = ?")
       .all(f.currentPath) as { from_path: string }[];
     const paths = [f.currentPath, ...remapRows.map((r) => r.from_path)];
+    const placeholders = paths.map((_, i) => `@p${i}`).join(", ");
+    conditions.push(`s.project_path IN (${placeholders})`);
+    paths.forEach((p, i) => {
+      params[`p${i}`] = p;
+    });
+  } else if (f.scope === "folder") {
+    if (!f.selectedFolderPath) {
+      return [];
+    }
+    const remapRows = db
+      .prepare("SELECT from_path FROM project_remap WHERE to_path = ?")
+      .all(f.selectedFolderPath) as { from_path: string }[];
+    const paths = [
+      f.selectedFolderPath,
+      ...remapRows.map((r) => r.from_path),
+    ];
     const placeholders = paths.map((_, i) => `@p${i}`).join(", ");
     conditions.push(`s.project_path IN (${placeholders})`);
     paths.forEach((p, i) => {
