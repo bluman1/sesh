@@ -8,6 +8,7 @@ import type { TranscriptArchive } from "../host/transcriptArchive";
 
 export interface WatcherEvents {
   onSessionChanged?: (id: string) => void;
+  onWatcherError?: (err: unknown) => void;
 }
 
 export interface WatcherDeps {
@@ -17,7 +18,6 @@ export interface WatcherDeps {
 
 export class ProjectsWatcher {
   private watcher: chokidar.FSWatcher | null = null;
-  private pollTimer: NodeJS.Timeout | null = null;
 
   constructor(
     private readonly projectsRoot: string,
@@ -36,11 +36,15 @@ export class ProjectsWatcher {
       this.watcher.on("add", (p) => void this.handleAddOrChange(p));
       this.watcher.on("change", (p) => void this.handleAddOrChange(p));
       this.watcher.on("unlink", (p) => void this.handleUnlink(p));
-      this.watcher.on("error", () => {
-        this.startPolling();
+      this.watcher.on("error", (err) => {
+        // Surface the failure so the user knows live updates are off; the
+        // Sesh: Rescan command is the recovery path. We don't fall back to
+        // a polling timer — a no-op interval just kept the process alive
+        // without doing useful work.
+        this.events.onWatcherError?.(err);
       });
-    } catch {
-      this.startPolling();
+    } catch (err) {
+      this.events.onWatcherError?.(err);
     }
   }
 
@@ -49,17 +53,6 @@ export class ProjectsWatcher {
       await this.watcher.close();
       this.watcher = null;
     }
-    if (this.pollTimer) {
-      clearInterval(this.pollTimer);
-      this.pollTimer = null;
-    }
-  }
-
-  private startPolling(): void {
-    if (this.pollTimer) return;
-    this.pollTimer = setInterval(() => {
-      // poll mode is a no-op; SeshHost re-scan command is the recovery path.
-    }, 30000);
   }
 
   private async handleAddOrChange(filePath: string): Promise<void> {

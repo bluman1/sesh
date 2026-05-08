@@ -73,7 +73,14 @@ export class SeshHost {
       CLAUDE_PROJECTS_DIR,
       this.sessions,
       this.indexer,
-      { onSessionChanged: (id) => this.onSessionChanged?.(id) },
+      {
+        onSessionChanged: (id) => this.onSessionChanged?.(id),
+        onWatcherError: (err) => {
+          this.output.appendLine(
+            `[sesh] watcher error: ${err instanceof Error ? err.message : String(err)} — run "Sesh: Rescan all projects" to refresh`,
+          );
+        },
+      },
       {
         archive: this.archive,
         archiveEnabled: () => this.archiveEnabled(),
