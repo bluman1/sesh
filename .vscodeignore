@@ -23,13 +23,12 @@ webview/node_modules/**
 .prettierrc*
 .eslintrc*
 .github/**
-docs/**
+vitest.config.ts
+package-lock.json
+*.vsix
 
 # Build artefacts not consumed by the extension
 out/migrations/**.ts
 
 # OS
 .DS_Store
-
-# Misc files only relevant to development
-HANDOFF.md
