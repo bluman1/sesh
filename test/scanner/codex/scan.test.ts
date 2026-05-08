@@ -9,6 +9,7 @@ import {
   scanCodexSessionsRoot,
   sessionIdFromCodexFilename,
 } from "../../../src/scanner/codex/scan";
+import { SESH_META_CWD } from "../../../src/host/seshPaths";
 
 const SAMPLE_FIXTURE = path.join(
   __dirname,
@@ -120,6 +121,46 @@ describe("scanCodexSessionsRoot", () => {
       skipped: 0,
       errored: 0,
     });
+  });
+
+  it("filters out sessions whose session_meta cwd matches SESH_META_CWD", async () => {
+    const root = setupCodexRoot();
+    try {
+      // Custom rollout file with cwd set to SESH_META_CWD.
+      const dir = path.join(root.root, "2026", "04", "04");
+      fs.mkdirSync(dir, { recursive: true });
+      const filename =
+        "rollout-2026-04-04T10-00-00-019d5933-0c3e-7103-8c4b-68a7232a71b8.jsonl";
+      const dest = path.join(dir, filename);
+      const lines = [
+        JSON.stringify({
+          timestamp: "2026-04-04T10:00:00.000Z",
+          type: "session_meta",
+          payload: {
+            id: "019d5933-0c3e-7103-8c4b-68a7232a71b8",
+            timestamp: "2026-04-04T10:00:00.000Z",
+            cwd: SESH_META_CWD,
+          },
+        }),
+        JSON.stringify({
+          timestamp: "2026-04-04T10:00:01.000Z",
+          type: "response_item",
+          payload: {
+            type: "message",
+            role: "user",
+            content: [{ type: "input_text", text: "Generate a title" }],
+          },
+        }),
+      ].join("\n");
+      fs.writeFileSync(dest, lines + "\n");
+      const result = await scanCodexSessionsRoot(root.root, repo);
+      expect(result.scanned).toBe(1);
+      expect(result.upserted).toBe(0);
+      expect(result.skipped).toBe(1);
+      expect(repo.findById("019d5933-0c3e-7103-8c4b-68a7232a71b8")).toBeNull();
+    } finally {
+      root.cleanup();
+    }
   });
 
   it("ignores files that don't match the rollout-*-uuid.jsonl pattern", async () => {

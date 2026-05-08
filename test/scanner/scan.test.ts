@@ -6,6 +6,7 @@ import { openDb, type Db } from "../../src/db/connection";
 import { runMigrations } from "../../src/db/migrate";
 import { SessionRepository } from "../../src/db/sessions";
 import { scanProjectsRoot } from "../../src/scanner/scan";
+import { SESH_META_CWD } from "../../src/host/seshPaths";
 
 const SAMPLE_FIXTURE = path.join(__dirname, "..", "fixtures", "sample.jsonl");
 
@@ -82,5 +83,33 @@ describe("scanProjectsRoot", () => {
     expect(result.scanned).toBe(1);
     expect(result.upserted).toBe(1);
     expect(repo.findById("ghost-id")).toBeNull();
+  });
+
+  it("filters out sessions whose cwd matches SESH_META_CWD", async () => {
+    // Synthesize a JSONL whose first record reports cwd = SESH_META_CWD.
+    // These are produced by Sesh's own title-generator CLI calls and must
+    // never surface in the user's session list.
+    const dirName = "-Users-fake-.sesh-cli";
+    fs.mkdirSync(path.join(tmpRoot, dirName));
+    const jsonl = JSON.stringify({
+      type: "user",
+      cwd: SESH_META_CWD,
+      message: { role: "user", content: "Generate a title for this conversation" },
+      uuid: "u1",
+      timestamp: "2026-04-22T10:00:00.000Z",
+    });
+    fs.writeFileSync(
+      path.join(tmpRoot, dirName, "sesh-meta-id.jsonl"),
+      jsonl + "\n",
+    );
+
+    const result = await scanProjectsRoot(tmpRoot, repo);
+    // The legitimate sample under -tmp-proj is upserted; the meta-cwd one
+    // is counted as scanned but skipped (no upsert).
+    expect(result.scanned).toBe(2);
+    expect(result.upserted).toBe(1);
+    expect(result.skipped).toBe(1);
+    expect(repo.findById("sample-id")).not.toBeNull();
+    expect(repo.findById("sesh-meta-id")).toBeNull();
   });
 });

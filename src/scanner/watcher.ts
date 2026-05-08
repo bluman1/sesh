@@ -2,6 +2,7 @@ import * as chokidar from "chokidar";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { extractMetadata } from "./extract";
+import { SESH_META_CWD } from "../host/seshPaths";
 import type { SessionRepository } from "../db/sessions";
 import type { ContentIndexer } from "./contentIndexer";
 import type { TranscriptArchive } from "../host/transcriptArchive";
@@ -68,6 +69,10 @@ export class ProjectsWatcher {
     const meta = await extractMetadata(filePath, id, {
       fallbackEncodedDir: dirName,
     });
+    if (meta.cwd === SESH_META_CWD) {
+      // Sesh's own title-generator session — never surface.
+      return;
+    }
     this.sessions.upsert({
       id,
       source: "claude-code",

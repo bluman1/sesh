@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { extractMetadata } from "./extract";
+import { SESH_META_CWD } from "../host/seshPaths";
 import type { SessionRepository } from "../db/sessions";
 
 export interface ScanResult {
@@ -61,6 +62,12 @@ export async function scanProjectsRoot(
       const meta = await extractMetadata(filePath, id, {
         fallbackEncodedDir: dirName,
       });
+      // Sessions spawned by Sesh's own internal CLI calls (e.g. the title
+      // generator) use SESH_META_CWD as their cwd. Drop them on the floor.
+      if (meta.cwd === SESH_META_CWD) {
+        result.skipped++;
+        continue;
+      }
       repo.upsert({
         id,
         source: "claude-code",

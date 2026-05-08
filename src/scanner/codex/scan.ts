@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { extractCodexMetadata } from "./extract";
+import { SESH_META_CWD } from "../../host/seshPaths";
 import type { SessionRepository } from "../../db/sessions";
 
 export interface ScanResult {
@@ -102,6 +103,12 @@ export async function scanCodexSessionsRoot(
       // unreadable session_meta — Codex sometimes writes empty rollout
       // files when the user closes the editor before any turn completes.
       result.errored++;
+      continue;
+    }
+
+    if (meta.cwd === SESH_META_CWD) {
+      // Sesh's own title-generator session — skip.
+      result.skipped++;
       continue;
     }
 

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   buildExcerpt,
   buildPrompt,
@@ -132,17 +132,39 @@ function fakeSpawn(opts: {
 }
 
 describe("generateTitle", () => {
+  let metaCwd: string;
+  beforeEach(async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    metaCwd = fs.mkdtempSync(path.join(os.tmpdir(), "sesh-meta-"));
+  });
+  afterEach(async () => {
+    if (metaCwd) {
+      const fs = await import("node:fs");
+      try {
+        fs.rmSync(metaCwd, { recursive: true, force: true });
+      } catch {
+        // ignore
+      }
+    }
+  });
+
   it("rejects with a friendly message when the CLI cannot be located", async () => {
     await expect(
       generateTitle("claude-code", "User: hi", {
         resolveExecutable: () => null,
+        metaCwd,
       }),
     ).rejects.toThrow(/Claude CLI not found/);
   });
 
   it("uses the codex error message for source=codex", async () => {
     await expect(
-      generateTitle("codex", "User: hi", { resolveExecutable: () => null }),
+      generateTitle("codex", "User: hi", {
+        resolveExecutable: () => null,
+        metaCwd,
+      }),
     ).rejects.toThrow(/Codex CLI not found/);
   });
 
@@ -150,6 +172,7 @@ describe("generateTitle", () => {
     await expect(
       generateTitle("claude-code", "   ", {
         resolveExecutable: () => "/fake/claude",
+        metaCwd,
       }),
     ).rejects.toThrow(/no readable text/);
   });
@@ -158,6 +181,7 @@ describe("generateTitle", () => {
     const title = await generateTitle("claude-code", "User: hi", {
       resolveExecutable: () => "/fake/claude",
       spawn: fakeSpawn({ exitCode: 0, stdout: '"Refactor auth flow"\n' }),
+      metaCwd,
     });
     expect(title).toBe("Refactor auth flow");
   });
@@ -167,6 +191,7 @@ describe("generateTitle", () => {
       generateTitle("claude-code", "User: hi", {
         resolveExecutable: () => "/fake/claude",
         spawn: fakeSpawn({ exitCode: 1, stderr: "rate limited" }),
+        metaCwd,
       }),
     ).rejects.toThrow(TitleGenerationError);
   });
@@ -176,6 +201,7 @@ describe("generateTitle", () => {
       generateTitle("claude-code", "User: hi", {
         resolveExecutable: () => "/fake/claude",
         spawn: fakeSpawn({ exitCode: 0, stdout: "  \n  \n" }),
+        metaCwd,
       }),
     ).rejects.toThrow(/no usable title/);
   });
@@ -186,7 +212,44 @@ describe("generateTitle", () => {
         resolveExecutable: () => "/fake/claude",
         spawn: fakeSpawn({ exitCode: 0, stdout: "fine", delay: 200 }),
         timeoutMs: 50,
+        metaCwd,
       }),
     ).rejects.toThrow(/did not return/);
+  });
+
+  it("spawns the CLI with the meta-cwd so the resulting JSONL is filterable", async () => {
+    let observedCwd: string | undefined;
+    const recordingSpawn = ((..._args: unknown[]) => {
+      const opts = _args[2] as { cwd?: string } | undefined;
+      observedCwd = opts?.cwd;
+      const proc = new FakeProc();
+      setTimeout(() => {
+        proc.stdout.push("Generated title\n");
+        proc.stdout.push(null);
+        proc.stderr.push(null);
+        proc.emit("close", 0);
+      }, 0);
+      return proc;
+    }) as unknown as typeof import("node:child_process").spawn;
+
+    await generateTitle("claude-code", "User: hi", {
+      resolveExecutable: () => "/fake/claude",
+      spawn: recordingSpawn,
+      metaCwd,
+    });
+    expect(observedCwd).toBe(metaCwd);
+  });
+
+  it("creates the metaCwd directory if it doesn't yet exist", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const nested = path.join(metaCwd, "deep", "nested", "cli");
+    expect(fs.existsSync(nested)).toBe(false);
+    await generateTitle("claude-code", "User: hi", {
+      resolveExecutable: () => "/fake/claude",
+      spawn: fakeSpawn({ exitCode: 0, stdout: "Title here\n" }),
+      metaCwd: nested,
+    });
+    expect(fs.existsSync(nested)).toBe(true);
   });
 });

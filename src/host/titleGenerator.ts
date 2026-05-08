@@ -2,6 +2,7 @@ import * as cp from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { SESH_META_CWD } from "./seshPaths";
 import type { TranscriptMessage } from "../scanner/transcript";
 
 const CLAUDE_CANDIDATES = [
@@ -87,12 +88,14 @@ async function runCli(
   cliPath: string,
   args: string[],
   prompt: string,
+  cwd: string,
   options: RunCliOptions = {},
 ): Promise<string> {
   const spawn = options.spawn ?? cp.spawn;
   const timeoutMs = options.timeoutMs ?? PROMPT_TIMEOUT_MS;
   return new Promise((resolve, reject) => {
     const proc = spawn(cliPath, args, {
+      cwd,
       stdio: ["pipe", "pipe", "pipe"],
     });
     let stdout = "";
@@ -151,6 +154,9 @@ export interface GenerateTitleDeps extends RunCliOptions {
   // Override the candidates to search — primarily used by tests. In production
   // we ship the canonical lists above.
   resolveExecutable?: (source: "claude-code" | "codex") => string | null;
+  // Override the spawn cwd. Tests use a tmp dir; production uses
+  // SESH_META_CWD so the resulting JSONL is filterable by the scanners.
+  metaCwd?: string;
 }
 
 export async function generateTitle(
@@ -183,7 +189,12 @@ export async function generateTitle(
   // without hitting argv length limits. codex exec accepts stdin too when
   // the prompt argument is `-`.
   const args = isCodex ? ["exec", "-"] : ["-p"];
-  const raw = await runCli(cliPath, args, prompt, deps);
+  // Run from a Sesh-reserved cwd so the JSONLs the CLI writes carry
+  // SESH_META_CWD as their cwd field. The scanners skip those sessions so
+  // they never appear in Sesh's list.
+  const cwd = deps.metaCwd ?? SESH_META_CWD;
+  fs.mkdirSync(cwd, { recursive: true });
+  const raw = await runCli(cliPath, args, prompt, cwd, deps);
   const title = postprocess(raw);
   if (!title) {
     throw new TitleGenerationError("CLI returned no usable title.");
