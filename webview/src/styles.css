@@ -267,9 +267,11 @@ body {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
+  margin-left: var(--sesh-space-1);
+  opacity: 0.7;
 }
 .sesh-list-source .codicon {
-  font-size: var(--sesh-text-base);
+  font-size: var(--sesh-text-sm);
 }
 
 /* Source badge (used in detail pane meta strip) */

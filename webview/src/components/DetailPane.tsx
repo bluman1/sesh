@@ -215,7 +215,7 @@ export function DetailPane({
             <dd>{session.message_count}</dd>
           </div>
           <div className="sesh-detail-meta-path">
-            <dt>Project</dt>
+            <dt>Folder</dt>
             <dd
               className="sesh-path-truncate"
               title={session.project_path}

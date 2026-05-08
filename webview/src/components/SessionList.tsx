@@ -57,14 +57,12 @@ export function SessionList({
       itemContent={(_, s) => {
         const cat =
           s.category_id != null ? categoryById.get(s.category_id) : undefined;
-        const hasMeta = cat || s.tags.length > 0;
         return (
           <div
             className={`sesh-list-row ${selectedId === s.id ? "is-selected" : ""}`}
             onClick={() => onSelect(s.id)}
           >
             <div className="sesh-list-line-1">
-              <SourceBadge source={s.source} className="sesh-list-source" />
               {s.favorited ? (
                 <Icon name="star-full" className="sesh-list-star" />
               ) : null}
@@ -88,23 +86,22 @@ export function SessionList({
                   {basename(s.project_path)}
                 </span>
               </span>
-              {hasMeta && (
-                <span className="sesh-list-meta-chips">
-                  {cat && (
-                    <span
-                      className="sesh-cat-pill"
-                      style={cat.color ? { background: cat.color } : undefined}
-                    >
-                      {cat.name}
-                    </span>
-                  )}
-                  {s.tags.map((t) => (
-                    <span key={t} className="sesh-tag">
-                      #{t}
-                    </span>
-                  ))}
-                </span>
-              )}
+              <span className="sesh-list-meta-chips">
+                {cat && (
+                  <span
+                    className="sesh-cat-pill"
+                    style={cat.color ? { background: cat.color } : undefined}
+                  >
+                    {cat.name}
+                  </span>
+                )}
+                {s.tags.map((t) => (
+                  <span key={t} className="sesh-tag">
+                    #{t}
+                  </span>
+                ))}
+                <SourceBadge source={s.source} className="sesh-list-source" />
+              </span>
             </div>
           </div>
         );
