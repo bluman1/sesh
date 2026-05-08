@@ -87,4 +87,54 @@ describe("SessionRepository", () => {
     const got = repo.listByProjectNonArchived("/p1").map((s) => s.id);
     expect(got).toEqual(["a"]);
   });
+
+  it("setCustomTitle updates the column", () => {
+    repo.upsert(makeRow());
+    repo.setCustomTitle("abc-123", "My Title");
+    expect(repo.findById("abc-123")?.custom_title).toBe("My Title");
+    repo.setCustomTitle("abc-123", null);
+    expect(repo.findById("abc-123")?.custom_title).toBeNull();
+  });
+
+  it("setCategory updates the column", () => {
+    repo.upsert(makeRow());
+    const catId = Number(
+      db
+        .prepare(
+          "INSERT INTO categories (name, color, sort_order) VALUES (?, ?, ?)",
+        )
+        .run("work", null, 0).lastInsertRowid,
+    );
+    repo.setCategory("abc-123", catId);
+    expect(repo.findById("abc-123")?.category_id).toBe(catId);
+    repo.setCategory("abc-123", null);
+    expect(repo.findById("abc-123")?.category_id).toBeNull();
+  });
+
+  it("setNotes updates the column", () => {
+    repo.upsert(makeRow());
+    repo.setNotes("abc-123", "hello");
+    expect(repo.findById("abc-123")?.notes).toBe("hello");
+  });
+
+  it("setFavorited and setArchived toggle 0/1", () => {
+    repo.upsert(makeRow());
+    repo.setFavorited("abc-123", true);
+    expect(repo.findById("abc-123")?.favorited).toBe(1);
+    repo.setFavorited("abc-123", false);
+    expect(repo.findById("abc-123")?.favorited).toBe(0);
+    repo.setArchived("abc-123", true);
+    expect(repo.findById("abc-123")?.archived).toBe(1);
+  });
+
+  it("user fields are preserved across re-upsert", () => {
+    repo.upsert(makeRow());
+    repo.setCustomTitle("abc-123", "Pinned");
+    repo.setFavorited("abc-123", true);
+    repo.upsert(makeRow({ auto_title: "rescanned" }));
+    const found = repo.findById("abc-123");
+    expect(found?.custom_title).toBe("Pinned");
+    expect(found?.favorited).toBe(1);
+    expect(found?.auto_title).toBe("rescanned");
+  });
 });

@@ -86,4 +86,34 @@ export class SessionRepository {
       .get(id) as { file_mtime: number; file_size: number } | undefined;
     return row ? { mtime: row.file_mtime, size: row.file_size } : null;
   }
+
+  setCustomTitle(id: string, title: string | null): void {
+    this.db
+      .prepare("UPDATE sessions SET custom_title = ? WHERE id = ?")
+      .run(title, id);
+  }
+
+  setCategory(id: string, categoryId: number | null): void {
+    this.db
+      .prepare("UPDATE sessions SET category_id = ? WHERE id = ?")
+      .run(categoryId, id);
+  }
+
+  setNotes(id: string, notes: string | null): void {
+    this.db
+      .prepare("UPDATE sessions SET notes = ? WHERE id = ?")
+      .run(notes, id);
+  }
+
+  setFavorited(id: string, favorited: boolean): void {
+    this.db
+      .prepare("UPDATE sessions SET favorited = ? WHERE id = ?")
+      .run(favorited ? 1 : 0, id);
+  }
+
+  setArchived(id: string, archived: boolean): void {
+    this.db
+      .prepare("UPDATE sessions SET archived = ? WHERE id = ?")
+      .run(archived ? 1 : 0, id);
+  }
 }
