@@ -1,10 +1,12 @@
 import { Virtuoso } from "react-virtuoso";
 import type { SessionListItem } from "../messaging";
+import type { Category } from "../hooks/useCategories";
 
 interface Props {
   sessions: SessionListItem[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  categories: Category[];
 }
 
 function relativeTime(ms: number): string {
@@ -23,35 +25,45 @@ function relativeTime(ms: number): string {
   return `${Math.floor(mo / 12)}y ago`;
 }
 
-export function SessionList({ sessions, selectedId, onSelect }: Props): JSX.Element {
+export function SessionList({ sessions, selectedId, onSelect, categories }: Props): JSX.Element {
   if (sessions.length === 0) {
     return <div className="sesh-empty">No sessions in this view.</div>;
   }
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
   return (
     <Virtuoso
       className="sesh-list"
       data={sessions}
-      itemContent={(_, s) => (
-        <div
-          className={`sesh-list-row ${selectedId === s.id ? "is-selected" : ""}`}
-          onClick={() => onSelect(s.id)}
-        >
-          <span className="sesh-list-star">{s.favorited ? "★" : ""}</span>
-          <span className="sesh-list-title">{s.title}</span>
-          <span className="sesh-list-meta">
-            {s.message_count} msg · {relativeTime(s.last_active_at)}
-          </span>
-          {s.tags.length > 0 && (
-            <div className="sesh-list-tags">
+      itemContent={(_, s) => {
+        const cat = s.category_id != null ? categoryById.get(s.category_id) : undefined;
+        return (
+          <div
+            className={`sesh-list-row ${selectedId === s.id ? "is-selected" : ""}`}
+            onClick={() => onSelect(s.id)}
+          >
+            <span className="sesh-list-star">{s.favorited ? "★" : ""}</span>
+            <span className="sesh-list-title">{s.title}</span>
+            <span className="sesh-list-meta">
+              {s.message_count} msg · {relativeTime(s.last_active_at)}
+            </span>
+            <div className="sesh-list-secondary">
+              {cat && (
+                <span
+                  className="sesh-cat-pill"
+                  style={cat.color ? { background: cat.color } : undefined}
+                >
+                  {cat.name}
+                </span>
+              )}
               {s.tags.map((t) => (
                 <span key={t} className="sesh-tag">
                   {t}
                 </span>
               ))}
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        );
+      }}
     />
   );
 }

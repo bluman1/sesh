@@ -4,11 +4,13 @@ import { SessionList } from "./components/SessionList";
 import { DetailPane } from "./components/DetailPane";
 import { useSessions } from "./hooks/useSessions";
 import { useSessionDetail } from "./hooks/useSessionDetail";
+import { useCategories } from "./hooks/useCategories";
 
 export function App(): JSX.Element {
   const { sessions, scope, setScope, error } = useSessions();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const detail = useSessionDetail(selectedId);
+  const { categories } = useCategories();
 
   return (
     <div className="sesh-root">
@@ -25,6 +27,7 @@ export function App(): JSX.Element {
             sessions={sessions}
             selectedId={selectedId}
             onSelect={setSelectedId}
+            categories={categories}
           />
         </div>
         <div className="sesh-pane sesh-pane-detail">
