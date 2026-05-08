@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Toolbar } from "./components/Toolbar";
 import { SessionList } from "./components/SessionList";
 import { DetailPane } from "./components/DetailPane";
+import { RemapBanner } from "./components/RemapBanner";
 import { useSessions } from "./hooks/useSessions";
 import { useSessionDetail } from "./hooks/useSessionDetail";
 import { useCategories } from "./hooks/useCategories";
@@ -29,6 +30,7 @@ export function App(): JSX.Element {
         categories={categories}
         allTags={allTags}
       />
+      <RemapBanner />
       {sessionsApi.error && <div className="sesh-error">{sessionsApi.error}</div>}
       {sessionsApi.indexProgress.total > 0 &&
         sessionsApi.indexProgress.indexed < sessionsApi.indexProgress.total && (

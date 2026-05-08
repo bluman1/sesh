@@ -56,7 +56,9 @@ export type ToHost =
   | { kind: "listCategories" }
   | { kind: "listAllTags" }
   | { kind: "resumeInTerminal"; sessionId: string }
-  | { kind: "openClaudeCodePanel" };
+  | { kind: "openClaudeCodePanel" }
+  | { kind: "addRemap"; fromPath: string; toPath: string }
+  | { kind: "listRemaps" };
 
 export type ToWebview =
   | { kind: "workspace"; currentPath: string | null }
@@ -71,6 +73,12 @@ export type ToWebview =
   | { kind: "categoriesList"; categories: { id: number; name: string; color: string | null; sort_order: number }[] }
   | { kind: "allTags"; tags: string[] }
   | { kind: "indexProgress"; indexed: number; total: number }
+  | {
+      kind: "remapSuggestion";
+      candidates: { fromPath: string; basename: string; sessionCount: number }[];
+      currentPath: string | null;
+    }
+  | { kind: "remapsList"; remaps: { from_path: string; to_path: string }[] }
   | { kind: "error"; message: string };
 
 export function rowToListItem(row: SessionRow, tags: string[]): SessionListItem {

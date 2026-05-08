@@ -128,6 +128,7 @@ export class SeshPanel {
             currentPath: msg.filters.currentPath,
             sessions: items,
           });
+          this.suggestRemaps();
           break;
         }
         case "getSession": {
@@ -201,6 +202,18 @@ export class SeshPanel {
           }
           break;
         }
+        case "addRemap": {
+          this.host.sessions.addRemap(msg.fromPath, msg.toPath);
+          this.refreshList();
+          break;
+        }
+        case "listRemaps": {
+          this.send({
+            kind: "remapsList",
+            remaps: this.host.sessions.listRemaps(),
+          });
+          break;
+        }
         case "setTags":
           this.host.tags!.setTags(msg.id, msg.tags);
           this.refreshDetail(msg.id);
@@ -271,5 +284,32 @@ export class SeshPanel {
   private broadcastAllTags(): void {
     if (!this.host.tags) return;
     this.send({ kind: "allTags", tags: this.host.tags.listAllTags() });
+  }
+
+  private suggestRemaps(): void {
+    if (!this.host.sessions || !this.lastFilters?.currentPath) return;
+    const currentPath = this.lastFilters.currentPath;
+    const basename = currentPath.split("/").pop() ?? "";
+    if (!basename) return;
+    const allRows = this.host.rawDb!
+      .prepare(
+        `SELECT project_path, COUNT(*) as cnt FROM sessions
+         WHERE project_path != ? AND project_path NOT IN (SELECT from_path FROM project_remap)
+         GROUP BY project_path`,
+      )
+      .all(currentPath) as { project_path: string; cnt: number }[];
+    const candidates = allRows
+      .filter((r) => {
+        const b = r.project_path.split("/").pop() ?? "";
+        return b === basename;
+      })
+      .map((r) => ({
+        fromPath: r.project_path,
+        basename,
+        sessionCount: r.cnt,
+      }));
+    if (candidates.length > 0) {
+      this.send({ kind: "remapSuggestion", candidates, currentPath });
+    }
   }
 }

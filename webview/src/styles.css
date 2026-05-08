@@ -469,3 +469,32 @@ body {
 .sesh-action-primary:hover {
   background: var(--vscode-button-hoverBackground, #1177bb);
 }
+
+.sesh-remap-banner {
+  background: var(--vscode-editorWidget-background, #252526);
+  border-bottom: 1px solid var(--vscode-editorWidget-border, #555);
+  padding: 8px 12px;
+}
+.sesh-remap-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+}
+.sesh-remap-row + .sesh-remap-row {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--vscode-editorWidget-border, rgba(128,128,128,0.15));
+}
+.sesh-remap-text code {
+  background: var(--vscode-textPreformat-background, rgba(255,255,255,0.04));
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-family: var(--vscode-editor-font-family, monospace);
+}
+.sesh-remap-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
