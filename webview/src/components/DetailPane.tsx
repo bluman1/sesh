@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  onHostMessage,
   postToHost,
   type SessionDetail,
   type TranscriptMessage,
@@ -53,6 +54,8 @@ export function DetailPane({
   const [tagInput, setTagInput] = useState("");
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [newCategoryDraft, setNewCategoryDraft] = useState("");
+  const [generatingTitle, setGeneratingTitle] = useState(false);
+  const [titleError, setTitleError] = useState<string | null>(null);
 
   useEffect(() => {
     setTitleDraft(session?.custom_title ?? session?.auto_title ?? "");
@@ -60,6 +63,25 @@ export function DetailPane({
     setTagInput("");
     setCreatingCategory(false);
     setNewCategoryDraft("");
+    setGeneratingTitle(false);
+    setTitleError(null);
+  }, [session?.id]);
+
+  useEffect(() => {
+    return onHostMessage((msg) => {
+      if (msg.kind !== "titleGenerationProgress") return;
+      if (msg.id !== session?.id) return;
+      if (msg.state === "running") {
+        setGeneratingTitle(true);
+        setTitleError(null);
+      } else if (msg.state === "done") {
+        setGeneratingTitle(false);
+        setTitleError(null);
+      } else {
+        setGeneratingTitle(false);
+        setTitleError(msg.message ?? "Failed to generate title.");
+      }
+    });
   }, [session?.id]);
 
   if (loading && !session) {
@@ -79,6 +101,12 @@ export function DetailPane({
     const next =
       trimmed === (session.auto_title ?? "") || trimmed === "" ? null : trimmed;
     postToHost({ kind: "setCustomTitle", id: session.id, title: next });
+  };
+
+  const generateTitle = () => {
+    if (generatingTitle) return;
+    setTitleError(null);
+    postToHost({ kind: "generateTitle", id: session.id });
   };
 
   const commitNotes = () => {
@@ -179,6 +207,22 @@ export function DetailPane({
             spellCheck={false}
           />
           <button
+            className={`sesh-icon-btn sesh-icon-btn-generate ${generatingTitle ? "is-running" : ""}`}
+            onClick={generateTitle}
+            disabled={generatingTitle}
+            title={
+              session.source === "codex"
+                ? "Generate a title using your Codex CLI"
+                : "Generate a title using your Claude CLI"
+            }
+            aria-label="Generate title"
+          >
+            <Icon
+              name={generatingTitle ? "loading" : "sparkle"}
+              className={generatingTitle ? "sesh-spin" : ""}
+            />
+          </button>
+          <button
             className={`sesh-text-btn ${session.archived ? "is-on" : ""}`}
             onClick={toggleArchive}
             title={
@@ -191,6 +235,11 @@ export function DetailPane({
             <span>{session.archived ? "Archived" : "Archive"}</span>
           </button>
         </div>
+        {titleError && (
+          <div className="sesh-title-error" role="alert">
+            <Icon name="warning" /> {titleError}
+          </div>
+        )}
 
         <dl className="sesh-detail-meta-strip">
           <div>

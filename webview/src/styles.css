@@ -460,6 +460,40 @@ body {
 .sesh-icon-btn.is-on {
   color: var(--sesh-warning);
 }
+.sesh-icon-btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.sesh-icon-btn-generate {
+  color: var(--sesh-accent, var(--vscode-textLink-foreground, #4ec9b0));
+}
+.sesh-icon-btn-generate:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--sesh-accent) 16%, transparent);
+}
+
+@keyframes sesh-spin-kf {
+  to { transform: rotate(360deg); }
+}
+.sesh-spin {
+  animation: sesh-spin-kf 1s linear infinite;
+  display: inline-block;
+}
+
+.sesh-title-error {
+  display: flex;
+  align-items: center;
+  gap: var(--sesh-space-1);
+  padding: var(--sesh-space-1) var(--sesh-space-2);
+  margin-top: var(--sesh-space-1);
+  font-size: var(--sesh-text-sm);
+  color: var(--vscode-editorError-foreground, #f48771);
+  background: color-mix(
+    in srgb,
+    var(--vscode-editorError-foreground, #f48771) 10%,
+    transparent
+  );
+  border-radius: var(--sesh-radius-sm);
+}
 
 .sesh-text-btn {
   background: transparent;

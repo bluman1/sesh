@@ -76,7 +76,8 @@ export type ToHost =
   | { kind: "resumeInTerminal"; sessionId: string }
   | { kind: "openClaudeCodePanel"; sessionId?: string }
   | { kind: "addRemap"; fromPath: string; toPath: string }
-  | { kind: "listRemaps" };
+  | { kind: "listRemaps" }
+  | { kind: "generateTitle"; id: string };
 
 export type ToWebview =
   | { kind: "workspace"; currentPath: string | null }
@@ -99,6 +100,12 @@ export type ToWebview =
     }
   | { kind: "remapsList"; remaps: { from_path: string; to_path: string }[] }
   | { kind: "projectsList"; projects: ProjectFolder[] }
+  | {
+      kind: "titleGenerationProgress";
+      id: string;
+      state: "running" | "done" | "error";
+      message?: string;
+    }
   | { kind: "error"; message: string };
 
 declare global {

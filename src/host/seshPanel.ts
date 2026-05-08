@@ -10,6 +10,11 @@ import {
 import { searchSessions, countSessionsInScope } from "../db/search";
 import { readTranscript } from "../scanner/transcript";
 import { readCodexTranscript } from "../scanner/codex/transcript";
+import {
+  buildExcerpt,
+  generateTitle,
+  TitleGenerationError,
+} from "./titleGenerator";
 
 export class SeshPanel {
   private static instance: SeshPanel | null = null;
@@ -252,6 +257,10 @@ export class SeshPanel {
           });
           break;
         }
+        case "generateTitle": {
+          await this.handleGenerateTitle(msg.id);
+          break;
+        }
         case "setTags":
           this.host.tags!.setTags(msg.id, msg.tags);
           this.refreshDetail(msg.id);
@@ -295,6 +304,51 @@ export class SeshPanel {
       this.send({
         kind: "error",
         message: `Sesh host error: ${(err as Error).message}`,
+      });
+    }
+  }
+
+  private async handleGenerateTitle(id: string): Promise<void> {
+    if (!this.host.sessions) return;
+    const row = this.host.sessions.findById(id);
+    if (!row) {
+      this.send({ kind: "error", message: `Session not found: ${id}` });
+      return;
+    }
+    this.send({ kind: "titleGenerationProgress", id, state: "running" });
+    try {
+      const sourcePath =
+        row.orphaned === 0
+          ? row.file_path
+          : this.host.archive.has(row.id)
+            ? this.host.archive.pathFor(row.id)
+            : null;
+      if (!sourcePath) {
+        throw new TitleGenerationError(
+          "Transcript was pruned and no archive copy is available.",
+        );
+      }
+      const reader =
+        row.source === "codex" ? readCodexTranscript : readTranscript;
+      // Ten messages is plenty for a 5–7 word title — buildExcerpt will trim
+      // further to the first three with non-empty text/thinking blocks.
+      const messages = await reader(sourcePath, 10);
+      const excerpt = buildExcerpt(messages);
+      const title = await generateTitle(row.source, excerpt);
+      this.host.sessions.setCustomTitle(id, title);
+      this.refreshDetail(id);
+      this.refreshList();
+      this.send({ kind: "titleGenerationProgress", id, state: "done" });
+    } catch (err) {
+      const message =
+        err instanceof TitleGenerationError
+          ? err.message
+          : `Failed to generate title: ${(err as Error).message}`;
+      this.send({
+        kind: "titleGenerationProgress",
+        id,
+        state: "error",
+        message,
       });
     }
   }
