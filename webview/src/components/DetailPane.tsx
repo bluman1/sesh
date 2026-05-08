@@ -14,6 +14,7 @@ interface Props {
   transcript: TranscriptMessage[];
   loading: boolean;
   currentPath: string | null;
+  searchQuery: string;
 }
 
 function formatAbsolute(ms: number): string {
@@ -37,7 +38,13 @@ function formatRelative(ms: number): string {
   return `${Math.floor(mo / 12)}y ago`;
 }
 
-export function DetailPane({ session, transcript, loading, currentPath }: Props): JSX.Element {
+export function DetailPane({
+  session,
+  transcript,
+  loading,
+  currentPath,
+  searchQuery,
+}: Props): JSX.Element {
   const { categories, create: createCategory } = useCategories();
   const allTags = useAllTags();
   const [titleDraft, setTitleDraft] = useState("");
@@ -353,7 +360,7 @@ export function DetailPane({ session, transcript, loading, currentPath }: Props)
 
       <section className="sesh-detail-section sesh-detail-transcript">
         <div className="sesh-section-label">Transcript</div>
-        <Transcript messages={transcript} />
+        <Transcript messages={transcript} searchQuery={searchQuery} />
       </section>
     </div>
   );

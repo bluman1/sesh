@@ -2,12 +2,14 @@ import { Virtuoso } from "react-virtuoso";
 import type { SessionListItem } from "../messaging";
 import type { Category } from "../hooks/useCategories";
 import { Icon } from "./Icon";
+import { Highlight } from "./Highlight";
 
 interface Props {
   sessions: SessionListItem[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   categories: Category[];
+  searchQuery: string;
 }
 
 function relativeTime(ms: number): string {
@@ -36,6 +38,7 @@ export function SessionList({
   selectedId,
   onSelect,
   categories,
+  searchQuery,
 }: Props): JSX.Element {
   if (sessions.length === 0) {
     return (
@@ -64,7 +67,7 @@ export function SessionList({
                 <Icon name="star-full" className="sesh-list-star" />
               ) : null}
               <span className="sesh-list-title" title={s.title}>
-                {s.title}
+                <Highlight text={s.title} query={searchQuery} />
               </span>
               <span
                 className="sesh-list-time"

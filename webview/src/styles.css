@@ -730,6 +730,17 @@ body {
   line-height: 1.5;
   word-break: break-word;
 }
+
+/* Search hit highlight */
+.sesh-hl {
+  background: var(--vscode-editor-findMatchHighlightBackground, rgba(255, 200, 0, 0.35));
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.sesh-list-row.is-selected .sesh-hl {
+  background: var(--vscode-editor-findMatchBackground, rgba(255, 200, 0, 0.55));
+}
 .sesh-transcript-empty {
   padding: var(--sesh-space-4);
   text-align: center;

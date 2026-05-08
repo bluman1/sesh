@@ -46,6 +46,7 @@ export function App(): JSX.Element {
             selectedId={selectedId}
             onSelect={setSelectedId}
             categories={categories}
+            searchQuery={sessionsApi.filters.query}
           />
         </div>
         <div className="sesh-pane sesh-pane-detail">
@@ -54,6 +55,7 @@ export function App(): JSX.Element {
             transcript={detail.transcript}
             loading={detail.loading}
             currentPath={sessionsApi.currentPath}
+            searchQuery={sessionsApi.filters.query}
           />
         </div>
       </div>
