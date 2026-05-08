@@ -134,4 +134,17 @@ describe("searchSessions", () => {
     ).run("a", "hello world this is a deep dive into authentication systems");
     expect(searchSessions(db, { ...NEUTRAL, query: "authentication" }).map((r) => r.id)).toEqual(["a"]);
   });
+
+  it("scope=current includes remapped paths", () => {
+    repo.upsert(baseRow("a", { project_path: "/old/path" }));
+    repo.upsert(baseRow("b", { project_path: "/new/path" }));
+    repo.upsert(baseRow("c", { project_path: "/other" }));
+    repo.addRemap("/old/path", "/new/path");
+    const result = searchSessions(db, {
+      ...NEUTRAL,
+      scope: "current",
+      currentPath: "/new/path",
+    });
+    expect(result.map((r) => r.id).sort()).toEqual(["a", "b"]);
+  });
 });

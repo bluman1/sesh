@@ -140,4 +140,22 @@ export class SessionRepository {
       )
       .all() as { id: string; file_path: string; last_parsed_offset: number }[];
   }
+
+  listRemaps(): { from_path: string; to_path: string }[] {
+    return this.db
+      .prepare("SELECT from_path, to_path FROM project_remap")
+      .all() as { from_path: string; to_path: string }[];
+  }
+
+  addRemap(fromPath: string, toPath: string): void {
+    this.db
+      .prepare(
+        "INSERT INTO project_remap (from_path, to_path) VALUES (?, ?) ON CONFLICT(from_path) DO UPDATE SET to_path = excluded.to_path",
+      )
+      .run(fromPath, toPath);
+  }
+
+  removeRemap(fromPath: string): void {
+    this.db.prepare("DELETE FROM project_remap WHERE from_path = ?").run(fromPath);
+  }
 }

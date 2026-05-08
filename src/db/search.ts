@@ -25,8 +25,16 @@ export function searchSessions(db: Db, f: SearchFilters): SessionRow[] {
   else if (f.favorited === false) conditions.push("s.favorited = 0");
 
   if (f.scope === "current" && f.currentPath) {
-    conditions.push("s.project_path = @path");
-    params.path = f.currentPath;
+    // Find remapped from_paths that point to currentPath, include them in the OR
+    const remapRows = db
+      .prepare("SELECT from_path FROM project_remap WHERE to_path = ?")
+      .all(f.currentPath) as { from_path: string }[];
+    const paths = [f.currentPath, ...remapRows.map((r) => r.from_path)];
+    const placeholders = paths.map((_, i) => `@p${i}`).join(", ");
+    conditions.push(`s.project_path IN (${placeholders})`);
+    paths.forEach((p, i) => {
+      params[`p${i}`] = p;
+    });
   }
 
   if (f.category_ids.length > 0) {
