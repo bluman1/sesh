@@ -1,0 +1,74 @@
+import type { SessionRow } from "./db/sessions";
+
+export interface SessionListItem {
+  id: string;
+  title: string;
+  project_path: string;
+  last_active_at: number;
+  created_at: number;
+  message_count: number;
+  favorited: 0 | 1;
+  archived: 0 | 1;
+  category_id: number | null;
+  tags: string[];
+}
+
+export interface SessionDetail extends SessionListItem {
+  source: string;
+  custom_title: string | null;
+  auto_title: string | null;
+  notes: string | null;
+  file_path: string;
+}
+
+export interface TranscriptMessage {
+  type: "user" | "assistant";
+  text: string;
+  timestamp: number;
+}
+
+export type Scope = "current" | "all";
+
+export type ToHost =
+  | { kind: "ready" }
+  | { kind: "listSessions"; scope: Scope; currentPath: string | null }
+  | { kind: "getSession"; id: string }
+  | { kind: "getTranscript"; id: string; limit: number };
+
+export type ToWebview =
+  | { kind: "workspace"; currentPath: string | null }
+  | {
+      kind: "sessionList";
+      scope: Scope;
+      currentPath: string | null;
+      sessions: SessionListItem[];
+    }
+  | { kind: "sessionDetail"; session: SessionDetail }
+  | { kind: "transcript"; id: string; messages: TranscriptMessage[] }
+  | { kind: "error"; message: string };
+
+export function rowToListItem(row: SessionRow, tags: string[]): SessionListItem {
+  return {
+    id: row.id,
+    title: row.custom_title ?? row.auto_title ?? "(untitled)",
+    project_path: row.project_path,
+    last_active_at: row.last_active_at,
+    created_at: row.created_at,
+    message_count: row.message_count,
+    favorited: row.favorited,
+    archived: row.archived,
+    category_id: row.category_id,
+    tags,
+  };
+}
+
+export function rowToDetail(row: SessionRow, tags: string[]): SessionDetail {
+  return {
+    ...rowToListItem(row, tags),
+    source: row.source,
+    custom_title: row.custom_title,
+    auto_title: row.auto_title,
+    notes: row.notes,
+    file_path: row.file_path,
+  };
+}
