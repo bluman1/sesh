@@ -1,6 +1,7 @@
 export interface SessionListItem {
   id: string;
   title: string;
+  source: string;
   project_path: string;
   last_active_at: number;
   created_at: number;
@@ -12,7 +13,6 @@ export interface SessionListItem {
 }
 
 export interface SessionDetail extends SessionListItem {
-  source: string;
   custom_title: string | null;
   auto_title: string | null;
   notes: string | null;

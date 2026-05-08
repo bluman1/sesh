@@ -6,6 +6,7 @@ import {
 } from "../messaging";
 import { Transcript } from "./Transcript";
 import { Icon } from "./Icon";
+import { SourceBadge } from "./SourceBadge";
 import { useCategories } from "../hooks/useCategories";
 import { useAllTags } from "../hooks/useAllTags";
 
@@ -191,6 +192,12 @@ export function DetailPane({
         </div>
 
         <dl className="sesh-detail-meta-strip">
+          <div>
+            <dt>Source</dt>
+            <dd>
+              <SourceBadge source={session.source} showLabel />
+            </dd>
+          </div>
           <div>
             <dt>Last active</dt>
             <dd title={formatAbsolute(session.last_active_at)}>

@@ -3,6 +3,7 @@ import type { SessionListItem } from "../messaging";
 import type { Category } from "../hooks/useCategories";
 import { Icon } from "./Icon";
 import { Highlight } from "./Highlight";
+import { SourceBadge } from "./SourceBadge";
 
 interface Props {
   sessions: SessionListItem[];
@@ -63,6 +64,7 @@ export function SessionList({
             onClick={() => onSelect(s.id)}
           >
             <div className="sesh-list-line-1">
+              <SourceBadge source={s.source} className="sesh-list-source" />
               {s.favorited ? (
                 <Icon name="star-full" className="sesh-list-star" />
               ) : null}

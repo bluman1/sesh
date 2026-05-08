@@ -3,6 +3,7 @@ import type { SessionRow } from "./db/sessions";
 export interface SessionListItem {
   id: string;
   title: string;
+  source: string;
   project_path: string;
   last_active_at: number;
   created_at: number;
@@ -14,7 +15,6 @@ export interface SessionListItem {
 }
 
 export interface SessionDetail extends SessionListItem {
-  source: string;
   custom_title: string | null;
   auto_title: string | null;
   notes: string | null;
@@ -85,6 +85,7 @@ export function rowToListItem(row: SessionRow, tags: string[]): SessionListItem 
   return {
     id: row.id,
     title: row.custom_title ?? row.auto_title ?? "(untitled)",
+    source: row.source,
     project_path: row.project_path,
     last_active_at: row.last_active_at,
     created_at: row.created_at,
@@ -99,7 +100,6 @@ export function rowToListItem(row: SessionRow, tags: string[]): SessionListItem 
 export function rowToDetail(row: SessionRow, tags: string[]): SessionDetail {
   return {
     ...rowToListItem(row, tags),
-    source: row.source,
     custom_title: row.custom_title,
     auto_title: row.auto_title,
     notes: row.notes,

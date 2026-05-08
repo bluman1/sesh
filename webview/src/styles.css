@@ -259,6 +259,25 @@ body {
   color: var(--sesh-warning);
   flex: 0 0 auto;
 }
+.sesh-list-source {
+  color: var(--sesh-fg-muted);
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+}
+.sesh-list-source .codicon {
+  font-size: var(--sesh-text-base);
+}
+
+/* Source badge (used in detail pane meta strip) */
+.sesh-source {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sesh-space-1);
+}
+.sesh-source-label {
+  font-size: var(--sesh-text-sm);
+}
 .sesh-list-title {
   flex: 1 1 auto;
   white-space: nowrap;
@@ -451,7 +470,7 @@ body {
 .sesh-detail-meta-strip {
   margin: 0;
   display: grid;
-  grid-template-columns: auto auto auto 1fr;
+  grid-template-columns: auto auto auto auto 1fr;
   gap: var(--sesh-space-1) var(--sesh-space-4);
   font-size: var(--sesh-text-xs);
 }
