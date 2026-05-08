@@ -1,0 +1,5 @@
+{"type":"queue-operation","operation":"enqueue","timestamp":"2026-04-21T08:47:11.844Z","sessionId":"sample-id"}
+{"parentUuid":null,"cwd":"/tmp/proj","type":"user","message":{"role":"user","content":"first prompt"},"uuid":"u1","timestamp":"2026-04-21T08:48:00.000Z"}
+not valid json
+{"type":"assistant","message":{"role":"assistant","content":"reply"},"uuid":"a1","timestamp":"2026-04-21T08:48:05.000Z"}
+{"type":"user","message":{"role":"user","content":"second prompt"},"uuid":"u2","timestamp":"2026-04-21T08:50:00.000Z"}
