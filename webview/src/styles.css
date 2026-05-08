@@ -746,6 +746,25 @@ body {
   text-align: center;
   color: var(--sesh-fg-muted);
 }
+.sesh-transcript-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: var(--sesh-space-2);
+}
+.sesh-transcript-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--sesh-space-2);
+  flex: 0 0 auto;
+}
+.sesh-transcript-count {
+  margin-left: auto;
+  color: var(--sesh-fg-muted);
+  font-size: var(--sesh-text-xs);
+  font-variant-numeric: tabular-nums;
+}
 
 /* ─── Remap banner ──────────────────────────────────── */
 
