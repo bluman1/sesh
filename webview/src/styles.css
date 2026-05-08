@@ -395,3 +395,51 @@ body {
   font-size: 10px;
   font-weight: 500;
 }
+
+.sesh-toolbar-chips {
+  flex-wrap: wrap;
+  margin-top: 6px;
+  gap: 4px;
+}
+.sesh-chip {
+  background: transparent;
+  border: 1px solid var(--vscode-input-border, #555);
+  color: var(--vscode-foreground, #ccc);
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.sesh-chip:hover {
+  background: var(--vscode-toolbar-hoverBackground, rgba(128,128,128,0.15));
+}
+.sesh-chip.is-on {
+  background: var(--vscode-list-activeSelectionBackground, #094771);
+  color: var(--vscode-list-activeSelectionForeground, #fff);
+  border-color: transparent;
+}
+.sesh-chip-tag.is-on {
+  background: var(--vscode-charts-purple, #c5f);
+  color: #000;
+}
+.sesh-search-input {
+  flex: 1 1 auto;
+  background: var(--vscode-input-background, #1e1e1e);
+  color: var(--vscode-input-foreground, #ccc);
+  border: 1px solid var(--vscode-input-border, #555);
+  border-radius: 2px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 12px;
+}
+.sesh-search-input:focus {
+  outline: none;
+  border-color: var(--vscode-focusBorder, #007fd4);
+}
+.sesh-status {
+  background: var(--vscode-statusBarItem-prominentBackground, #1f3a5f);
+  color: var(--vscode-statusBarItem-prominentForeground, #fff);
+  padding: 4px 12px;
+  font-size: 11px;
+}
