@@ -147,7 +147,8 @@ export class SeshPanel {
             this.send({ kind: "error", message: `Session not found: ${msg.id}` });
             return;
           }
-          const messages = await readTranscript(row.file_path, msg.limit);
+          const limit = msg.limit ?? this.transcriptLimitFromSettings();
+          const messages = await readTranscript(row.file_path, limit);
           this.send({ kind: "transcript", id: msg.id, messages });
           break;
         }
@@ -297,6 +298,15 @@ export class SeshPanel {
   private broadcastAllTags(): void {
     if (!this.host.tags) return;
     this.send({ kind: "allTags", tags: this.host.tags.listAllTags() });
+  }
+
+  private transcriptLimitFromSettings(): number {
+    const cfg = vscode.workspace.getConfiguration("sesh");
+    const raw = cfg.get<number>("transcriptLimit", 10000);
+    if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 1) {
+      return 10000;
+    }
+    return Math.floor(raw);
   }
 
   private suggestRemaps(): void {

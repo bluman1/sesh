@@ -40,8 +40,9 @@
         },
         "sesh.transcriptLimit": {
           "type": "number",
-          "default": 200,
-          "description": "Maximum number of transcript messages to load in the detail pane."
+          "default": 10000,
+          "minimum": 1,
+          "description": "Maximum number of transcript messages to load in the detail pane. Returns the most recent messages first; lower this if very long transcripts feel slow to open."
         }
       }
     }

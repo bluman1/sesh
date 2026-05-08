@@ -13,8 +13,11 @@ describe("readTranscript", () => {
     expect(messages[0].timestamp).toBe(new Date("2026-04-21T08:48:00.000Z").getTime());
   });
 
-  it("respects limit parameter", async () => {
+  it("respects limit parameter and returns the last N messages (most recent)", async () => {
     const messages = await readTranscript(FIXTURE, 1);
     expect(messages).toHaveLength(1);
+    // sample.jsonl ends with 'second prompt' as the last user message;
+    // earlier messages ('first prompt', 'reply') are dropped.
+    expect(messages[0].text).toBe("second prompt");
   });
 });

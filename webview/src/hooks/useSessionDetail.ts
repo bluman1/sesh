@@ -6,8 +6,6 @@ import {
   type TranscriptMessage,
 } from "../messaging";
 
-const TRANSCRIPT_LIMIT = 200;
-
 export function useSessionDetail(id: string | null): {
   session: SessionDetail | null;
   transcript: TranscriptMessage[];
@@ -38,7 +36,8 @@ export function useSessionDetail(id: string | null): {
     setSession(null);
     setTranscript([]);
     postToHost({ kind: "getSession", id });
-    postToHost({ kind: "getTranscript", id, limit: TRANSCRIPT_LIMIT });
+    // Limit is read from sesh.transcriptLimit on the host side.
+    postToHost({ kind: "getTranscript", id });
   }, [id]);
 
   return { session, transcript, loading };

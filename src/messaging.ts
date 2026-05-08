@@ -43,7 +43,7 @@ export type ToHost =
   | { kind: "ready" }
   | { kind: "searchSessions"; filters: SearchFilters }
   | { kind: "getSession"; id: string }
-  | { kind: "getTranscript"; id: string; limit: number }
+  | { kind: "getTranscript"; id: string; limit?: number }
   | { kind: "setCustomTitle"; id: string; title: string | null }
   | { kind: "setCategory"; id: string; categoryId: number | null }
   | { kind: "setNotes"; id: string; notes: string | null }

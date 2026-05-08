@@ -22,6 +22,14 @@ function asText(content: unknown): string | null {
   return null;
 }
 
+/**
+ * Reads the JSONL and returns transcript messages.
+ *
+ * When `limit` is provided, returns the **last** `limit` messages (the most
+ * recent ones). The previous behaviour returned the first N which hid the
+ * tail of long sessions — typically what the user actually wants to see when
+ * they open a session.
+ */
 export async function readTranscript(
   filePath: string,
   limit?: number,
@@ -41,7 +49,13 @@ export async function readTranscript(
       text: cleaned,
       timestamp: Number.isNaN(ts) ? 0 : ts,
     });
-    if (limit !== undefined && out.length >= limit) break;
+    // Keep memory bounded to roughly 2*limit while streaming; trim later.
+    if (limit !== undefined && out.length > limit * 2) {
+      out.splice(0, out.length - limit);
+    }
+  }
+  if (limit !== undefined && out.length > limit) {
+    return out.slice(out.length - limit);
   }
   return out;
 }
