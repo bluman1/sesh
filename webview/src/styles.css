@@ -1597,58 +1597,130 @@ body {
   line-height: 1;
 }
 
-/* ─── Next Session Banner ─────────── */
-.sesh-next-banner {
+/* Pick up where you left off — slim collapsible strip above the Sessions list */
+.sesh-pickup {
+  margin: var(--sesh-space-2) var(--sesh-space-3) 0;
   border: 1px solid var(--sesh-border-subtle);
   border-radius: var(--sesh-radius-md);
-  background: color-mix(in srgb, var(--sesh-accent) 6%, var(--sesh-bg-elevated));
-  padding: var(--sesh-space-2) var(--sesh-space-3);
-  margin: var(--sesh-space-2) var(--sesh-space-3);
+  background: var(--sesh-bg-elevated);
+  overflow: hidden;
 }
-.sesh-next-banner-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--sesh-space-1);
-}
-.sesh-next-banner-close,
-.sesh-next-banner-dismiss {
-  background: transparent;
-  border: none;
-  color: var(--sesh-fg-muted);
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
-}
-.sesh-next-banner-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
-.sesh-next-banner-item {
+.sesh-pickup-head {
   display: flex;
   align-items: center;
   gap: var(--sesh-space-2);
-  padding: 4px 0;
+  padding: 6px var(--sesh-space-3);
+  width: 100%;
+  background: transparent;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  color: var(--vscode-foreground);
+  text-align: left;
 }
-.sesh-next-banner-kind {
+.sesh-pickup-head:hover {
+  background: color-mix(in srgb, var(--sesh-accent) 5%, var(--sesh-fill-subtle));
+}
+.sesh-pickup-chevron {
   flex: 0 0 auto;
-  font-size: var(--sesh-text-xs);
-  text-transform: lowercase;
-  padding: 2px 8px;
+  color: var(--sesh-fg-muted);
+  font-size: var(--sesh-text-sm);
+}
+.sesh-pickup-title {
+  flex: 0 0 auto;
+  font-size: var(--sesh-text-sm);
+  font-weight: 500;
+  color: var(--vscode-foreground);
+}
+.sesh-pickup-count {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
   border-radius: var(--sesh-radius-pill);
+  font-size: var(--sesh-text-xs);
+  font-variant-numeric: tabular-nums;
   background: var(--sesh-fill-subtle);
   color: var(--sesh-fg-muted);
 }
-.sesh-next-banner-kind-idea { color: var(--vscode-charts-purple, #a371f7); }
-.sesh-next-banner-kind-commitment { color: var(--vscode-charts-green, #3fb950); }
-.sesh-next-banner-text {
+.sesh-pickup-spacer { flex: 1 1 auto; }
+.sesh-pickup-close {
+  flex: 0 0 auto;
+  color: var(--sesh-fg-muted);
+  font-size: 16px;
+  line-height: 1;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--sesh-radius-sm);
+  cursor: pointer;
+}
+.sesh-pickup-close:hover {
+  background: var(--sesh-fill-subtle);
+  color: var(--vscode-foreground);
+}
+.sesh-pickup-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid var(--sesh-border-subtle);
+}
+.sesh-pickup-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sesh-space-2);
+  padding: 6px var(--sesh-space-3);
+  border-top: 1px solid var(--sesh-border-subtle);
+}
+.sesh-pickup-item:first-child { border-top: none; }
+.sesh-pickup-item:hover {
+  background: color-mix(in srgb, var(--sesh-accent) 5%, var(--sesh-fill-subtle));
+}
+.sesh-pickup-dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sesh-fg-muted);
+}
+.sesh-pickup-dot-idea { background: var(--vscode-charts-purple, #a371f7); }
+.sesh-pickup-dot-commitment { background: var(--vscode-charts-green, #3fb950); }
+.sesh-pickup-text {
   flex: 1 1 auto;
   background: transparent;
   border: none;
   padding: 0;
   text-align: left;
   font: inherit;
+  font-size: var(--sesh-text-sm);
   color: var(--vscode-foreground);
   cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
-.sesh-next-banner-text:hover { text-decoration: underline; }
+.sesh-pickup-text:hover { text-decoration: underline; }
+.sesh-pickup-dismiss {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  color: var(--sesh-fg-muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--sesh-radius-sm);
+  visibility: hidden;
+}
+.sesh-pickup-item:hover .sesh-pickup-dismiss { visibility: visible; }
+.sesh-pickup-dismiss:hover {
+  background: var(--sesh-fill-subtle);
+  color: var(--vscode-foreground);
+}
