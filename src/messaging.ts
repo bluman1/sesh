@@ -96,8 +96,8 @@ export type ToHost =
   | { kind: "setOutcome"; sessionId: string; state: "open" | "shipped" | "shipped-partial" | "reverted" | "abandoned"; notes?: string | null }
   | { kind: "triggerReindexAnalytics" }
   | { kind: "getCommitments"; sinceDays: number }
-  | { kind: "getReviewerBranch"; repoPath?: string; branch?: string }
-  | { kind: "getReviewerSessions"; repoPath?: string }
+  | { kind: "getReviewerBranch"; repoPath?: string; branch?: string; limit?: number; offset?: number }
+  | { kind: "getReviewerSessions"; repoPath?: string; limit?: number; offset?: number }
   | { kind: "getReviewerPRs"; repoPath?: string }
   | { kind: "triggerReindexGit" };
 
@@ -145,6 +145,8 @@ export type ToWebview =
         authored_at: number;
         sessions: { session_id: string; title: string; confidence: number }[];
       }[];
+      offset: number;
+      hasMore: boolean;
     }
   | {
       kind: "reviewerSessions";
@@ -155,6 +157,8 @@ export type ToWebview =
         last_active_at: number;
         commits: { sha: string; message: string | null; confidence: number }[];
       }[];
+      offset: number;
+      hasMore: boolean;
     }
   | {
       kind: "reviewerPRs";

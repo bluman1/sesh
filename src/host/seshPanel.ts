@@ -462,6 +462,8 @@ export class SeshPanel {
                 branches: [],
                 repoUrl: null,
                 commits: [],
+                offset: 0,
+                hasMore: false,
               });
               return;
             }
@@ -482,17 +484,23 @@ export class SeshPanel {
               selectedBranch = branches[0];
             }
 
-            // Load commits from DB (ordered by authored_at DESC)
-            let recent = commitRepo.listForRepo(repoPath).slice(0, 100);
+            // Load commits from DB (ordered by authored_at DESC), no hard cap
+            let recent = commitRepo.listForRepo(repoPath);
 
             // Filter to commits reachable from the selected branch
             if (selectedBranch) {
               const inBranch = await runCommitsInBranch(repoPath, selectedBranch);
-              recent = recent.filter((c) => inBranch.has(c.sha)).slice(0, 100);
+              recent = recent.filter((c) => inBranch.has(c.sha));
             }
 
+            // Pagination
+            const limit = msg.limit ?? 30;
+            const offset = msg.offset ?? 0;
+            const page = recent.slice(offset, offset + limit);
+            const hasMore = recent.length > offset + page.length;
+
             // Batched lookups — 2 queries instead of N+1
-            const shas = recent.map((c) => c.sha);
+            const shas = page.map((c) => c.sha);
             const sessionsByCommit = links.sessionsForCommits(shas);
             const allSessionIds = new Set<string>();
             for (const rows of sessionsByCommit.values()) {
@@ -500,7 +508,7 @@ export class SeshPanel {
             }
             const sessionRowsById = sessions.findByIds([...allSessionIds]);
 
-            const payload = recent.map((c) => {
+            const payload = page.map((c) => {
               const linked = sessionsByCommit.get(c.sha) ?? [];
               const enrichedSessions = linked.map((l) => {
                 const row = sessionRowsById.get(l.session_id);
@@ -526,6 +534,8 @@ export class SeshPanel {
               branches,
               repoUrl,
               commits: payload,
+              offset,
+              hasMore,
             });
           })();
           break;
@@ -533,7 +543,7 @@ export class SeshPanel {
         case "getReviewerSessions": {
           const repoPath = msg.repoPath ?? this.resolveDefaultRepo();
           if (!repoPath) {
-            this.send({ kind: "reviewerSessions", repoPath: null, sessions: [] });
+            this.send({ kind: "reviewerSessions", repoPath: null, sessions: [], offset: 0, hasMore: false });
             break;
           }
           const links = new SessionCommitRepository(this.host.rawDb!);
@@ -551,7 +561,8 @@ export class SeshPanel {
           }
           const commitRowsBySha = commitRepo.findByShas([...allCommitShas]);
 
-          const payload = repoSessions
+          // Build full filtered list BEFORE paginating so hasMore is accurate
+          const filteredRepoSessions = repoSessions
             .map((s) => {
               const linked = commitsBySession.get(s.id);
               if (!linked || linked.length === 0) return null;
@@ -571,7 +582,13 @@ export class SeshPanel {
             })
             .filter((x): x is NonNullable<typeof x> => x !== null);
 
-          this.send({ kind: "reviewerSessions", repoPath, sessions: payload });
+          // Pagination
+          const sessLimit = msg.limit ?? 30;
+          const sessOffset = msg.offset ?? 0;
+          const sessPage = filteredRepoSessions.slice(sessOffset, sessOffset + sessLimit);
+          const sessHasMore = filteredRepoSessions.length > sessOffset + sessPage.length;
+
+          this.send({ kind: "reviewerSessions", repoPath, sessions: sessPage, offset: sessOffset, hasMore: sessHasMore });
           break;
         }
         case "triggerReindexGit": {

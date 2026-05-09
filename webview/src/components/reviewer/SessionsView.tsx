@@ -1,16 +1,45 @@
 import { useState, useEffect } from "react";
 import { onHostMessage, postToHost, type ToWebview } from "../../messaging";
+import { Icon } from "../Icon";
 
 type SessionsPayload = Extract<ToWebview, { kind: "reviewerSessions" }>;
+type SessionItem = SessionsPayload["sessions"][number];
 
 type Props = { onNavigateToSession: (id: string) => void };
 
+function relativeTime(ms: number): string {
+  const diff = Date.now() - ms;
+  const sec = Math.floor(diff / 1000);
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 30) return `${day}d ago`;
+  const mo = Math.floor(day / 30);
+  if (mo < 12) return `${mo}mo ago`;
+  return `${Math.floor(mo / 12)}y ago`;
+}
+
 export function SessionsView({ onNavigateToSession }: Props): JSX.Element {
   const [payload, setPayload] = useState<SessionsPayload | null>(null);
+  const [sessions, setSessions] = useState<SessionItem[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     const off = onHostMessage((msg) => {
-      if (msg.kind === "reviewerSessions") setPayload(msg);
+      if (msg.kind === "reviewerSessions") {
+        setPayload(msg);
+        if (msg.offset === 0) {
+          setSessions(msg.sessions);
+        } else {
+          setSessions((prev) => [...prev, ...msg.sessions]);
+        }
+        setHasMore(msg.hasMore);
+        setLoadingMore(false);
+      }
     });
     postToHost({ kind: "getReviewerSessions" });
     return off;
@@ -18,50 +47,62 @@ export function SessionsView({ onNavigateToSession }: Props): JSX.Element {
 
   if (!payload) return <div className="sesh-reviewer-loading">Loading…</div>;
   if (!payload.repoPath) return <div className="sesh-reviewer-empty">No git repo detected for the current workspace.</div>;
-  if (payload.sessions.length === 0) {
+  if (sessions.length === 0) {
     return <div className="sesh-reviewer-empty">No sessions linked to commits in this repo yet.</div>;
+  }
+
+  function handleLoadMore() {
+    setLoadingMore(true);
+    postToHost({ kind: "getReviewerSessions", offset: sessions.length });
   }
 
   return (
     <div>
       <div className="sesh-reviewer-toolbar">
         <span className="sesh-reviewer-repo">
-          {payload.sessions.length} session{payload.sessions.length === 1 ? "" : "s"} linked to commits in <code>{payload.repoPath}</code>
+          {sessions.length}{hasMore ? "+" : ""} session{sessions.length === 1 ? "" : "s"} linked to commits in <code>{payload.repoPath}</code>
         </span>
       </div>
-      <ul className="sesh-reviewer-session-cards">
-        {payload.sessions.map((s) => {
+      <ul className="sesh-reviewer-session-rows">
+        {sessions.map((s) => {
           const top = s.commits[0]?.confidence ?? 0;
+          const firstMsg = s.commits[0]?.message ?? "(no message)";
           return (
-            <li key={s.session_id} className="sesh-reviewer-session-card">
+            <li key={s.session_id} className="sesh-reviewer-session-row">
               <button
                 type="button"
-                className="sesh-reviewer-session-card-button"
+                className="sesh-reviewer-session-row-button"
                 onClick={() => onNavigateToSession(s.session_id)}
               >
-                <div className="sesh-reviewer-session-card-header">
-                  <span className="sesh-reviewer-session-card-title">{s.title}</span>
+                <div className="sesh-reviewer-session-row-line-1">
+                  <span className="sesh-reviewer-session-row-title">{s.title}</span>
                   <ConfidenceTag confidence={top} />
+                  <span className="sesh-reviewer-session-row-time" title={new Date(s.last_active_at).toLocaleString()}>
+                    {relativeTime(s.last_active_at)}
+                  </span>
                 </div>
-                <div className="sesh-reviewer-session-card-meta">
-                  {s.commits.length} commit{s.commits.length === 1 ? "" : "s"} · last active {new Date(s.last_active_at).toLocaleDateString()}
-                </div>
-                <div className="sesh-reviewer-session-card-commits">
-                  {s.commits.slice(0, 3).map((c) => (
-                    <span key={c.sha} className="sesh-reviewer-session-card-commit">
-                      <code className="sesh-reviewer-sha">{c.sha.slice(0, 7)}</code>{" "}
-                      <span className="sesh-reviewer-session-card-msg">{c.message ?? "(no message)"}</span>
-                    </span>
-                  ))}
-                  {s.commits.length > 3 && (
-                    <span className="sesh-reviewer-session-card-more">+{s.commits.length - 3} more</span>
-                  )}
+                <div className="sesh-reviewer-session-row-line-2">
+                  <span className="sesh-reviewer-session-row-count">
+                    <Icon name="git-commit" /> {s.commits.length}
+                  </span>
+                  <span className="sesh-reviewer-session-row-sep">·</span>
+                  <span className="sesh-reviewer-session-row-msg">{firstMsg}</span>
                 </div>
               </button>
             </li>
           );
         })}
       </ul>
+      {hasMore && (
+        <button
+          type="button"
+          className="sesh-reviewer-load-more"
+          disabled={loadingMore}
+          onClick={handleLoadMore}
+        >
+          {loadingMore ? "Loading…" : "Load more"}
+        </button>
+      )}
     </div>
   );
 }

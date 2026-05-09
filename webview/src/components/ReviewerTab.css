@@ -21,12 +21,18 @@
 
 .sesh-reviewer-list { list-style: none; padding: 0; margin: 0; }
 .sesh-reviewer-commit {
-  padding: var(--sesh-space-2) 0;
+  padding: 11px var(--sesh-space-3);
+  border-radius: var(--sesh-radius-md);
+  border: 1px solid transparent;
   border-bottom: 1px solid var(--sesh-border-subtle);
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+.sesh-reviewer-commit:hover {
+  background: color-mix(in srgb, var(--sesh-accent) 5%, var(--sesh-fill-subtle));
+  border-color: var(--sesh-border-subtle);
 }
 .sesh-reviewer-commit:last-child {
-  border-bottom: none;
-  padding-bottom: var(--sesh-space-4);
+  border-bottom-color: transparent;
 }
 .sesh-reviewer-commit-title { font-weight: 500; }
 .sesh-reviewer-commit-meta {
@@ -60,14 +66,6 @@
 }
 .sesh-reviewer-repo {
   color: color-mix(in srgb, var(--vscode-foreground) 80%, transparent);
-}
-.sesh-reviewer-branch-select {
-  background: var(--sesh-bg-elevated);
-  color: var(--vscode-foreground);
-  border: 1px solid var(--sesh-border-subtle);
-  border-radius: var(--sesh-radius-sm);
-  padding: 4px var(--sesh-space-2);
-  font: inherit;
 }
 .sesh-reviewer-loading {
   color: color-mix(in srgb, var(--vscode-foreground) 60%, transparent);
@@ -119,69 +117,107 @@
   color: color-mix(in srgb, var(--vscode-foreground) 55%, transparent);
 }
 
-/* Session cards (Sessions sub-view) */
-.sesh-reviewer-session-cards {
+/* Reviewer Sessions sub-view rows */
+.sesh-reviewer-session-rows {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: grid;
-  gap: var(--sesh-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sesh-space-1);
 }
-.sesh-reviewer-session-card {
+
+.sesh-reviewer-session-row {
   list-style: none;
 }
-.sesh-reviewer-session-card-button {
+
+.sesh-reviewer-session-row-button {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
   width: 100%;
   text-align: left;
-  background: var(--sesh-bg-elevated);
-  border: 1px solid var(--sesh-border-subtle);
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: var(--sesh-radius-md);
-  padding: var(--sesh-space-3);
+  padding: 11px var(--sesh-space-3);
   cursor: pointer;
   font: inherit;
   color: var(--vscode-foreground);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sesh-space-2);
+  transition: background-color 0.12s ease, border-color 0.12s ease;
 }
-.sesh-reviewer-session-card-button:hover {
-  background: color-mix(in srgb, var(--sesh-bg-elevated) 80%, var(--vscode-foreground) 6%);
+.sesh-reviewer-session-row-button:hover {
+  background: color-mix(in srgb, var(--sesh-accent) 5%, var(--sesh-fill-subtle));
+  border-color: var(--sesh-border-subtle);
 }
-.sesh-reviewer-session-card-header {
+
+.sesh-reviewer-session-row-line-1 {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--sesh-space-2);
+  min-width: 0;
 }
-.sesh-reviewer-session-card-title {
-  font-weight: 500;
-}
-.sesh-reviewer-session-card-meta {
-  color: color-mix(in srgb, var(--vscode-foreground) 62%, transparent);
-  font-size: 0.9em;
-}
-.sesh-reviewer-session-card-commits {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 0.9em;
-}
-.sesh-reviewer-session-card-commit {
-  display: flex;
-  gap: var(--sesh-space-2);
-  align-items: baseline;
+.sesh-reviewer-session-row-title {
+  flex: 1 1 auto;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-weight: 500;
+  font-size: var(--sesh-text-base);
+  letter-spacing: -0.005em;
 }
-.sesh-reviewer-session-card-msg {
-  color: color-mix(in srgb, var(--vscode-foreground) 78%, transparent);
+.sesh-reviewer-session-row-time {
+  flex: 0 0 auto;
+  color: var(--sesh-fg-muted);
+  font-size: var(--sesh-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.sesh-reviewer-session-row-line-2 {
+  display: flex;
+  align-items: center;
+  gap: var(--sesh-space-2);
+  color: var(--sesh-fg-muted);
+  font-size: var(--sesh-text-xs);
+  min-width: 0;
+}
+.sesh-reviewer-session-row-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.sesh-reviewer-session-row-msg {
+  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
 }
-.sesh-reviewer-session-card-more {
-  color: color-mix(in srgb, var(--vscode-foreground) 50%, transparent);
-  font-size: 0.85em;
+.sesh-reviewer-session-row-sep {
+  color: color-mix(in srgb, var(--vscode-foreground) 30%, transparent);
+}
+
+/* Load more button (shared by Branch + Sessions sub-views) */
+.sesh-reviewer-load-more {
+  display: block;
+  width: 100%;
+  margin-top: var(--sesh-space-3);
+  padding: var(--sesh-space-2) var(--sesh-space-3);
+  background: transparent;
+  border: 1px solid var(--sesh-border-subtle);
+  border-radius: var(--sesh-radius-md);
+  color: var(--sesh-fg-muted);
+  cursor: pointer;
+  font: inherit;
+  text-align: center;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+.sesh-reviewer-load-more:hover:not(:disabled) {
+  background: var(--sesh-fill-subtle);
+  color: var(--vscode-foreground);
+}
+.sesh-reviewer-load-more:disabled {
+  cursor: progress;
+  opacity: 0.7;
 }
