@@ -66,7 +66,7 @@ Pricing table in `analyticsQueries.ts` is hard-coded and must be updated when th
 | Models | `LeaderboardView` | `modelLeaderboard` — per-model usage + cost. |
 | Records | `RecordsView` | `personalRecords` — streak, longest session, total spend. |
 
-Data flows via the existing messaging protocol (`src/messaging.ts`): host pushes `analyticsData` on tab focus; webview hook `useInsights` subscribes.
+Data flows via the existing messaging protocol (`src/messaging.ts`): host pushes `insights` on tab focus; webview hook `useInsights` subscribes.
 
 **AnalyticsChip** (`webview/src/components/AnalyticsChip.tsx`) — rendered on each session row in the Sessions tab. Displays: outcome state dot · session cost (USD) · model badge. Hidden when turns have not yet been indexed for a session.
 
@@ -88,7 +88,7 @@ Data flows via the existing messaging protocol (`src/messaging.ts`): host pushes
 
 ### Backfill strategy
 
-At activation (`extension.ts` → `SeshHost.start()`): if `indexBackfillMode === "eager"`, all sessions with `turns_indexed = 0` are queued for background indexing via `turnsIndexer`. If `lazy`, indexing is deferred until the session is opened in the detail pane. The two paths both call the same `turnsIndexer.indexSession()` — no separate code path.
+At activation (`extension.ts` → `SeshHost.start()`): if `indexBackfillMode === "eager"`, all sessions with `turns_indexed = 0` are queued for background indexing via `turnsIndexer`. If `lazy`, indexing is deferred until the session is opened in the detail pane. The two paths both call the same `turnsIndexer.indexOne()` — no separate code path.
 
 ---
 
@@ -157,7 +157,7 @@ webview/src/
 │   ├── PlaceholderTab.tsx    stub for Knowledge / Ideas / Reviewer
 │   └── insights/             StandupView · CostView · LeaderboardView · RecordsView
 └── hooks/
-    ├── useInsights.ts        subscribes to analyticsData messages
+    ├── useInsights.ts        subscribes to insights messages
     └── useSessions, useSessionDetail, useCategories, useAllTags, useProjects
 ```
 

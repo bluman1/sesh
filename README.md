@@ -2,7 +2,7 @@
 
 > Browse, annotate, and resume saved Claude Code and Codex CLI sessions — without leaving VSCode.
 
-[![Tests](https://img.shields.io/badge/tests-101%20passing-brightgreen)](#development)
+[![Tests](https://img.shields.io/badge/tests-175%20passing-brightgreen)](#development)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![VSCode](https://img.shields.io/badge/VSCode-^1.94.0-007acc)](https://code.visualstudio.com/)
@@ -101,7 +101,7 @@ Sesh is a TypeScript-strict, esbuild-bundled extension with a Vite-bundled React
 ```bash
 npm install
 npm run typecheck                                    # tsc --noEmit on host
-npm test                                             # 101 tests pass (host Node binary)
+npm test                                             # 175 tests pass (host Node binary)
 npm run build                                        # bundles extension + webview
 npx @electron/rebuild -f -w better-sqlite3 -v 39.8.8 # before pressing F5
 ```
