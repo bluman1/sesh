@@ -2,7 +2,7 @@ import { streamJsonl } from "./jsonl";
 import type { TurnRow } from "../db/turns";
 import type { ToolCallRow } from "../db/toolCalls";
 
-const CORRECTION_MARKERS = /^(no|wrong|nope|stop|actually|instead|don'?t|that's wrong|that is wrong)\b/i;
+const CORRECTION_MARKERS = /^(no[,.\s!]|nope[,.\s!]?|stop[,.\s!]|wait[,.\s!]|actually|instead|don'?t|that's wrong|that is wrong|wrong[,.\s!]?)/i;
 
 const FILE_PATH_TOOLS = new Set(["Edit", "Write", "Read", "NotebookEdit"]);
 

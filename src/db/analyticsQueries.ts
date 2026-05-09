@@ -11,9 +11,27 @@ const MODEL_PRICING: Record<string, { in: number; out: number; cache_read: numbe
 };
 const DEFAULT_PRICE = { in: 3.0, out: 15.0, cache_read: 0.3, cache_create: 3.75 };
 
+const _warnedModels = new Set<string>();
+function warnUnknownModel(model: string): void {
+  if (_warnedModels.has(model)) return;
+  _warnedModels.add(model);
+  console.warn(`[sesh] Unknown model "${model}" — using heuristic pricing.`);
+}
+
 function priceFor(model: string | null): { in: number; out: number; cache_read: number; cache_create: number } {
   if (!model) return DEFAULT_PRICE;
-  return MODEL_PRICING[model] ?? DEFAULT_PRICE;
+  // Exact match first
+  if (MODEL_PRICING[model]) return MODEL_PRICING[model];
+  // Prefix-match for date-suffixed variants (e.g. claude-opus-4-7-20260301)
+  for (const [prefix, price] of Object.entries(MODEL_PRICING)) {
+    if (model.startsWith(prefix + "-")) return price;
+  }
+  // Heuristic fallback: detect family by substring
+  warnUnknownModel(model);
+  if (model.includes("opus")) return MODEL_PRICING["claude-opus-4-7"];
+  if (model.includes("haiku")) return MODEL_PRICING["claude-haiku-4-5"];
+  if (model.includes("sonnet")) return MODEL_PRICING["claude-sonnet-4-6"];
+  return DEFAULT_PRICE;
 }
 
 export function usdForTurn(t: {
@@ -131,7 +149,7 @@ export function modelLeaderboard(opts: { db: Db; since: number }): ModelBoardRow
 export interface PersonalRecords {
   longestSessionTurns: { session_id: string; turns: number };
   fewestTokensShipped: { session_id: string; tokens: number } | null;
-  longestStreak: { days: number };
+  currentStreak: { days: number };
   totalSessions: number;
   totalTurns: number;
   totalUsd: number;
@@ -193,7 +211,7 @@ export function personalRecords(opts: { db: Db }): PersonalRecords {
   return {
     longestSessionTurns: longest ?? { session_id: "", turns: 0 },
     fewestTokensShipped: fewestShipped ?? null,
-    longestStreak: { days: streak },
+    currentStreak: { days: streak },
     totalSessions,
     totalTurns,
     totalUsd,
@@ -270,25 +288,32 @@ const COMMITMENT_PATTERNS = [
 ];
 
 export function recentCommitments(opts: { db: Db; since: number }): Commitment[] {
-  // V1 reads from FTS table (already populated by ContentIndexer).
-  // Per-turn text isn't stored in turns table to keep it small; commitment
-  // mining is pattern-based against the FTS-cleaned content.
+  // V1 reads from FTS table. Per-turn text isn't stored in turns table to
+  // keep it small; commitment mining is pattern-based against the FTS-cleaned
+  // content. Note: turn_id and ts cannot be populated accurately at this
+  // layer — they're stubbed. Substrate 2's per-turn embeddings will replace
+  // this with proper turn-level metadata.
   const sessions = opts.db
     .prepare(
-      "SELECT session_id, content FROM session_content_fts WHERE session_id IN (SELECT id FROM sessions WHERE last_active_at >= ?)",
+      `SELECT scf.session_id, scf.content, s.last_active_at
+         FROM session_content_fts scf
+         JOIN sessions s ON s.id = scf.session_id
+         WHERE s.last_active_at >= ?`,
     )
-    .all(opts.since) as { session_id: string; content: string }[];
+    .all(opts.since) as { session_id: string; content: string; last_active_at: number }[];
 
   const out: Commitment[] = [];
   for (const s of sessions) {
     for (const pat of COMMITMENT_PATTERNS) {
-      const m = s.content.match(pat);
-      if (m) {
-        const idx = s.content.indexOf(m[0]);
+      // Use a fresh RegExp with the global flag so we find ALL matches.
+      const gpat = new RegExp(pat.source, pat.flags.includes("g") ? pat.flags : pat.flags + "g");
+      let m: RegExpExecArray | null;
+      while ((m = gpat.exec(s.content)) !== null) {
+        const idx = m.index;
         out.push({
           session_id: s.session_id,
-          turn_id: "",
-          ts: 0,
+          turn_id: "",  // populated in substrate 2
+          ts: s.last_active_at,  // approximate — uses session-level timestamp
           excerpt: s.content.slice(Math.max(0, idx - 30), idx + m[0].length + 60),
         });
       }
