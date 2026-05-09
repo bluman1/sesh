@@ -33,7 +33,17 @@ Schema is source-pluggable — adding another source means a parser + a `source`
 
 ## Features in detail
 
-**Session list.** Virtualized 3-line rows with title (custom or auto-derived), category pill, tags, message count, source badge, last-active relative time. Orphaned (pruned-transcript) sessions render in muted italics.
+**Tab navigation.** The panel has five tabs: Sessions, Knowledge, Insights, Ideas, and Reviewer. Sessions and Insights are live; the others are placeholders for upcoming substrates.
+
+**Insights tab.** Four sub-views:
+- *Today* — a daily standup: sessions active today, turns, and total spend broken down by project.
+- *By file* — which files have attracted the most LLM spend across all sessions.
+- *Models* — per-model turn counts and USD cost, sorted by spend.
+- *Records* — personal bests: longest session, longest streak, total spend.
+
+**Status bar.** When `sesh.statusBarShowCost` is on, the status bar shows `$(history) $X.XX today` and updates every minute. It hides on days with no activity. Click it to open the panel.
+
+**Session list.** Virtualized 3-line rows with title (custom or auto-derived), category pill, tags, message count, source badge, last-active relative time. Each row shows an outcome dot, per-session cost, and model badge once the session has been indexed. Orphaned (pruned-transcript) sessions render in muted italics.
 
 **Detail pane.** Sectioned layout: header, annotations, transcript. Folder pulled into its own labeled row. Tag input is inline, category dropdown supports inline create. Resume buttons hide when they'd be invalid (cross-workspace panel resume, codex panel resume).
 
@@ -59,6 +69,9 @@ Schema is source-pluggable — adding another source means a parser + a `source`
 | `sesh.openOnActivation` | `false` | Auto-open the panel on VSCode startup. |
 | `sesh.transcriptLimit` | `10000` | Max recent messages loaded into the detail pane. Lower this if very long transcripts feel slow to open. |
 | `sesh.archiveTranscripts` | `false` | Keep a gzipped sidecar of each transcript at `~/.sesh/transcripts/<id>.jsonl.gz` so pruned sessions stay readable. Roughly 1/6 the raw JSONL size after gzip. |
+| `sesh.statusBarShowCost` | `true` | Show today's spend in the status bar. |
+| `sesh.indexBackfillMode` | `"eager"` | `eager` indexes all sessions in the background at activation. `lazy` defers until you open a session. |
+| `sesh.outcomeInferenceDays` | `30` | Days of inactivity before an un-reviewed session is auto-marked abandoned. |
 
 ## Commands
 
@@ -66,6 +79,7 @@ Schema is source-pluggable — adding another source means a parser + a `source`
 - `Sesh: Show stats` — info message with the indexed session count.
 - `Sesh: Rescan all projects` — re-scan + reimport ghosts + reindex FTS.
 - `Sesh: Show archive size` — disk size of the opt-in archive directory.
+- `Sesh: Reindex analytics` — rebuild all turn, tool-call, and outcome data. Run this after a pricing-table change or if Insights numbers look wrong.
 
 `Sesh: Open` is wired to the activity-bar entry, the secondary-sidebar entry (right strip, alongside Claude / Codex), the editor-title button (history icon), and the welcome-view links — pick whichever fits your layout.
 
@@ -111,21 +125,28 @@ To minimize flips during a dev session: finish all code changes, then **rebuild 
 
 ```
 src/
-├── extension.ts              activate() — output channel, host start, command + view registration
+├── extension.ts              activate() — status bar, commands, view registration
 ├── host/
-│   ├── seshHost.ts           DB + scan + ghost import + content indexer + watcher + archive
+│   ├── seshHost.ts           DB + scan + ghost import + FTS + watcher + archive + turns backfill
 │   ├── seshPanel.ts          singleton WebviewPanel, message dispatcher, light/dark iconPath
+│   ├── statusBar.ts          SeshStatusBar — today's spend, refreshes every 60 s
 │   └── transcriptArchive.ts  opt-in gzipped sidecar (sesh.archiveTranscripts)
-├── messaging.ts              typed protocol (TranscriptBlock, scope, totalInScope)
+├── messaging.ts              typed host↔webview protocol
 ├── db/
 │   ├── connection.ts, migrate.ts, migrations/
-│   ├── sessions.ts, tags.ts, categories.ts
-│   └── search.ts             searchSessions + countSessionsInScope
+│   ├── sessions.ts, tags.ts, categories.ts, search.ts
+│   ├── turns.ts              TurnRepository
+│   ├── toolCalls.ts          ToolCallRepository
+│   ├── outcomes.ts           OutcomeRepository
+│   └── analyticsQueries.ts   usdForTurn · costByFile · modelLeaderboard · personalRecords · todaysStandup · recentCommitments
 └── scanner/
     ├── jsonl.ts              streaming reader — handles .jsonl.gz transparently
     ├── extract.ts            metadata extractor (Claude Code shape)
     ├── transcript.ts         transcript reader (Claude Code shape)
     ├── scan.ts               walks ~/.claude/projects/, top-level *.jsonl only
+    ├── extractTurns.ts       parse JSONL → Turn[] + ToolCall[]
+    ├── turnsIndexer.ts       incremental turn indexer (eager + lazy paths)
+    ├── outcomeInferer.ts     age-based abandoned inference
     ├── sessionsIndex.ts      imports ghost (pruned-transcript) sessions
     ├── systemTags.ts         shared SYSTEM_TAG_RE
     ├── contentIndexer.ts     background FTS populate, source-aware
@@ -133,12 +154,17 @@ src/
     └── codex/                Codex CLI source adapter (extract + scan + transcript + sessionText)
 
 webview/src/
-├── App.tsx                   PanelGroup wrapping list/detail with persisted size
+├── App.tsx                   5-tab layout: Sessions · Knowledge · Insights · Ideas · Reviewer
 ├── messaging.ts              MIRROR of host messaging.ts
 ├── styles.css                --sesh-* design tokens, theme-decoupled muted text
-├── components/               Toolbar, SessionList, DetailPane, Transcript,
-│                             MessageBlocks, CodeBlock, Highlight, SourceBadge, Icon, RemapBanner
-└── hooks/                    useSessions, useSessionDetail, useCategories, useAllTags, useProjects
+├── components/
+│   ├── TabBar.tsx            tab navigation
+│   ├── SessionsTab.tsx       session list + detail pane
+│   ├── InsightsTab.tsx       4 sub-views: Today · By file · Models · Records
+│   ├── AnalyticsChip.tsx     outcome dot · cost · model badge on session rows
+│   ├── PlaceholderTab.tsx    stub for Knowledge / Ideas / Reviewer
+│   └── insights/             StandupView · CostView · LeaderboardView · RecordsView
+└── hooks/                    useSessions, useSessionDetail, useCategories, useAllTags, useProjects, useInsights
 ```
 
 ### Design invariants
