@@ -1,8 +1,12 @@
 import * as vscode from "vscode";
 import { SeshHost } from "./host/seshHost";
 import { SeshPanel } from "./host/seshPanel";
+import { TurnRepository } from "./db/turns";
+import { ToolCallRepository } from "./db/toolCalls";
+import { TurnsIndexer } from "./scanner/turnsIndexer";
 
 let host: SeshHost | null = null;
+let turnsIndexer: TurnsIndexer | null = null;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const output = vscode.window.createOutputChannel("Sesh");
@@ -29,11 +33,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(
     vscode.commands.registerCommand("sesh.open", () => {
-      if (!host) {
+      if (!host || !turnsIndexer) {
         vscode.window.showWarningMessage("Sesh is not running.");
         return;
       }
-      SeshPanel.openOrFocus(context, host);
+      SeshPanel.openOrFocus(context, host, turnsIndexer);
     }),
     vscode.commands.registerCommand("sesh.showStats", () => {
       if (!host?.sessions) {
@@ -72,10 +76,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   try {
     await host.start();
+    // Construct analytics repos and indexer now that rawDb is available.
+    const turnRepo = new TurnRepository(host.rawDb!);
+    const toolCallRepo = new ToolCallRepository(host.rawDb!);
+    turnsIndexer = new TurnsIndexer(host.rawDb!, host.sessions!, turnRepo, toolCallRepo);
     const cfg = vscode.workspace.getConfiguration("sesh");
     const shouldOpenFromMarker = consumePendingOpenMarker(context, output);
     if (shouldOpenFromMarker || cfg.get<boolean>("openOnActivation", false)) {
-      SeshPanel.openOrFocus(context, host);
+      SeshPanel.openOrFocus(context, host, turnsIndexer);
     }
   } catch (err) {
     output.appendLine(`[sesh] activation error: ${(err as Error).message}`);
@@ -118,4 +126,5 @@ function consumePendingOpenMarker(
 export async function deactivate(): Promise<void> {
   await host?.stop();
   host = null;
+  turnsIndexer = null;
 }
