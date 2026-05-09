@@ -60,6 +60,10 @@
       {
         "command": "sesh.reindexAnalytics",
         "title": "Sesh: Reindex analytics"
+      },
+      {
+        "command": "sesh.reindexGit",
+        "title": "Sesh: Reindex git"
       }
     ],
     "viewsContainers": {

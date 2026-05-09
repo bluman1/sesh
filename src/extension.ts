@@ -91,6 +91,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   );
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand("sesh.reindexGit", async () => {
+      if (!host || !gitIndexer) return;
+      const windowDays = vscode.workspace
+        .getConfiguration("sesh")
+        .get<number>("outcomeInferenceDays", 30);
+      await runFullGitReindex({
+        db: host.rawDb!,
+        sessions: host.sessions!,
+        gitIndexer,
+        windowDays,
+      });
+      vscode.window.showInformationMessage("Sesh: git reindexed.");
+    }),
+  );
+
   try {
     await host.start();
     // Construct analytics repos and indexer now that rawDb is available.
