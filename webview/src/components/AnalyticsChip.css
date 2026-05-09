@@ -1,0 +1,34 @@
+.sesh-chip-line {
+  display: flex;
+  gap: var(--sesh-space-2);
+  align-items: center;
+  font-size: 0.85em;
+  color: color-mix(in srgb, var(--vscode-foreground) 62%, transparent);
+  margin-top: var(--sesh-space-1);
+}
+.sesh-chip {
+  padding: 0 var(--sesh-space-2);
+  border-radius: var(--sesh-radius-pill);
+  background: var(--sesh-fill-subtle);
+  white-space: nowrap;
+}
+.sesh-chip-outcome {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sesh-space-1);
+  padding: 0 var(--sesh-space-2);
+  border-radius: var(--sesh-radius-pill);
+  background: var(--sesh-fill-subtle);
+}
+.sesh-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  background: currentColor;
+}
+.sesh-chip-outcome.is-shipped { color: var(--vscode-charts-green, #4caf50); }
+.sesh-chip-outcome.is-shipped-partial { color: var(--vscode-charts-yellow, #ffb300); }
+.sesh-chip-outcome.is-open { color: var(--vscode-charts-blue, #4d8df6); }
+.sesh-chip-outcome.is-abandoned { color: color-mix(in srgb, var(--vscode-foreground) 50%, transparent); }
+.sesh-chip-outcome.is-reverted { color: var(--vscode-charts-red, #e57373); }

@@ -4,6 +4,7 @@ import type { Category } from "../hooks/useCategories";
 import { Icon } from "./Icon";
 import { Highlight } from "./Highlight";
 import { SourceBadge } from "./SourceBadge";
+import { AnalyticsChip } from "./AnalyticsChip";
 
 interface Props {
   sessions: SessionListItem[];
@@ -114,6 +115,7 @@ export function SessionList({
                 <SourceBadge source={s.source} className="sesh-list-source" />
               </span>
             </div>
+            <AnalyticsChip chip={s.analytics} />
           </div>
         );
       }}
