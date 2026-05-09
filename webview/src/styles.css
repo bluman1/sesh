@@ -1600,10 +1600,8 @@ body {
 /* Pick up where you left off — slim collapsible strip above the Sessions list */
 .sesh-pickup {
   margin: var(--sesh-space-2) var(--sesh-space-3) 0;
-  border: 1px solid var(--sesh-border-subtle);
-  border-radius: var(--sesh-radius-md);
-  background: var(--sesh-bg-elevated);
-  overflow: hidden;
+  border-bottom: 1px solid var(--sesh-border-subtle);
+  background: transparent;
 }
 .sesh-pickup-head {
   display: flex;
@@ -1723,27 +1721,6 @@ body {
 .sesh-pickup-dismiss:hover {
   background: var(--sesh-fill-subtle);
   color: var(--vscode-foreground);
-}
-
-/* ─── SearchBar ────────────────────────────────────── */
-
-.sesh-search-bar {
-  padding: var(--sesh-space-2) var(--sesh-space-3) 0;
-}
-.sesh-search-bar-input {
-  width: 100%;
-  padding: 8px var(--sesh-space-3);
-  background: var(--sesh-bg-elevated);
-  color: var(--vscode-foreground);
-  border: 1px solid var(--sesh-border-subtle);
-  border-radius: var(--sesh-radius-md);
-  font: inherit;
-  font-size: var(--sesh-text-base);
-  box-sizing: border-box;
-}
-.sesh-search-bar-input:focus {
-  outline: none;
-  border-color: color-mix(in srgb, var(--sesh-accent) 55%, transparent);
 }
 
 /* ─── Semantic hits section ────────────────────────── */

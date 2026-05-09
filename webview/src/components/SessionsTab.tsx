@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Toolbar } from "./Toolbar";
-import { SearchBar } from "./SearchBar";
 import { SessionList } from "./SessionList";
 import { DetailPane } from "./DetailPane";
 import { RemapBanner } from "./RemapBanner";
@@ -54,10 +53,6 @@ export function SessionsTab({ selectedId, onSelect }: Props): JSX.Element {
 
   return (
     <>
-      <SearchBar
-        value={sessionsApi.filters.query}
-        onChange={sessionsApi.setQuery}
-      />
       <Toolbar
         filters={sessionsApi.filters}
         onScopeChange={sessionsApi.setScope}

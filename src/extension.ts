@@ -198,6 +198,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       host.setEmbeddingIndexer(embeddingIndexer);
       host.setEmbedder(embedder);
 
+      // Surface indexing progress in the status bar so users on the Knowledge
+      // or Style tab can see why those sections are still empty.
+      const embedStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
+      embedStatus.name = "Sesh: embeddings";
+      context.subscriptions.push(embedStatus);
+      embeddingIndexer.setProgressHandler((indexed, total) => {
+        if (total === 0) { embedStatus.hide(); return; }
+        if (indexed >= total) {
+          embedStatus.text = `$(check) Sesh: embeddings up to date`;
+          embedStatus.show();
+          setTimeout(() => embedStatus.hide(), 4000);
+          return;
+        }
+        embedStatus.text = `$(sync~spin) Sesh: indexing ${indexed}/${total}`;
+        embedStatus.tooltip = "Sesh is embedding your sessions. The Knowledge and Style views will fill in once this finishes.";
+        embedStatus.show();
+      });
+
       const ideasEnabled = cfg.get<boolean>("ideaMining", true);
       let ideaIndexer: IdeaIndexer | null = null;
       if (ideasEnabled) {
