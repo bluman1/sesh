@@ -2,6 +2,8 @@ import * as chokidar from "chokidar";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { extractMetadata } from "./extract";
+import { extractCodexMetadata } from "./codex/extract";
+import { sessionIdFromCodexFilename } from "./codex/scan";
 import { SESH_META_CWD } from "../host/seshPaths";
 import type { SessionRepository } from "../db/sessions";
 import type { ContentIndexer } from "./contentIndexer";
@@ -18,10 +20,12 @@ export interface WatcherDeps {
 }
 
 export class ProjectsWatcher {
-  private watcher: chokidar.FSWatcher | null = null;
+  private claudeWatcher: chokidar.FSWatcher | null = null;
+  private codexWatcher: chokidar.FSWatcher | null = null;
 
   constructor(
-    private readonly projectsRoot: string,
+    private readonly claudeProjectsRoot: string,
+    private readonly codexSessionsRoot: string,
     private readonly sessions: SessionRepository,
     private readonly indexer: ContentIndexer,
     private readonly events: WatcherEvents = {},
@@ -30,18 +34,27 @@ export class ProjectsWatcher {
 
   async start(): Promise<void> {
     try {
-      this.watcher = chokidar.watch(`${this.projectsRoot}/*/*.jsonl`, {
-        persistent: true,
-        ignoreInitial: true,
+      this.claudeWatcher = chokidar.watch(
+        `${this.claudeProjectsRoot}/*/*.jsonl`,
+        { persistent: true, ignoreInitial: true },
+      );
+      this.claudeWatcher.on("add", (p) => void this.handleClaudeAddOrChange(p));
+      this.claudeWatcher.on("change", (p) => void this.handleClaudeAddOrChange(p));
+      this.claudeWatcher.on("unlink", (p) => void this.handleUnlink(p));
+      this.claudeWatcher.on("error", (err) => {
+        this.events.onWatcherError?.(err);
       });
-      this.watcher.on("add", (p) => void this.handleAddOrChange(p));
-      this.watcher.on("change", (p) => void this.handleAddOrChange(p));
-      this.watcher.on("unlink", (p) => void this.handleUnlink(p));
-      this.watcher.on("error", (err) => {
-        // Surface the failure so the user knows live updates are off; the
-        // Sesh: Rescan command is the recovery path. We don't fall back to
-        // a polling timer — a no-op interval just kept the process alive
-        // without doing useful work.
+
+      // Codex stores at ~/.codex/sessions/<year>/<month>/<day>/rollout-*.jsonl
+      // — three-deep glob. chokidar handles the depth fine.
+      this.codexWatcher = chokidar.watch(
+        `${this.codexSessionsRoot}/*/*/*/rollout-*.jsonl`,
+        { persistent: true, ignoreInitial: true },
+      );
+      this.codexWatcher.on("add", (p) => void this.handleCodexAddOrChange(p));
+      this.codexWatcher.on("change", (p) => void this.handleCodexAddOrChange(p));
+      this.codexWatcher.on("unlink", (p) => void this.handleUnlink(p));
+      this.codexWatcher.on("error", (err) => {
         this.events.onWatcherError?.(err);
       });
     } catch (err) {
@@ -50,13 +63,17 @@ export class ProjectsWatcher {
   }
 
   async stop(): Promise<void> {
-    if (this.watcher) {
-      await this.watcher.close();
-      this.watcher = null;
+    if (this.claudeWatcher) {
+      await this.claudeWatcher.close();
+      this.claudeWatcher = null;
+    }
+    if (this.codexWatcher) {
+      await this.codexWatcher.close();
+      this.codexWatcher = null;
     }
   }
 
-  private async handleAddOrChange(filePath: string): Promise<void> {
+  private async handleClaudeAddOrChange(filePath: string): Promise<void> {
     if (!filePath.endsWith(".jsonl")) return;
     const id = path.basename(filePath, ".jsonl");
     let stat;
@@ -109,9 +126,72 @@ export class ProjectsWatcher {
     this.events.onSessionChanged?.(id);
   }
 
+  private async handleCodexAddOrChange(filePath: string): Promise<void> {
+    const id = sessionIdFromCodexFilename(filePath);
+    if (!id) return;
+    let stat;
+    try {
+      stat = await fs.stat(filePath);
+    } catch {
+      return;
+    }
+    let meta;
+    try {
+      meta = await extractCodexMetadata(filePath);
+    } catch {
+      // Codex sometimes writes a rollout file before the first session_meta
+      // record lands; chokidar's `add` event fires the moment the file is
+      // created. Ignore — the next `change` event after meta is written
+      // will pick it up.
+      return;
+    }
+    if (meta.cwd === SESH_META_CWD) {
+      // Sesh's own title-generator codex session — never surface.
+      return;
+    }
+    this.sessions.upsert({
+      id,
+      source: "codex",
+      project_path: meta.cwd,
+      file_path: filePath,
+      file_mtime: stat.mtimeMs,
+      file_size: stat.size,
+      created_at: meta.created_at,
+      last_active_at: meta.last_active_at,
+      message_count: meta.message_count,
+      auto_title: meta.auto_title,
+      custom_title: null,
+      category_id: null,
+      notes: null,
+      favorited: 0,
+      archived: 0,
+      orphaned: 0,
+      content_indexed: 0,
+      last_parsed_offset: 0,
+      ...meta.tokens,
+    });
+    try {
+      await this.indexer.indexOne(id, filePath, "codex");
+    } catch {
+      // ignore
+    }
+    if (this.deps.archive && this.deps.archiveEnabled?.()) {
+      try {
+        await this.deps.archive.archiveIfNeeded(filePath, id);
+      } catch {
+        // ignore
+      }
+    }
+    this.events.onSessionChanged?.(id);
+  }
+
   private async handleUnlink(filePath: string): Promise<void> {
     if (!filePath.endsWith(".jsonl")) return;
-    const id = path.basename(filePath, ".jsonl");
+    // Both Claude and Codex use the trailing component of their filename as
+    // the session id. For Codex's `rollout-<ts>-<uuid>.jsonl` pattern we
+    // strip the prefix; for Claude's `<uuid>.jsonl` the basename is the id.
+    const codexId = sessionIdFromCodexFilename(filePath);
+    const id = codexId ?? path.basename(filePath, ".jsonl");
     this.sessions.markOrphaned(id);
     this.events.onSessionChanged?.(id);
   }

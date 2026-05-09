@@ -91,6 +91,7 @@ export class SeshHost {
 
     this.watcher = new ProjectsWatcher(
       CLAUDE_PROJECTS_DIR,
+      CODEX_SESSIONS_DIR,
       this.sessions,
       this.indexer,
       {
