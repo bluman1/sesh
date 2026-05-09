@@ -11,6 +11,8 @@ import { EmbeddingRepository } from "./db/embeddings";
 import { createEmbedder } from "./embed/factory";
 import type { Embedder, EmbedderConfig } from "./embed/types";
 import { EmbeddingIndexer } from "./scanner/embeddingIndexer";
+import { IdeaIndexer } from "./scanner/ideaIndexer";
+import { IdeaRepository } from "./db/ideas";
 
 let host: SeshHost | null = null;
 let turnsIndexer: TurnsIndexer | null = null;
@@ -140,10 +142,29 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       host.setEmbeddingIndexer(embeddingIndexer);
       host.setEmbedder(embedder);
 
-      // Eager index in background
-      void embeddingIndexer.run().catch((err) => {
-        console.warn("[sesh] embedding indexer eager run failed", err);
-      });
+      const ideasEnabled = cfg.get<boolean>("sesh.ideaMining", true);
+      let ideaIndexer: IdeaIndexer | null = null;
+      if (ideasEnabled) {
+        const ideaRepo = new IdeaRepository(host.rawDb!);
+        ideaIndexer = new IdeaIndexer(
+          ideaRepo,
+          chunkRepo,
+          embedder,
+          cfg.get<number>("sesh.ideaMiningSinceDays", 30),
+        );
+        host.setIdeaIndexer(ideaIndexer);
+      }
+
+      // Eager index in background — chain idea indexer after embedding indexer
+      // so ideas always run against freshly-built chunks.
+      void (async () => {
+        try {
+          await embeddingIndexer.run();
+          if (ideaIndexer) await ideaIndexer.run();
+        } catch (err) {
+          console.warn("[sesh] eager indexing failed", err);
+        }
+      })();
     }
 
     const shouldOpenFromMarker = consumePendingOpenMarker(context, output);

@@ -16,6 +16,7 @@ import { ContentIndexer } from "../scanner/contentIndexer";
 import { ProjectsWatcher } from "../scanner/watcher";
 import type { TurnsIndexer } from "../scanner/turnsIndexer";
 import type { EmbeddingIndexer } from "../scanner/embeddingIndexer";
+import type { IdeaIndexer } from "../scanner/ideaIndexer";
 import type { Embedder } from "../embed/types";
 import { TranscriptArchive } from "./transcriptArchive";
 
@@ -35,6 +36,7 @@ export class SeshHost {
   private watcher: ProjectsWatcher | null = null;
   private turnsIndexer: TurnsIndexer | null = null;
   private embeddingIndexer: EmbeddingIndexer | null = null;
+  private ideaIndexer: IdeaIndexer | null = null;
   private embedder: Embedder | null = null;
   public indexProgress: { indexed: number; total: number } = { indexed: 0, total: 0 };
   public onIndexProgress?: () => void;
@@ -56,6 +58,14 @@ export class SeshHost {
 
   setEmbeddingIndexer(indexer: EmbeddingIndexer): void {
     this.embeddingIndexer = indexer;
+  }
+
+  setIdeaIndexer(indexer: IdeaIndexer): void {
+    this.ideaIndexer = indexer;
+  }
+
+  get currentIdeaIndexer(): IdeaIndexer | null {
+    return this.ideaIndexer;
   }
 
   setEmbedder(e: Embedder): void {

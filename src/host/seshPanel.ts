@@ -27,6 +27,7 @@ import { OutcomeRepository } from "../db/outcomes";
 import type { TurnsIndexer } from "../scanner/turnsIndexer";
 import { runFullReindex } from "../scanner/turnsIndexer";
 import { semanticSearch } from "../db/semanticQueries";
+import { IdeaRepository } from "../db/ideas";
 
 export class SeshPanel {
   private static instance: SeshPanel | null = null;
@@ -470,6 +471,48 @@ export class SeshPanel {
           const idx = this.host.currentEmbeddingIndexer;
           if (!idx) break;
           void idx.run().catch((err) => console.warn("[sesh] embedding reindex failed", err));
+          break;
+        }
+        case "getIdeas": {
+          const repo = new IdeaRepository(this.host.rawDb!);
+          const clusters = repo.listClusters();
+          this.send({
+            kind: "ideas",
+            clusters: clusters.map((c) => ({
+              cluster_id: c.cluster_id,
+              size: c.size,
+              ideas: c.ideas.map((i) => ({
+                id: i.id,
+                text: i.text,
+                source_session_id: i.source_session_id,
+                confidence: i.confidence,
+                detected_at: i.detected_at,
+                status: i.status,
+              })),
+            })),
+          });
+          break;
+        }
+        case "setIdeaStatus": {
+          const repo = new IdeaRepository(this.host.rawDb!);
+          repo.setStatus(msg.id, msg.status);
+          // Re-send updated clusters.
+          const clusters = repo.listClusters();
+          this.send({
+            kind: "ideas",
+            clusters: clusters.map((c) => ({
+              cluster_id: c.cluster_id,
+              size: c.size,
+              ideas: c.ideas.map((i) => ({
+                id: i.id,
+                text: i.text,
+                source_session_id: i.source_session_id,
+                confidence: i.confidence,
+                detected_at: i.detected_at,
+                status: i.status,
+              })),
+            })),
+          });
           break;
         }
       }
