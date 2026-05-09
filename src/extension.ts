@@ -6,9 +6,12 @@ import { TurnRepository } from "./db/turns";
 import { ToolCallRepository } from "./db/toolCalls";
 import { TurnsIndexer, runFullReindex } from "./scanner/turnsIndexer";
 import { inferOutcomes } from "./scanner/outcomeInferer";
+import { CommitRepository } from "./db/commits";
+import { GitIndexer } from "./git/gitIndexer";
 
 let host: SeshHost | null = null;
 let turnsIndexer: TurnsIndexer | null = null;
+let gitIndexer: GitIndexer | null = null;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const output = vscode.window.createOutputChannel("Sesh");
@@ -94,6 +97,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const toolCallRepo = new ToolCallRepository(host.rawDb!);
     turnsIndexer = new TurnsIndexer(host.rawDb!, host.sessions!, turnRepo, toolCallRepo);
     host.setTurnsIndexer(turnsIndexer);
+    const commitRepo = new CommitRepository(host.rawDb!);
+    gitIndexer = new GitIndexer(host.rawDb!, host.sessions!, commitRepo);
+    host.setGitIndexer(gitIndexer);
     const cfg = vscode.workspace.getConfiguration("sesh");
     const shouldOpenFromMarker = consumePendingOpenMarker(context, output);
     if (shouldOpenFromMarker || cfg.get<boolean>("openOnActivation", false)) {
@@ -170,4 +176,5 @@ export async function deactivate(): Promise<void> {
   await host?.stop();
   host = null;
   turnsIndexer = null;
+  gitIndexer = null;
 }
