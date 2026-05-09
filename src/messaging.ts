@@ -99,7 +99,11 @@ export type ToHost =
   | { kind: "semanticSearch"; query: string; limit?: number }
   | { kind: "triggerReindexEmbeddings" }
   | { kind: "getIdeas" }
-  | { kind: "setIdeaStatus"; id: string; status: "open" | "dismissed" | "done" | "scheduled" };
+  | { kind: "setIdeaStatus"; id: string; status: "open" | "dismissed" | "done" | "scheduled" }
+  | { kind: "getClaudeMdSuggestions" }
+  | { kind: "setClaudeMdStatus"; id: string; status: "open" | "accepted" | "dismissed" }
+  | { kind: "getPromptLints"; sessionId: string }
+  | { kind: "setPromptLintStatus"; id: string; status: "open" | "dismissed" };
 
 export type ToWebview =
   | { kind: "workspace"; currentPath: string | null }
@@ -157,6 +161,26 @@ export type ToWebview =
           detected_at: number;
           status: "open" | "dismissed" | "done" | "scheduled";
         }>;
+      }>;
+    }
+  | {
+      kind: "claudeMdSuggestions";
+      suggestions: Array<{
+        id: string;
+        body: string;
+        source_count: number;
+        detected_at: number;
+        status: "open" | "accepted" | "dismissed";
+      }>;
+    }
+  | {
+      kind: "promptLints";
+      sessionId: string;
+      lints: Array<{
+        id: string;
+        turn_id: string;
+        message: string;
+        similar_session_ids: string[];
       }>;
     };
 

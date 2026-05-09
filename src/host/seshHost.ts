@@ -17,6 +17,8 @@ import { ProjectsWatcher } from "../scanner/watcher";
 import type { TurnsIndexer } from "../scanner/turnsIndexer";
 import type { EmbeddingIndexer } from "../scanner/embeddingIndexer";
 import type { IdeaIndexer } from "../scanner/ideaIndexer";
+import type { CorrectionMiner } from "../scanner/correctionMiner";
+import type { PromptLinter } from "../scanner/promptLinter";
 import type { Embedder } from "../embed/types";
 import { TranscriptArchive } from "./transcriptArchive";
 
@@ -37,6 +39,8 @@ export class SeshHost {
   private turnsIndexer: TurnsIndexer | null = null;
   private embeddingIndexer: EmbeddingIndexer | null = null;
   private ideaIndexer: IdeaIndexer | null = null;
+  private correctionMiner: CorrectionMiner | null = null;
+  private promptLinter: PromptLinter | null = null;
   private embedder: Embedder | null = null;
   public indexProgress: { indexed: number; total: number } = { indexed: 0, total: 0 };
   public onIndexProgress?: () => void;
@@ -66,6 +70,22 @@ export class SeshHost {
 
   get currentIdeaIndexer(): IdeaIndexer | null {
     return this.ideaIndexer;
+  }
+
+  setCorrectionMiner(miner: CorrectionMiner): void {
+    this.correctionMiner = miner;
+  }
+
+  get currentCorrectionMiner(): CorrectionMiner | null {
+    return this.correctionMiner;
+  }
+
+  setPromptLinter(linter: PromptLinter): void {
+    this.promptLinter = linter;
+  }
+
+  get currentPromptLinter(): PromptLinter | null {
+    return this.promptLinter;
   }
 
   setEmbedder(e: Embedder): void {

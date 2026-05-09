@@ -28,6 +28,8 @@ import type { TurnsIndexer } from "../scanner/turnsIndexer";
 import { runFullReindex } from "../scanner/turnsIndexer";
 import { semanticSearch } from "../db/semanticQueries";
 import { IdeaRepository } from "../db/ideas";
+import { ClaudeMdSuggestionRepository } from "../db/claudeMd";
+import { PromptLintRepository } from "../db/promptLints";
 
 export class SeshPanel {
   private static instance: SeshPanel | null = null;
@@ -513,6 +515,57 @@ export class SeshPanel {
               })),
             })),
           });
+          break;
+        }
+        case "getClaudeMdSuggestions": {
+          const repo = new ClaudeMdSuggestionRepository(this.host.rawDb!);
+          const open = repo.listOpen();
+          this.send({
+            kind: "claudeMdSuggestions",
+            suggestions: open.map((s) => ({
+              id: s.id,
+              body: s.body,
+              source_count: s.source_count,
+              detected_at: s.detected_at,
+              status: s.status,
+            })),
+          });
+          break;
+        }
+        case "setClaudeMdStatus": {
+          const repo = new ClaudeMdSuggestionRepository(this.host.rawDb!);
+          repo.setStatus(msg.id, msg.status);
+          const open = repo.listOpen();
+          this.send({
+            kind: "claudeMdSuggestions",
+            suggestions: open.map((s) => ({
+              id: s.id,
+              body: s.body,
+              source_count: s.source_count,
+              detected_at: s.detected_at,
+              status: s.status,
+            })),
+          });
+          break;
+        }
+        case "getPromptLints": {
+          const repo = new PromptLintRepository(this.host.rawDb!);
+          const lints = repo.listForSession(msg.sessionId);
+          this.send({
+            kind: "promptLints",
+            sessionId: msg.sessionId,
+            lints: lints.map((l) => ({
+              id: l.id,
+              turn_id: l.turn_id,
+              message: l.message,
+              similar_session_ids: l.similar_session_ids,
+            })),
+          });
+          break;
+        }
+        case "setPromptLintStatus": {
+          const repo = new PromptLintRepository(this.host.rawDb!);
+          repo.setStatus(msg.id, msg.status);
           break;
         }
       }

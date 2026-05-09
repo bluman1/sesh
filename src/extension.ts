@@ -13,6 +13,10 @@ import type { Embedder, EmbedderConfig } from "./embed/types";
 import { EmbeddingIndexer } from "./scanner/embeddingIndexer";
 import { IdeaIndexer } from "./scanner/ideaIndexer";
 import { IdeaRepository } from "./db/ideas";
+import { CorrectionMiner } from "./scanner/correctionMiner";
+import { ClaudeMdSuggestionRepository } from "./db/claudeMd";
+import { PromptLinter } from "./scanner/promptLinter";
+import { PromptLintRepository } from "./db/promptLints";
 
 let host: SeshHost | null = null;
 let turnsIndexer: TurnsIndexer | null = null;
@@ -104,6 +108,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   );
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand("sesh.suggestClaudeMd", async () => {
+      const miner = host?.currentCorrectionMiner;
+      if (!miner) return;
+      await miner.run();
+      await vscode.commands.executeCommand("sesh.open");
+      vscode.window.showInformationMessage("Sesh: CLAUDE.md suggestions refreshed. Open the Knowledge tab.");
+    }),
+  );
+
   try {
     await host.start();
     // Construct analytics repos and indexer now that rawDb is available.
@@ -155,12 +169,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         host.setIdeaIndexer(ideaIndexer);
       }
 
+      const claudeMdRepo = new ClaudeMdSuggestionRepository(host.rawDb!);
+      const correctionMiner = new CorrectionMiner(host.rawDb!, chunkRepo, claudeMdRepo, embedder);
+      host.setCorrectionMiner(correctionMiner);
+
+      const lintRepo = new PromptLintRepository(host.rawDb!);
+      const promptLinter = new PromptLinter(host.rawDb!, chunkRepo, embeddingRepo, lintRepo, embedder);
+      host.setPromptLinter(promptLinter);
+
       // Eager index in background — chain idea indexer after embedding indexer
       // so ideas always run against freshly-built chunks.
       void (async () => {
         try {
           await embeddingIndexer.run();
           if (ideaIndexer) await ideaIndexer.run();
+          await correctionMiner.run();
+          await promptLinter.run();
         } catch (err) {
           console.warn("[sesh] eager indexing failed", err);
         }

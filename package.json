@@ -64,6 +64,10 @@
       {
         "command": "sesh.reindexEmbeddings",
         "title": "Sesh: Reindex embeddings"
+      },
+      {
+        "command": "sesh.suggestClaudeMd",
+        "title": "Sesh: Suggest CLAUDE.md improvements"
       }
     ],
     "viewsContainers": {
