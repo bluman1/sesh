@@ -25,7 +25,7 @@ describe("runMigrations", () => {
     const v = db
       .prepare("SELECT MAX(version) as v FROM schema_version")
       .get() as { v: number };
-    expect(v.v).toBe(3);
+    expect(v.v).toBe(4);
     db.close();
   });
 
@@ -81,7 +81,7 @@ describe("runMigrations", () => {
         .prepare("SELECT version FROM schema_version ORDER BY version")
         .all() as { version: number }[]
     ).map((r) => r.version);
-    expect(versions).toEqual([1, 2, 3]);
+    expect(versions).toEqual([1, 2, 3, 4]);
 
     // The original sessions table is intact (not dropped/recreated).
     const sessionsCol = db
@@ -113,5 +113,34 @@ describe("runMigrations", () => {
       .get();
     expect(versionTable).toBeTruthy();
     db.close();
+  });
+
+  it("creates the analytics tables in migration 004", () => {
+    const db = openDb(":memory:");
+    runMigrations(db);
+
+    const tables = db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name",
+      )
+      .all() as { name: string }[];
+    const names = new Set(tables.map((t) => t.name));
+
+    expect(names.has("turns")).toBe(true);
+    expect(names.has("tool_calls")).toBe(true);
+    expect(names.has("session_outcomes")).toBe(true);
+  });
+
+  it("adds turns_indexed and turns_last_offset to sessions in migration 004", () => {
+    const db = openDb(":memory:");
+    runMigrations(db);
+
+    const cols = db
+      .prepare("PRAGMA table_info(sessions)")
+      .all() as { name: string }[];
+    const names = new Set(cols.map((c) => c.name));
+
+    expect(names.has("turns_indexed")).toBe(true);
+    expect(names.has("turns_last_offset")).toBe(true);
   });
 });
