@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useInsights } from "../../hooks/useInsights";
 
 interface StandupPayload {
@@ -57,10 +57,7 @@ export function StandupView(): JSX.Element {
 
   if (!payload) return <div>Loading…</div>;
   const data = payload as StandupPayload;
-  const sorted = useMemo(
-    () => [...data.perProject].sort((a, b) => b.usd - a.usd),
-    [data.perProject],
-  );
+  const sorted = [...data.perProject].sort((a, b) => b.usd - a.usd);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(buildStandupProse(data));
