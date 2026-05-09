@@ -3,7 +3,7 @@ import { useInsights } from "../../hooks/useInsights";
 interface Payload {
   longestSessionTurns: { session_id: string; turns: number };
   fewestTokensShipped: { session_id: string; tokens: number } | null;
-  longestStreak: { days: number };
+  currentStreak: { days: number };
   totalSessions: number;
   totalTurns: number;
   totalUsd: number;
@@ -21,7 +21,7 @@ export function RecordsView(): JSX.Element {
         <li>{r.fewestTokensShipped
           ? `Fewest tokens to ship: ${r.fewestTokensShipped.tokens.toLocaleString()} (${r.fewestTokensShipped.session_id})`
           : "Fewest tokens to ship: no shipped sessions yet"}</li>
-        <li>Longest active streak: {r.longestStreak.days} day(s)</li>
+        <li>Current streak: {r.currentStreak.days} day(s)</li>
         <li>Total sessions: {r.totalSessions.toLocaleString()}</li>
         <li>Total turns: {r.totalTurns.toLocaleString()}</li>
         <li>Total USD spent: ${r.totalUsd.toFixed(2)}</li>
