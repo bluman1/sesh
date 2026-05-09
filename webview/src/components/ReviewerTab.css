@@ -19,16 +19,15 @@
 }
 .sesh-reviewer-body { flex: 1; overflow: auto; padding: var(--sesh-space-4); }
 
-.sesh-reviewer-header {
-  margin-bottom: var(--sesh-space-3);
-  color: color-mix(in srgb, var(--vscode-foreground) 80%, transparent);
-}
 .sesh-reviewer-list { list-style: none; padding: 0; margin: 0; }
 .sesh-reviewer-commit {
   padding: var(--sesh-space-2) 0;
   border-bottom: 1px solid var(--sesh-border-subtle);
 }
-.sesh-reviewer-commit:last-child { border-bottom: none; }
+.sesh-reviewer-commit:last-child {
+  border-bottom: none;
+  padding-bottom: var(--sesh-space-4);
+}
 .sesh-reviewer-commit-title { font-weight: 500; }
 .sesh-reviewer-commit-meta {
   color: color-mix(in srgb, var(--vscode-foreground) 62%, transparent);
@@ -42,13 +41,147 @@
   margin: 0;
   font-size: 0.9em;
 }
-.sesh-reviewer-confidence {
-  color: color-mix(in srgb, var(--vscode-foreground) 50%, transparent);
-}
 .sesh-reviewer-empty {
   padding: var(--sesh-space-3);
   color: color-mix(in srgb, var(--vscode-foreground) 70%, transparent);
 }
 .sesh-reviewer-empty a {
   color: var(--vscode-textLink-foreground);
+}
+
+/* Toolbar (shared by Branch + Sessions sub-views) */
+.sesh-reviewer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sesh-space-3);
+  margin-bottom: var(--sesh-space-3);
+  flex-wrap: wrap;
+}
+.sesh-reviewer-repo {
+  color: color-mix(in srgb, var(--vscode-foreground) 80%, transparent);
+}
+.sesh-reviewer-branch-select {
+  background: var(--sesh-bg-elevated);
+  color: var(--vscode-foreground);
+  border: 1px solid var(--sesh-border-subtle);
+  border-radius: var(--sesh-radius-sm);
+  padding: 4px var(--sesh-space-2);
+  font: inherit;
+}
+.sesh-reviewer-loading {
+  color: color-mix(in srgb, var(--vscode-foreground) 60%, transparent);
+}
+
+/* Commit row interactions */
+.sesh-reviewer-sha-link {
+  text-decoration: none;
+}
+.sesh-reviewer-sha-link:hover .sesh-reviewer-sha {
+  text-decoration: underline;
+}
+
+/* Session-link buttons (in Branch view's linked-sessions list) */
+.sesh-reviewer-session-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--vscode-textLink-foreground, var(--vscode-foreground));
+  cursor: pointer;
+  text-align: left;
+}
+.sesh-reviewer-session-link:hover {
+  text-decoration: underline;
+}
+
+/* Confidence tags */
+.sesh-reviewer-confidence-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: var(--sesh-radius-pill);
+  font-size: 0.85em;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--vscode-foreground) 70%, transparent);
+  background: var(--sesh-fill-subtle);
+}
+.sesh-reviewer-confidence-tag.is-strong {
+  color: var(--vscode-foreground);
+  background: color-mix(in srgb, var(--vscode-charts-green, #3fb950) 25%, transparent);
+}
+.sesh-reviewer-confidence-tag.is-partial {
+  color: color-mix(in srgb, var(--vscode-foreground) 85%, transparent);
+  background: color-mix(in srgb, var(--vscode-charts-yellow, #d29922) 22%, transparent);
+}
+.sesh-reviewer-confidence-tag.is-weak {
+  color: color-mix(in srgb, var(--vscode-foreground) 55%, transparent);
+}
+
+/* Session cards (Sessions sub-view) */
+.sesh-reviewer-session-cards {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--sesh-space-3);
+}
+.sesh-reviewer-session-card {
+  list-style: none;
+}
+.sesh-reviewer-session-card-button {
+  width: 100%;
+  text-align: left;
+  background: var(--sesh-bg-elevated);
+  border: 1px solid var(--sesh-border-subtle);
+  border-radius: var(--sesh-radius-md);
+  padding: var(--sesh-space-3);
+  cursor: pointer;
+  font: inherit;
+  color: var(--vscode-foreground);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sesh-space-2);
+}
+.sesh-reviewer-session-card-button:hover {
+  background: color-mix(in srgb, var(--sesh-bg-elevated) 80%, var(--vscode-foreground) 6%);
+}
+.sesh-reviewer-session-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sesh-space-2);
+}
+.sesh-reviewer-session-card-title {
+  font-weight: 500;
+}
+.sesh-reviewer-session-card-meta {
+  color: color-mix(in srgb, var(--vscode-foreground) 62%, transparent);
+  font-size: 0.9em;
+}
+.sesh-reviewer-session-card-commits {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.9em;
+}
+.sesh-reviewer-session-card-commit {
+  display: flex;
+  gap: var(--sesh-space-2);
+  align-items: baseline;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sesh-reviewer-session-card-msg {
+  color: color-mix(in srgb, var(--vscode-foreground) 78%, transparent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.sesh-reviewer-session-card-more {
+  color: color-mix(in srgb, var(--vscode-foreground) 50%, transparent);
+  font-size: 0.85em;
 }

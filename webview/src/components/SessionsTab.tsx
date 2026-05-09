@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Toolbar } from "./Toolbar";
 import { SessionList } from "./SessionList";
@@ -10,9 +9,13 @@ import { useCategories } from "../hooks/useCategories";
 import { useAllTags } from "../hooks/useAllTags";
 import { useProjects } from "../hooks/useProjects";
 
-export function SessionsTab(): JSX.Element {
+type Props = {
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+};
+
+export function SessionsTab({ selectedId, onSelect }: Props): JSX.Element {
   const sessionsApi = useSessions();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const detail = useSessionDetail(selectedId);
   const { categories } = useCategories();
   const allTags = useAllTags();
@@ -50,7 +53,7 @@ export function SessionsTab(): JSX.Element {
             <SessionList
               sessions={sessionsApi.sessions}
               selectedId={selectedId}
-              onSelect={setSelectedId}
+              onSelect={onSelect}
               categories={categories}
               searchQuery={sessionsApi.filters.query}
               emptyHint={

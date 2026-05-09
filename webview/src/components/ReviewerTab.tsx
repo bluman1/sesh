@@ -11,7 +11,9 @@ const SUBS: { id: SubTab; label: string }[] = [
   { id: "prs", label: "PRs" },
 ];
 
-export function ReviewerTab(): JSX.Element {
+type Props = { onNavigateToSession: (id: string) => void };
+
+export function ReviewerTab({ onNavigateToSession }: Props): JSX.Element {
   const [sub, setSub] = useState<SubTab>("branch");
   return (
     <div className="sesh-reviewer">
@@ -27,8 +29,8 @@ export function ReviewerTab(): JSX.Element {
         ))}
       </nav>
       <div className="sesh-reviewer-body">
-        {sub === "branch" && <BranchView />}
-        {sub === "sessions" && <SessionsView />}
+        {sub === "branch" && <BranchView onNavigateToSession={onNavigateToSession} />}
+        {sub === "sessions" && <SessionsView onNavigateToSession={onNavigateToSession} />}
         {sub === "prs" && <PRsView />}
       </div>
     </div>
