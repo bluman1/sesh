@@ -93,7 +93,9 @@ export type ToHost =
   | { kind: "getInsights"; tab: "standup" | "cost" | "leaderboard" | "records"; range: "today" | "7d" | "30d" | "1y" | "all" }
   | { kind: "setOutcome"; sessionId: string; state: "open" | "shipped" | "shipped-partial" | "reverted" | "abandoned"; notes?: string | null }
   | { kind: "triggerReindexAnalytics" }
-  | { kind: "getCommitments"; sinceDays: number };
+  | { kind: "getCommitments"; sinceDays: number }
+  | { kind: "semanticSearch"; query: string; limit?: number }
+  | { kind: "triggerReindexEmbeddings" };
 
 export type ToWebview =
   | { kind: "workspace"; currentPath: string | null }
@@ -125,7 +127,19 @@ export type ToWebview =
   | { kind: "error"; message: string }
   | { kind: "insights"; tab: "standup" | "cost" | "leaderboard" | "records"; payload: unknown }
   | { kind: "commitments"; commitments: { session_id: string; ts: number; excerpt: string }[] }
-  | { kind: "analyticsProgress"; indexed: number; total: number };
+  | { kind: "analyticsProgress"; indexed: number; total: number }
+  | {
+      kind: "searchResults";
+      query: string;
+      results: Array<{
+        chunk_id: string;
+        session_id: string;
+        session_title: string;
+        session_project_path: string;
+        snippet: string;
+        score: number;
+      }>;
+    };
 
 declare global {
   interface Window {

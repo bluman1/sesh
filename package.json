@@ -60,6 +60,10 @@
       {
         "command": "sesh.reindexAnalytics",
         "title": "Sesh: Reindex analytics"
+      },
+      {
+        "command": "sesh.reindexEmbeddings",
+        "title": "Sesh: Reindex embeddings"
       }
     ],
     "viewsContainers": {
@@ -149,6 +153,32 @@
           "type": "boolean",
           "default": true,
           "description": "Show today's spend in the status bar."
+        },
+        "sesh.embeddingsEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable local semantic indexing of session transcripts. Powers the Knowledge tab."
+        },
+        "sesh.embedder": {
+          "type": "string",
+          "enum": ["local", "ollama", "cloud"],
+          "default": "local",
+          "description": "Which embedder to use. 'local' runs entirely on-device via @huggingface/transformers (recommended). 'ollama' targets a local Ollama server. 'cloud' targets an OpenAI-compatible endpoint."
+        },
+        "sesh.embedderModel": {
+          "type": "string",
+          "default": "",
+          "description": "Override embedder model. Leave blank for the embedder's default (Xenova/all-MiniLM-L6-v2 for local, nomic-embed-text for ollama, text-embedding-3-small for cloud)."
+        },
+        "sesh.embedderApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key for the cloud embedder. Stored in plaintext in VSCode settings — only set if you accept that risk."
+        },
+        "sesh.embedderApiUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Override the embedder endpoint URL. Blank uses the embedder's default."
         }
       }
     }
