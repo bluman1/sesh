@@ -34,6 +34,8 @@ describe("TagRepository", () => {
       tokens_out: 0,
       tokens_cache_read: 0,
       tokens_cache_create: 0,
+      turns_indexed: 0,
+      turns_last_offset: 0,
     });
     tags = new TagRepository(db);
   });

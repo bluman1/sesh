@@ -27,6 +27,8 @@ function makeRow(overrides: Partial<SessionRow> = {}): SessionRow {
     tokens_out: 0,
     tokens_cache_read: 0,
     tokens_cache_create: 0,
+    turns_indexed: 0,
+    turns_last_offset: 0,
     ...overrides,
   };
 }
@@ -158,5 +160,30 @@ describe("SessionRepository", () => {
     expect(found?.custom_title).toBe("Pinned");
     expect(found?.favorited).toBe(1);
     expect(found?.auto_title).toBe("rescanned");
+  });
+
+  it("upserts default turns_indexed=0 and turns_last_offset=0", () => {
+    repo.upsert(makeRow());
+    const row = repo.findById("abc-123")!;
+    expect(row.turns_indexed).toBe(0);
+    expect(row.turns_last_offset).toBe(0);
+  });
+
+  it("setTurnsIndexProgress writes turns_last_offset and turns_indexed flag", () => {
+    repo.upsert(makeRow());
+    repo.setTurnsIndexProgress("abc-123", 4096, true);
+    const row = repo.findById("abc-123")!;
+    expect(row.turns_last_offset).toBe(4096);
+    expect(row.turns_indexed).toBe(1);
+  });
+
+  it("listForTurnsIndexing returns only non-orphaned, not-yet-indexed", () => {
+    repo.upsert(makeRow({ id: "a", file_path: "/p/a.jsonl" }));
+    repo.upsert(makeRow({ id: "b", file_path: "/p/b.jsonl" }));
+    repo.upsert(makeRow({ id: "c", file_path: "/p/c.jsonl", orphaned: 1 }));
+    repo.setTurnsIndexProgress("a", 100, true);
+    const queue = repo.listForTurnsIndexing();
+    const ids = queue.map((q) => q.id).sort();
+    expect(ids).toEqual(["b"]);
   });
 });
