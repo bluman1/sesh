@@ -28,32 +28,72 @@ import { OutcomeRepository } from "../db/outcomes";
 import type { TurnsIndexer } from "../scanner/turnsIndexer";
 import type { Db } from "../db/connection";
 
-function buildAnalyticsChip(db: Db, sessionId: string): SessionAnalyticsChip {
-  const outcome = db
-    .prepare("SELECT state FROM session_outcomes WHERE session_id = ?")
-    .get(sessionId) as { state: SessionAnalyticsChip["outcome"] } | undefined;
-  const cost = db
+function buildAnalyticsChips(
+  db: Db,
+  sessionIds: string[],
+): Map<string, SessionAnalyticsChip> {
+  const result = new Map<string, SessionAnalyticsChip>();
+  if (sessionIds.length === 0) return result;
+
+  const placeholders = sessionIds.map(() => "?").join(",");
+
+  // Pass 1: outcomes
+  const outcomeRows = db
     .prepare(
-      `SELECT model, SUM(tokens_in) AS ti, SUM(tokens_out) AS to_, SUM(tokens_cache_read) AS tcr, SUM(tokens_cache_create) AS tcc
-       FROM turns WHERE session_id = ? GROUP BY model ORDER BY (SUM(tokens_in) + SUM(tokens_out)) DESC LIMIT 1`,
+      `SELECT session_id, state FROM session_outcomes WHERE session_id IN (${placeholders})`,
     )
-    .get(sessionId) as
-      | { model: string | null; ti: number; to_: number; tcr: number; tcc: number }
-      | undefined;
-  const usd = cost
-    ? usdForTurn({
-        model: cost.model,
-        tokens_in: cost.ti,
-        tokens_out: cost.to_,
-        tokens_cache_read: cost.tcr,
-        tokens_cache_create: cost.tcc,
-      })
-    : 0;
-  return {
-    outcome: outcome?.state ?? null,
-    usd,
-    primary_model: cost?.model ?? null,
-  };
+    .all(...sessionIds) as { session_id: string; state: SessionAnalyticsChip["outcome"] }[];
+  const outcomeMap = new Map<string, SessionAnalyticsChip["outcome"]>();
+  for (const r of outcomeRows) outcomeMap.set(r.session_id, r.state);
+
+  // Pass 2: per-(session, model) token sums. The "primary model" is the
+  // model with the highest tokens_in + tokens_out for that session.
+  const turnRows = db
+    .prepare(
+      `SELECT session_id, model,
+              SUM(tokens_in) AS ti, SUM(tokens_out) AS to_,
+              SUM(tokens_cache_read) AS tcr, SUM(tokens_cache_create) AS tcc
+         FROM turns
+         WHERE session_id IN (${placeholders}) AND model IS NOT NULL
+         GROUP BY session_id, model`,
+    )
+    .all(...sessionIds) as {
+      session_id: string;
+      model: string;
+      ti: number;
+      to_: number;
+      tcr: number;
+      tcc: number;
+    }[];
+
+  // For each session, find the row with the highest token sum and compute usd.
+  const primary = new Map<string, typeof turnRows[number]>();
+  for (const r of turnRows) {
+    const existing = primary.get(r.session_id);
+    if (!existing || r.ti + r.to_ > existing.ti + existing.to_) {
+      primary.set(r.session_id, r);
+    }
+  }
+
+  for (const id of sessionIds) {
+    const top = primary.get(id);
+    const usd = top
+      ? usdForTurn({
+          model: top.model,
+          tokens_in: top.ti,
+          tokens_out: top.to_,
+          tokens_cache_read: top.tcr,
+          tokens_cache_create: top.tcc,
+        })
+      : 0;
+    result.set(id, {
+      outcome: outcomeMap.get(id) ?? null,
+      usd,
+      primary_model: top?.model ?? null,
+    });
+  }
+
+  return result;
 }
 
 export class SeshPanel {
@@ -180,8 +220,9 @@ export class SeshPanel {
         case "searchSessions": {
           this.lastFilters = msg.filters;
           const rows = searchSessions(this.host.rawDb!, msg.filters);
+          const chips = buildAnalyticsChips(this.host.rawDb!, rows.map((r) => r.id));
           const items = rows.map((row) =>
-            rowToListItem(row, this.host.tags!.getTags(row.id), buildAnalyticsChip(this.host.rawDb!, row.id)),
+            rowToListItem(row, this.host.tags!.getTags(row.id), chips.get(row.id)),
           );
           this.send({
             kind: "sessionList",
@@ -481,8 +522,9 @@ export class SeshPanel {
   private refreshList(): void {
     if (!this.host.sessions || !this.host.tags || !this.lastFilters) return;
     const rows = searchSessions(this.host.rawDb!, this.lastFilters);
+    const chips = buildAnalyticsChips(this.host.rawDb!, rows.map((r) => r.id));
     const items = rows.map((row) =>
-      rowToListItem(row, this.host.tags!.getTags(row.id), buildAnalyticsChip(this.host.rawDb!, row.id)),
+      rowToListItem(row, this.host.tags!.getTags(row.id), chips.get(row.id)),
     );
     this.send({
       kind: "sessionList",
