@@ -6,7 +6,6 @@ import {
   type SearchFilters,
   type ToHost,
   type ToWebview,
-  type SessionAnalyticsChip,
 } from "../messaging";
 import { searchSessions, countSessionsInScope } from "../db/search";
 import { readTranscript } from "../scanner/transcript";
@@ -17,85 +16,16 @@ import {
   TitleGenerationError,
 } from "./titleGenerator";
 import {
+  buildAnalyticsChips,
   costByFile,
   modelLeaderboard,
   personalRecords,
   todaysStandup,
   recentCommitments,
-  usdForTurn,
 } from "../db/analyticsQueries";
 import { OutcomeRepository } from "../db/outcomes";
 import type { TurnsIndexer } from "../scanner/turnsIndexer";
 import { runFullReindex } from "../scanner/turnsIndexer";
-import type { Db } from "../db/connection";
-
-function buildAnalyticsChips(
-  db: Db,
-  sessionIds: string[],
-): Map<string, SessionAnalyticsChip> {
-  const result = new Map<string, SessionAnalyticsChip>();
-  if (sessionIds.length === 0) return result;
-
-  const placeholders = sessionIds.map(() => "?").join(",");
-
-  // Pass 1: outcomes
-  const outcomeRows = db
-    .prepare(
-      `SELECT session_id, state FROM session_outcomes WHERE session_id IN (${placeholders})`,
-    )
-    .all(...sessionIds) as { session_id: string; state: SessionAnalyticsChip["outcome"] }[];
-  const outcomeMap = new Map<string, SessionAnalyticsChip["outcome"]>();
-  for (const r of outcomeRows) outcomeMap.set(r.session_id, r.state);
-
-  // Pass 2: per-(session, model) token sums. The "primary model" is the
-  // model with the highest tokens_in + tokens_out for that session.
-  const turnRows = db
-    .prepare(
-      `SELECT session_id, model,
-              SUM(tokens_in) AS ti, SUM(tokens_out) AS to_,
-              SUM(tokens_cache_read) AS tcr, SUM(tokens_cache_create) AS tcc
-         FROM turns
-         WHERE session_id IN (${placeholders}) AND model IS NOT NULL
-         GROUP BY session_id, model`,
-    )
-    .all(...sessionIds) as {
-      session_id: string;
-      model: string;
-      ti: number;
-      to_: number;
-      tcr: number;
-      tcc: number;
-    }[];
-
-  // For each session, find the row with the highest token sum and compute usd.
-  const primary = new Map<string, typeof turnRows[number]>();
-  for (const r of turnRows) {
-    const existing = primary.get(r.session_id);
-    if (!existing || r.ti + r.to_ > existing.ti + existing.to_) {
-      primary.set(r.session_id, r);
-    }
-  }
-
-  for (const id of sessionIds) {
-    const top = primary.get(id);
-    const usd = top
-      ? usdForTurn({
-          model: top.model,
-          tokens_in: top.ti,
-          tokens_out: top.to_,
-          tokens_cache_read: top.tcr,
-          tokens_cache_create: top.tcc,
-        })
-      : 0;
-    result.set(id, {
-      outcome: outcomeMap.get(id) ?? null,
-      usd,
-      primary_model: top?.model ?? null,
-    });
-  }
-
-  return result;
-}
 
 export class SeshPanel {
   private static instance: SeshPanel | null = null;
