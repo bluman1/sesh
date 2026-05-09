@@ -30,6 +30,11 @@ import { CommitRepository } from "../db/commits";
 import { SessionCommitRepository } from "../db/sessionCommits";
 import { findRepoRoot } from "../git/repoDiscovery";
 import { runFullGitReindex } from "../git/runFullGitReindex";
+import {
+  isGhAvailable,
+  listOpenPRsWithCommits,
+  type PRWithCommits,
+} from "../git/ghCompanion";
 
 export class SeshPanel {
   private static instance: SeshPanel | null = null;
@@ -525,14 +530,53 @@ export class SeshPanel {
           break;
         }
         case "getReviewerPRs": {
-          // Real handler lands in Task 9.2 when ghCompanion module exists.
-          this.send({
-            kind: "reviewerPRs",
-            repoPath: null,
-            ghAvailable: false,
-            ghReason: "not yet implemented",
-            prs: [],
-          });
+          const repoPath = msg.repoPath ?? this.resolveDefaultRepo();
+          if (!repoPath) {
+            this.send({
+              kind: "reviewerPRs",
+              repoPath: null,
+              ghAvailable: false,
+              ghReason: "No git repo detected.",
+              prs: [],
+            });
+            break;
+          }
+          void (async () => {
+            const avail = await isGhAvailable();
+            if (!avail.ok) {
+              this.send({
+                kind: "reviewerPRs",
+                repoPath,
+                ghAvailable: false,
+                ghReason: avail.reason,
+                prs: [],
+              });
+              return;
+            }
+            let prs: PRWithCommits[] = [];
+            try {
+              prs = await listOpenPRsWithCommits(repoPath);
+            } catch (err) {
+              console.warn("[sesh] gh pr list failed", err);
+            }
+            const links = new SessionCommitRepository(this.host.rawDb!);
+            const enriched = prs.map((p) => ({
+              number: p.number,
+              title: p.title,
+              head: p.head,
+              url: p.url,
+              commits: p.commit_shas.map((sha) => ({
+                sha,
+                sessions: links.sessionsForCommit(sha).map((l) => l.session_id),
+              })),
+            }));
+            this.send({
+              kind: "reviewerPRs",
+              repoPath,
+              ghAvailable: true,
+              prs: enriched,
+            });
+          })();
           break;
         }
       }
