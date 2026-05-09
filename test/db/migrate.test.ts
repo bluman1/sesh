@@ -25,7 +25,7 @@ describe("runMigrations", () => {
     const v = db
       .prepare("SELECT MAX(version) as v FROM schema_version")
       .get() as { v: number };
-    expect(v.v).toBe(4);
+    expect(v.v).toBe(5);
     db.close();
   });
 
@@ -81,7 +81,7 @@ describe("runMigrations", () => {
         .prepare("SELECT version FROM schema_version ORDER BY version")
         .all() as { version: number }[]
     ).map((r) => r.version);
-    expect(versions).toEqual([1, 2, 3, 4]);
+    expect(versions).toEqual([1, 2, 3, 4, 5]);
 
     // The original sessions table is intact (not dropped/recreated).
     const sessionsCol = db
@@ -142,5 +142,27 @@ describe("runMigrations", () => {
 
     expect(names.has("turns_indexed")).toBe(true);
     expect(names.has("turns_last_offset")).toBe(true);
+  });
+
+  it("creates the git-link tables in migration 005", () => {
+    const db = openDb(":memory:");
+    runMigrations(db);
+    const tables = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+      .all() as { name: string }[];
+    const names = new Set(tables.map((t) => t.name));
+    expect(names.has("commits")).toBe(true);
+    expect(names.has("commit_files")).toBe(true);
+    expect(names.has("session_commits")).toBe(true);
+  });
+
+  it("adds repo_path column to sessions in migration 005", () => {
+    const db = openDb(":memory:");
+    runMigrations(db);
+    const cols = db
+      .prepare("PRAGMA table_info(sessions)")
+      .all() as { name: string }[];
+    const names = new Set(cols.map((c) => c.name));
+    expect(names.has("repo_path")).toBe(true);
   });
 });

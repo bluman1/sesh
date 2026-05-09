@@ -2,7 +2,7 @@
 
 > Browse, annotate, and resume saved Claude Code and Codex CLI sessions — without leaving VSCode.
 
-[![Tests](https://img.shields.io/badge/tests-175%20passing-brightgreen)](#development)
+[![Tests](https://img.shields.io/badge/tests-245%20passing-brightgreen)](#development)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![VSCode](https://img.shields.io/badge/VSCode-^1.94.0-007acc)](https://code.visualstudio.com/)
@@ -33,13 +33,17 @@ Schema is source-pluggable — adding another source means a parser + a `source`
 
 ## Features in detail
 
-**Tab navigation.** The panel has five tabs: Sessions, Knowledge, Insights, Ideas, and Reviewer. Sessions and Insights are live; the others are placeholders for upcoming substrates.
+**Tab navigation.** The panel has five tabs: Sessions, Knowledge, Insights, Ideas, and Reviewer. Sessions, Insights, and Reviewer are live; Knowledge and Ideas are placeholders for upcoming substrates.
 
 **Insights tab.** Four sub-views:
 - *Today* — a daily standup: sessions active today, turns, and total spend broken down by project.
 - *By file* — which files have attracted the most LLM spend across all sessions.
 - *Models* — per-model turn counts and USD cost, sorted by spend.
 - *Records* — personal bests: longest session, longest streak, total spend.
+
+**Reviewer tab.** Three sub-tabs: *Branch* shows recent commits in the current repo with linked sessions and confidence percentages. *Sessions* groups sessions in this repo by their linked commits. *PRs* lists open pull requests (via `gh` CLI) with linked-session counts — shows a friendly empty-state when `gh` is missing or not authenticated.
+
+**Outcome auto-flip.** Session outcome states upgrade automatically from git history: confidence ≥ 0.5 → `shipped`; 0.2–0.5 → `shipped-partial`; a later revert commit touching the same files → `reverted`. User-marked outcomes are never overwritten.
 
 **Status bar.** When `sesh.statusBarShowCost` is on, the status bar shows `$(history) $X.XX today` and updates every minute. It hides on days with no activity. Click it to open the panel.
 
@@ -72,6 +76,7 @@ Schema is source-pluggable — adding another source means a parser + a `source`
 | `sesh.statusBarShowCost` | `true` | Show today's spend in the status bar. |
 | `sesh.indexBackfillMode` | `"eager"` | `eager` indexes all sessions in the background at activation. `lazy` defers until you open a session. |
 | `sesh.outcomeInferenceDays` | `30` | Days of inactivity before an un-reviewed session is auto-marked abandoned. |
+| `sesh.gitIndexerEnabled` | `true` | Enable git-log indexing and commit-linkage. Set to `false` for huge monorepos where walking git history is too slow. |
 
 ## Commands
 
@@ -80,6 +85,7 @@ Schema is source-pluggable — adding another source means a parser + a `source`
 - `Sesh: Rescan all projects` — re-scan + reimport ghosts + reindex FTS.
 - `Sesh: Show archive size` — disk size of the opt-in archive directory.
 - `Sesh: Reindex analytics` — rebuild all turn, tool-call, and outcome data. Run this after a pricing-table change or if Insights numbers look wrong.
+- `Sesh: Reindex git` — re-run the full git discovery → index → link → outcome-infer pipeline. Run this after cloning a new repo or if Reviewer data looks stale.
 
 `Sesh: Open` is wired to the activity-bar entry, the secondary-sidebar entry (right strip, alongside Claude / Codex), the editor-title button (history icon), and the welcome-view links — pick whichever fits your layout.
 
@@ -101,7 +107,7 @@ Sesh is a TypeScript-strict, esbuild-bundled extension with a Vite-bundled React
 ```bash
 npm install
 npm run typecheck                                    # tsc --noEmit on host
-npm test                                             # 175 tests pass (host Node binary)
+npm test                                             # 245 tests pass across 35 files (host Node binary)
 npm run build                                        # bundles extension + webview
 npx @electron/rebuild -f -w better-sqlite3 -v 39.8.8 # before pressing F5
 ```
@@ -138,7 +144,18 @@ src/
 │   ├── turns.ts              TurnRepository
 │   ├── toolCalls.ts          ToolCallRepository
 │   ├── outcomes.ts           OutcomeRepository
-│   └── analyticsQueries.ts   usdForTurn · costByFile · modelLeaderboard · personalRecords · todaysStandup · recentCommitments
+│   ├── analyticsQueries.ts   usdForTurn · costByFile · modelLeaderboard · personalRecords · todaysStandup · recentCommitments
+│   ├── commits.ts            CommitRepository
+│   └── sessionCommits.ts     SessionCommitRepository
+├── git/
+│   ├── repoDiscovery.ts      findRepoRoot — walks up to .git
+│   ├── gitLog.ts             parseGitLog — numstat → Commit[] + CommitFile[]
+│   ├── runGit.ts             runGitLog · runCurrentBranch async shell wrappers
+│   ├── gitIndexer.ts         GitIndexer — incremental, mirrors TurnsIndexer lifecycle
+│   ├── discoverRepos.ts      caches repo_path on sessions
+│   ├── linker.ts             linkSessionsToCommits — Jaccard × time-overlap × decay
+│   ├── runFullGitReindex.ts  discovery → index → link → infer pipeline
+│   └── ghCompanion.ts        gh CLI wrappers (isGhAvailable · listOpenPRsWithCommits)
 └── scanner/
     ├── jsonl.ts              streaming reader — handles .jsonl.gz transparently
     ├── extract.ts            metadata extractor (Claude Code shape)
@@ -146,7 +163,7 @@ src/
     ├── scan.ts               walks ~/.claude/projects/, top-level *.jsonl only
     ├── extractTurns.ts       parse JSONL → Turn[] + ToolCall[]
     ├── turnsIndexer.ts       incremental turn indexer (eager + lazy paths)
-    ├── outcomeInferer.ts     age-based abandoned inference
+    ├── outcomeInferer.ts     git-aware inference: shipped · shipped-partial · reverted · abandoned
     ├── sessionsIndex.ts      imports ghost (pruned-transcript) sessions
     ├── systemTags.ts         shared SYSTEM_TAG_RE
     ├── contentIndexer.ts     background FTS populate, source-aware
@@ -162,7 +179,8 @@ webview/src/
 │   ├── SessionsTab.tsx       session list + detail pane
 │   ├── InsightsTab.tsx       4 sub-views: Today · By file · Models · Records
 │   ├── AnalyticsChip.tsx     outcome dot · cost · model badge on session rows
-│   ├── PlaceholderTab.tsx    stub for Knowledge / Ideas / Reviewer
+│   ├── ReviewerTab.tsx       3 sub-tabs: Branch · Sessions · PRs
+│   ├── PlaceholderTab.tsx    stub for Knowledge / Ideas
 │   └── insights/             StandupView · CostView · LeaderboardView · RecordsView
 └── hooks/                    useSessions, useSessionDetail, useCategories, useAllTags, useProjects, useInsights
 ```

@@ -26,6 +26,20 @@ import {
 import { OutcomeRepository } from "../db/outcomes";
 import type { TurnsIndexer } from "../scanner/turnsIndexer";
 import { runFullReindex } from "../scanner/turnsIndexer";
+import { CommitRepository } from "../db/commits";
+import { SessionCommitRepository } from "../db/sessionCommits";
+import { findRepoRoot } from "../git/repoDiscovery";
+import { runFullGitReindex } from "../git/runFullGitReindex";
+import {
+  isGhAvailable,
+  listOpenPRsWithCommits,
+  type PRWithCommits,
+} from "../git/ghCompanion";
+import {
+  runListLocalBranches,
+  runRemoteUrl,
+  runCommitsInBranch,
+} from "../git/runGit";
 
 export class SeshPanel {
   private static instance: SeshPanel | null = null;
@@ -437,6 +451,210 @@ export class SeshPanel {
           });
           break;
         }
+        case "getReviewerBranch": {
+          void (async () => {
+            const repoPath = msg.repoPath ?? this.resolveDefaultRepo();
+            if (!repoPath) {
+              this.send({
+                kind: "reviewerBranch",
+                repoPath: null,
+                branch: null,
+                branches: [],
+                repoUrl: null,
+                commits: [],
+                offset: 0,
+                hasMore: false,
+              });
+              return;
+            }
+            const commitRepo = new CommitRepository(this.host.rawDb!);
+            const links = new SessionCommitRepository(this.host.rawDb!);
+            const sessions = this.host.sessions!;
+
+            const [branches, repoUrl] = await Promise.all([
+              runListLocalBranches(repoPath),
+              runRemoteUrl(repoPath),
+            ]);
+
+            // Determine which branch to display
+            let selectedBranch: string | null = null;
+            if (msg.branch && branches.includes(msg.branch)) {
+              selectedBranch = msg.branch;
+            } else if (branches.length > 0) {
+              selectedBranch = branches[0];
+            }
+
+            // Load commits from DB (ordered by authored_at DESC), no hard cap
+            let recent = commitRepo.listForRepo(repoPath);
+
+            // Filter to commits reachable from the selected branch
+            if (selectedBranch) {
+              const inBranch = await runCommitsInBranch(repoPath, selectedBranch);
+              recent = recent.filter((c) => inBranch.has(c.sha));
+            }
+
+            // Pagination
+            const limit = msg.limit ?? 30;
+            const offset = msg.offset ?? 0;
+            const page = recent.slice(offset, offset + limit);
+            const hasMore = recent.length > offset + page.length;
+
+            // Batched lookups — 2 queries instead of N+1
+            const shas = page.map((c) => c.sha);
+            const sessionsByCommit = links.sessionsForCommits(shas);
+            const allSessionIds = new Set<string>();
+            for (const rows of sessionsByCommit.values()) {
+              for (const r of rows) allSessionIds.add(r.session_id);
+            }
+            const sessionRowsById = sessions.findByIds([...allSessionIds]);
+
+            const payload = page.map((c) => {
+              const linked = sessionsByCommit.get(c.sha) ?? [];
+              const enrichedSessions = linked.map((l) => {
+                const row = sessionRowsById.get(l.session_id);
+                return {
+                  session_id: l.session_id,
+                  title: row?.custom_title ?? row?.auto_title ?? "(untitled)",
+                  confidence: l.confidence,
+                };
+              });
+              return {
+                sha: c.sha,
+                message: c.message,
+                author: c.author,
+                authored_at: c.authored_at,
+                sessions: enrichedSessions,
+              };
+            });
+
+            this.send({
+              kind: "reviewerBranch",
+              repoPath,
+              branch: selectedBranch,
+              branches,
+              repoUrl,
+              commits: payload,
+              offset,
+              hasMore,
+            });
+          })();
+          break;
+        }
+        case "getReviewerSessions": {
+          const repoPath = msg.repoPath ?? this.resolveDefaultRepo();
+          if (!repoPath) {
+            this.send({ kind: "reviewerSessions", repoPath: null, sessions: [], offset: 0, hasMore: false });
+            break;
+          }
+          const links = new SessionCommitRepository(this.host.rawDb!);
+          const commitRepo = new CommitRepository(this.host.rawDb!);
+          const sessions = this.host.sessions!;
+
+          const repoSessions = sessions.listSessionsByRepo(repoPath);
+          const sessionIds = repoSessions.map((s) => s.id);
+
+          // Batched lookups — 2 queries instead of N+1
+          const commitsBySession = links.commitsForSessions(sessionIds);
+          const allCommitShas = new Set<string>();
+          for (const rows of commitsBySession.values()) {
+            for (const r of rows) allCommitShas.add(r.commit_sha);
+          }
+          const commitRowsBySha = commitRepo.findByShas([...allCommitShas]);
+
+          // Build full filtered list BEFORE paginating so hasMore is accurate
+          const filteredRepoSessions = repoSessions
+            .map((s) => {
+              const linked = commitsBySession.get(s.id);
+              if (!linked || linked.length === 0) return null;
+              return {
+                session_id: s.id,
+                title: s.custom_title ?? s.auto_title ?? "(untitled)",
+                last_active_at: s.last_active_at,
+                commits: linked.map((l) => {
+                  const c = commitRowsBySha.get(l.commit_sha);
+                  return {
+                    sha: l.commit_sha,
+                    message: c?.message ?? null,
+                    confidence: l.confidence,
+                  };
+                }),
+              };
+            })
+            .filter((x): x is NonNullable<typeof x> => x !== null);
+
+          // Pagination
+          const sessLimit = msg.limit ?? 30;
+          const sessOffset = msg.offset ?? 0;
+          const sessPage = filteredRepoSessions.slice(sessOffset, sessOffset + sessLimit);
+          const sessHasMore = filteredRepoSessions.length > sessOffset + sessPage.length;
+
+          this.send({ kind: "reviewerSessions", repoPath, sessions: sessPage, offset: sessOffset, hasMore: sessHasMore });
+          break;
+        }
+        case "triggerReindexGit": {
+          if (!this.host.currentGitIndexer || !this.host.sessions) break;
+          const cfg = vscode.workspace.getConfiguration("sesh");
+          const windowDays = cfg.get<number>("outcomeInferenceDays", 30);
+          runFullGitReindex({
+            db: this.host.rawDb!,
+            sessions: this.host.sessions,
+            gitIndexer: this.host.currentGitIndexer,
+            windowDays,
+          })
+            .then(() => this.refreshList())
+            .catch((err) => console.warn("[sesh] git reindex failed", err));
+          break;
+        }
+        case "getReviewerPRs": {
+          const repoPath = msg.repoPath ?? this.resolveDefaultRepo();
+          if (!repoPath) {
+            this.send({
+              kind: "reviewerPRs",
+              repoPath: null,
+              ghAvailable: false,
+              ghReason: "No git repo detected.",
+              prs: [],
+            });
+            break;
+          }
+          void (async () => {
+            const avail = await isGhAvailable();
+            if (!avail.ok) {
+              this.send({
+                kind: "reviewerPRs",
+                repoPath,
+                ghAvailable: false,
+                ghReason: avail.reason,
+                prs: [],
+              });
+              return;
+            }
+            let prs: PRWithCommits[] = [];
+            try {
+              prs = await listOpenPRsWithCommits(repoPath);
+            } catch (err) {
+              console.warn("[sesh] gh pr list failed", err);
+            }
+            const links = new SessionCommitRepository(this.host.rawDb!);
+            const enriched = prs.map((p) => ({
+              number: p.number,
+              title: p.title,
+              head: p.head,
+              url: p.url,
+              commits: p.commit_shas.map((sha) => ({
+                sha,
+                sessions: links.sessionsForCommit(sha).map((l) => l.session_id),
+              })),
+            }));
+            this.send({
+              kind: "reviewerPRs",
+              repoPath,
+              ghAvailable: true,
+              prs: enriched,
+            });
+          })();
+          break;
+        }
       }
     } catch (err) {
       this.send({
@@ -548,6 +766,12 @@ export class SeshPanel {
       return 10000;
     }
     return Math.floor(raw);
+  }
+
+  private resolveDefaultRepo(): string | null {
+    const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!folder) return null;
+    return findRepoRoot(folder);
   }
 
   private suggestRemaps(): void {

@@ -134,6 +134,7 @@ export async function scanCodexSessionsRoot(
       ...meta.tokens,
       turns_indexed: 0,
       turns_last_offset: 0,
+      repo_path: null,
     });
     result.upserted++;
   }

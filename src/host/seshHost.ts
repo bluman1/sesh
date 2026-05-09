@@ -15,6 +15,7 @@ import { extractMetadata } from "../scanner/extract";
 import { ContentIndexer } from "../scanner/contentIndexer";
 import { ProjectsWatcher } from "../scanner/watcher";
 import type { TurnsIndexer } from "../scanner/turnsIndexer";
+import type { GitIndexer } from "../git/gitIndexer";
 import { TranscriptArchive } from "./transcriptArchive";
 
 const DEFAULT_DB_DIR = path.join(os.homedir(), ".sesh");
@@ -32,6 +33,7 @@ export class SeshHost {
   public archive: TranscriptArchive;
   private watcher: ProjectsWatcher | null = null;
   private turnsIndexer: TurnsIndexer | null = null;
+  private gitIndexer: GitIndexer | null = null;
   public indexProgress: { indexed: number; total: number } = { indexed: 0, total: 0 };
   public onIndexProgress?: () => void;
   public onSessionChanged?: (id: string) => void;
@@ -48,6 +50,14 @@ export class SeshHost {
     if (this.watcher) {
       this.watcher.setTurnsIndexer(indexer);
     }
+  }
+
+  setGitIndexer(indexer: GitIndexer): void {
+    this.gitIndexer = indexer;
+  }
+
+  get currentGitIndexer(): GitIndexer | null {
+    return this.gitIndexer;
   }
 
   private archiveEnabled(): boolean {

@@ -95,7 +95,11 @@ export type ToHost =
   | { kind: "getInsights"; tab: "standup" | "cost" | "leaderboard" | "records"; range: "today" | "7d" | "30d" | "1y" | "all" }
   | { kind: "setOutcome"; sessionId: string; state: "open" | "shipped" | "shipped-partial" | "reverted" | "abandoned"; notes?: string | null }
   | { kind: "triggerReindexAnalytics" }
-  | { kind: "getCommitments"; sinceDays: number };
+  | { kind: "getCommitments"; sinceDays: number }
+  | { kind: "getReviewerBranch"; repoPath?: string; branch?: string; limit?: number; offset?: number }
+  | { kind: "getReviewerSessions"; repoPath?: string; limit?: number; offset?: number }
+  | { kind: "getReviewerPRs"; repoPath?: string }
+  | { kind: "triggerReindexGit" };
 
 export type ToWebview =
   | { kind: "workspace"; currentPath: string | null }
@@ -127,7 +131,48 @@ export type ToWebview =
   | { kind: "error"; message: string }
   | { kind: "insights"; tab: "standup" | "cost" | "leaderboard" | "records"; payload: unknown }
   | { kind: "commitments"; commitments: { session_id: string; ts: number; excerpt: string }[] }
-  | { kind: "analyticsProgress"; indexed: number; total: number };
+  | { kind: "analyticsProgress"; indexed: number; total: number }
+  | {
+      kind: "reviewerBranch";
+      repoPath: string | null;
+      branch: string | null;
+      branches: string[];
+      repoUrl: string | null;
+      commits: {
+        sha: string;
+        message: string | null;
+        author: string | null;
+        authored_at: number;
+        sessions: { session_id: string; title: string; confidence: number }[];
+      }[];
+      offset: number;
+      hasMore: boolean;
+    }
+  | {
+      kind: "reviewerSessions";
+      repoPath: string | null;
+      sessions: {
+        session_id: string;
+        title: string;
+        last_active_at: number;
+        commits: { sha: string; message: string | null; confidence: number }[];
+      }[];
+      offset: number;
+      hasMore: boolean;
+    }
+  | {
+      kind: "reviewerPRs";
+      repoPath: string | null;
+      ghAvailable: boolean;
+      ghReason?: string;
+      prs: {
+        number: number;
+        title: string;
+        head: string;
+        url: string;
+        commits: { sha: string; sessions: string[] }[];
+      }[];
+    };
 
 export function rowToListItem(
   row: SessionRow,
