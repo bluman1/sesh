@@ -3,11 +3,26 @@ import { useInsights } from "../../hooks/useInsights";
 import { type InsightsRange, RANGE_TITLE } from "./range";
 import { fmtUsd, fmtCount, pluralize } from "./format";
 
+interface ModelShareRow { model: string; share: number; usd: number; tokens_total: number; }
+interface OutcomeCounts { open: number; shipped: number; shipped_partial: number; reverted: number; abandoned: number; }
+interface ToolCount { name: string; count: number; }
+interface PriorComparison { totalUsd: number; totalSessions: number; outcomesShipped: number; rangeLabel: string; }
+
 interface StandupPayload {
   totalSessions: number;
   totalTurns: number;
   totalUsd: number;
   perProject: { project_path: string; sessions: number; usd: number }[];
+  activeHours: { firstTs: number; lastTs: number } | null;
+  modelBreakdown: ModelShareRow[];
+  outcomes: OutcomeCounts;
+  topFile: { path: string; usd: number; sessions: number } | null;
+  topTools: ToolCount[];
+  cacheHitRate: number;
+  corrections: number;
+  costPerTurn: number;
+  costPerShipped: number | null;
+  comparison: PriorComparison | null;
 }
 
 type Mode = "magazine" | "standup";
@@ -22,9 +37,68 @@ function projectLabel(projectPath: string): string {
   return last.length > 40 ? last.slice(0, 39) + "…" : last;
 }
 
+function shortFilePath(p: string): string {
+  const parts = p.split("/").filter((x) => x.length > 0);
+  if (parts.length <= 2) return p;
+  return ".../" + parts.slice(-2).join("/");
+}
+
+function fmtTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).toLowerCase().replace(/\s/g, "");
+}
+
+function fmtPct(n: number): string {
+  return `${(n * 100).toFixed(0)}%`;
+}
+
+function shortModel(m: string): string {
+  if (m.includes("opus")) return "Opus";
+  if (m.includes("sonnet")) return "Sonnet";
+  if (m.includes("haiku")) return "Haiku";
+  return m;
+}
+
+function fmtDelta(current: number, prior: number): { text: string; direction: "up" | "down" | "flat" } {
+  if (prior === 0 && current === 0) return { text: "no change", direction: "flat" };
+  if (prior === 0) return { text: "new", direction: "up" };
+  const diff = current - prior;
+  const pct = Math.abs(diff) / prior;
+  if (pct < 0.005) return { text: "no change", direction: "flat" };
+  return {
+    text: `${(pct * 100).toFixed(0)}%`,
+    direction: diff < 0 ? "down" : "up",
+  };
+}
+
+function ComparisonDelta(props: {
+  current: number;
+  prior: number;
+  format: (n: number) => string;
+  positiveIsGood: boolean;
+}): JSX.Element {
+  const { current, prior, format, positiveIsGood } = props;
+  const delta = fmtDelta(current, prior);
+  const semantic =
+    delta.direction === "flat" ? "flat" :
+    delta.direction === "up" ? (positiveIsGood ? "good" : "bad") :
+    /* down */ (positiveIsGood ? "bad" : "good");
+  const arrow =
+    delta.direction === "up" ? "↑" : delta.direction === "down" ? "↓" : "·";
+  return (
+    <span className={`sesh-comparison sesh-comparison-${semantic}`}>
+      <span className="sesh-vital-emphasis">{format(current)}</span>{" "}
+      <span className="sesh-comparison-arrow">{arrow}</span>{" "}
+      <span className="sesh-comparison-delta">{delta.text}</span>{" "}
+      <span className="sesh-comparison-prior">(was {format(prior)})</span>
+    </span>
+  );
+}
+
 function buildStandupProse(data: StandupPayload, range: InsightsRange): string {
-  const projectCount = data.perProject.length;
-  const sorted = [...data.perProject].sort((a, b) => b.usd - a.usd);
   const lines: string[] = [];
   const period =
     range === "today" ? "Today" :
@@ -32,27 +106,73 @@ function buildStandupProse(data: StandupPayload, range: InsightsRange): string {
     range === "30d" ? "In the last 30 days" :
     range === "1y" ? "In the last year" :
     "All time";
+
+  // Headline
   lines.push(
-    `${period}, ${data.totalSessions} ${pluralize(data.totalSessions, "session")} across ${projectCount} ${pluralize(projectCount, "project")} ran ${fmtCount(data.totalTurns)} turns and spent ${fmtUsd(data.totalUsd)}.`,
+    `${period}: ${data.totalSessions} ${pluralize(data.totalSessions, "session")}, ${fmtCount(data.totalTurns)} turns, ${fmtUsd(data.totalUsd)}.`,
   );
-  if (sorted.length > 0) {
-    const top = sorted[0];
+
+  // Top model + share
+  if (data.modelBreakdown.length > 0) {
+    const top = data.modelBreakdown[0];
     lines.push(
-      `Most of the cost (${fmtUsd(top.usd)}) was in ${projectLabel(top.project_path)} across ${top.sessions} ${pluralize(top.sessions, "session")}.`,
+      `Mostly ${shortModel(top.model)} (${fmtPct(top.share)}).`,
     );
   }
-  if (sorted.length > 1) {
-    const second = sorted[1];
+
+  // Outcomes
+  const o = data.outcomes;
+  const totalOutcomes = o.shipped + o.shipped_partial + o.reverted + o.abandoned + o.open;
+  if (totalOutcomes > 0) {
+    const parts: string[] = [];
+    if (o.shipped > 0) parts.push(`${o.shipped} shipped`);
+    if (o.shipped_partial > 0) parts.push(`${o.shipped_partial} partial`);
+    if (o.reverted > 0) parts.push(`${o.reverted} reverted`);
+    if (o.abandoned > 0) parts.push(`${o.abandoned} abandoned`);
+    if (o.open > 0) parts.push(`${o.open} open`);
+    lines.push(parts.join(" / ") + ".");
+  }
+
+  // Active hours
+  if (data.activeHours) {
     lines.push(
-      `${projectLabel(second.project_path)} came in second at ${fmtUsd(second.usd)} (${second.sessions} ${pluralize(second.sessions, "session")}).`,
+      `Active ${fmtTime(data.activeHours.firstTs)} – ${fmtTime(data.activeHours.lastTs)}.`,
     );
   }
+
+  // Cache hit rate
+  if (data.cacheHitRate > 0) {
+    lines.push(`Cache hit ${fmtPct(data.cacheHitRate)}.`);
+  }
+
+  // Heaviest project + heaviest file
+  if (data.perProject.length > 0) {
+    const top = data.perProject[0];
+    lines.push(
+      `Heaviest project: ${projectLabel(top.project_path)} (${fmtUsd(top.usd)}).`,
+    );
+  }
+  if (data.topFile) {
+    lines.push(
+      `Heaviest file: ${shortFilePath(data.topFile.path)} (${fmtUsd(data.topFile.usd)}).`,
+    );
+  }
+
+  // Comparison
+  if (data.comparison) {
+    const d = fmtDelta(data.totalUsd, data.comparison.totalUsd);
+    const dir = d.direction === "down" ? "under" :
+                d.direction === "up" ? "over" : "matching";
+    lines.push(`${d.text} ${dir} ${data.comparison.rangeLabel}.`);
+  }
+
   return lines.join(" ");
 }
 
 interface Props { range: InsightsRange; }
 
 export function StandupView({ range }: Props): JSX.Element {
+  // ALL hooks must be at the top — before any conditional return
   const { payload } = useInsights("standup", range);
   const [mode, setMode] = useState<Mode>("magazine");
   const [copied, setCopied] = useState(false);
@@ -95,8 +215,11 @@ export function StandupView({ range }: Props): JSX.Element {
         <>
           <div className="sesh-magazine-headline">{fmtUsd(data.totalUsd)}</div>
           <div className="sesh-magazine-subtitle">
-            {fmtCount(data.totalSessions)} {pluralize(data.totalSessions, "session")} ·{" "}
+            {data.totalSessions} {pluralize(data.totalSessions, "session")} ·{" "}
             {fmtCount(data.totalTurns)} turns
+            {data.activeHours && (
+              <> · {fmtTime(data.activeHours.firstTs)} – {fmtTime(data.activeHours.lastTs)}</>
+            )}
           </div>
 
           <div className="sesh-magazine-section-label">Projects</div>
@@ -123,6 +246,125 @@ export function StandupView({ range }: Props): JSX.Element {
               ];
             })}
           </div>
+
+          <div className="sesh-magazine-section-label">Shape of the day</div>
+          <div className="sesh-vital-signs">
+            {data.modelBreakdown.length > 0 && (
+              <div className="sesh-vital-line">
+                {data.modelBreakdown.map((m, i) => (
+                  <span key={m.model}>
+                    {i > 0 && " · "}
+                    <span className="sesh-vital-emphasis">{fmtPct(m.share)}</span>{" "}
+                    {shortModel(m.model)}
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="sesh-vital-line">
+              <span>
+                <span className="sesh-vital-emphasis">{data.outcomes.shipped}</span> shipped
+              </span>
+              {" · "}
+              <span>
+                <span className="sesh-vital-emphasis">{data.outcomes.shipped_partial}</span> partial
+              </span>
+              {" · "}
+              <span>
+                <span className="sesh-vital-emphasis">{data.outcomes.reverted}</span> reverted
+              </span>
+              {" · "}
+              <span>
+                <span className="sesh-vital-emphasis">{data.outcomes.abandoned}</span> abandoned
+              </span>
+              {" · "}
+              <span>
+                <span className="sesh-vital-emphasis">{data.outcomes.open}</span> open
+              </span>
+            </div>
+            <div className="sesh-vital-line">
+              <span>
+                <span className="sesh-vital-emphasis">{fmtPct(data.cacheHitRate)}</span>{" "}
+                cache hit
+              </span>
+              {" · "}
+              <span>
+                <span className="sesh-vital-emphasis">{data.corrections}</span>{" "}
+                {pluralize(data.corrections, "correction")}
+              </span>
+              {" · "}
+              <span>
+                <span className="sesh-vital-emphasis">{fmtUsd(data.costPerTurn)}</span> per turn
+              </span>
+              {data.costPerShipped !== null && (
+                <>
+                  {" · "}
+                  <span>
+                    <span className="sesh-vital-emphasis">{fmtUsd(data.costPerShipped)}</span>{" "}
+                    per shipped
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {data.topFile && (
+            <>
+              <div className="sesh-magazine-section-label">Top file</div>
+              <div className="sesh-vital-line" title={data.topFile.path}>
+                <span className="sesh-vital-emphasis">{shortFilePath(data.topFile.path)}</span>{" "}
+                — {fmtUsd(data.topFile.usd)} across{" "}
+                {data.topFile.sessions} {pluralize(data.topFile.sessions, "session")}
+              </div>
+            </>
+          )}
+
+          {data.topTools.length > 0 && (
+            <>
+              <div className="sesh-magazine-section-label">Top tools</div>
+              <div className="sesh-vital-line">
+                {data.topTools.map((t, i) => (
+                  <span key={t.name}>
+                    {i > 0 && " · "}
+                    {t.name}{" "}
+                    <span className="sesh-vital-emphasis">({fmtCount(t.count)})</span>
+                  </span>
+                ))}
+              </div>
+            </>
+          )}
+
+          {data.comparison && (
+            <>
+              <div className="sesh-magazine-section-label">
+                vs {data.comparison.rangeLabel}
+              </div>
+              <div className="sesh-vital-line">
+                Spend:{" "}
+                <ComparisonDelta
+                  current={data.totalUsd}
+                  prior={data.comparison.totalUsd}
+                  format={(n) => fmtUsd(n)}
+                  positiveIsGood={false}
+                />
+                {" · "}
+                Sessions:{" "}
+                <ComparisonDelta
+                  current={data.totalSessions}
+                  prior={data.comparison.totalSessions}
+                  format={(n) => fmtCount(n)}
+                  positiveIsGood={true}
+                />
+                {" · "}
+                Shipped:{" "}
+                <ComparisonDelta
+                  current={data.outcomes.shipped}
+                  prior={data.comparison.outcomesShipped}
+                  format={(n) => fmtCount(n)}
+                  positiveIsGood={true}
+                />
+              </div>
+            </>
+          )}
         </>
       )}
 

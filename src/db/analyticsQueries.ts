@@ -219,59 +219,255 @@ export function personalRecords(opts: { db: Db }): PersonalRecords {
   };
 }
 
+export interface ModelShareRow {
+  model: string;
+  share: number; // 0..1
+  usd: number;
+  tokens_total: number;
+}
+
+export interface OutcomeCounts {
+  open: number;
+  shipped: number;
+  shipped_partial: number;
+  reverted: number;
+  abandoned: number;
+}
+
+export interface ToolCount {
+  name: string;
+  count: number;
+}
+
+export interface PriorComparison {
+  totalUsd: number;
+  totalSessions: number;
+  outcomesShipped: number;
+  rangeLabel: string; // e.g. "yesterday", "the previous 7 days"
+}
+
 export interface StandupSummary {
   totalSessions: number;
   totalTurns: number;
   totalUsd: number;
   perProject: { project_path: string; sessions: number; usd: number }[];
+
+  activeHours: { firstTs: number; lastTs: number } | null;
+  modelBreakdown: ModelShareRow[];
+  outcomes: OutcomeCounts;
+  topFile: { path: string; usd: number; sessions: number } | null;
+  topTools: ToolCount[];
+  cacheHitRate: number; // 0..1
+  corrections: number;
+  costPerTurn: number; // 0 if no turns
+  costPerShipped: number | null; // null if no shipped
+
+  comparison: PriorComparison | null;
 }
 
-export function todaysStandup(opts: { db: Db; todayStart: number }): StandupSummary {
-  const turnRows = opts.db
+export interface StandupOpts {
+  db: Db;
+  since: number; // unix ms
+  priorRange?: { start: number; end: number; label: string }; // optional comparison range
+}
+
+export function standupSummary(opts: StandupOpts): StandupSummary {
+  const { db, since, priorRange } = opts;
+
+  // ─── Sessions in period ─────────────────────────────────────
+  const sessionRows = db
     .prepare(
-      `SELECT t.model, t.tokens_in, t.tokens_out, t.tokens_cache_read, t.tokens_cache_create,
-              s.project_path
-         FROM turns t JOIN sessions s ON s.id = t.session_id
-         WHERE t.ts >= ?`,
+      "SELECT id, project_path FROM sessions WHERE last_active_at >= ?",
     )
-    .all(opts.todayStart) as {
+    .all(since) as { id: string; project_path: string }[];
+  const totalSessions = sessionRows.length;
+  const sessionIds = sessionRows.map((r) => r.id);
+
+  // ─── Turns in period ────────────────────────────────────────
+  const turnRows = db
+    .prepare(
+      `SELECT t.model, t.tokens_in, t.tokens_out, t.tokens_cache_read,
+              t.tokens_cache_create, t.is_correction, t.ts,
+              s.project_path
+         FROM turns t
+         JOIN sessions s ON s.id = t.session_id
+        WHERE t.ts >= ?`,
+    )
+    .all(since) as {
       model: string | null;
       tokens_in: number;
       tokens_out: number;
       tokens_cache_read: number;
       tokens_cache_create: number;
+      is_correction: 0 | 1;
+      ts: number;
       project_path: string;
     }[];
 
-  const sessions = opts.db
-    .prepare("SELECT COUNT(*) AS c FROM sessions WHERE last_active_at >= ?")
-    .get(opts.todayStart) as { c: number };
+  let totalUsd = 0;
+  let totalTokens = 0;
+  let totalCacheRead = 0;
+  let totalCacheReadable = 0;
+  let corrections = 0;
+  let firstTs: number | null = null;
+  let lastTs: number | null = null;
+  const usdByModel = new Map<string, number>();
+  const tokensByModel = new Map<string, number>();
+  const usdByProject = new Map<string, number>();
 
-  const perProject = new Map<string, { sessions: Set<string>; usd: number }>();
   for (const r of turnRows) {
-    const existing = perProject.get(r.project_path) ?? { sessions: new Set<string>(), usd: 0 };
-    existing.usd += usdForTurn(r);
-    perProject.set(r.project_path, existing);
+    const usd = usdForTurn(r);
+    totalUsd += usd;
+    const tokens = r.tokens_in + r.tokens_out;
+    totalTokens += tokens;
+    totalCacheRead += r.tokens_cache_read;
+    totalCacheReadable += r.tokens_in + r.tokens_cache_read;
+    if (r.is_correction === 1) corrections++;
+    if (firstTs === null || r.ts < firstTs) firstTs = r.ts;
+    if (lastTs === null || r.ts > lastTs) lastTs = r.ts;
+    if (r.model) {
+      usdByModel.set(r.model, (usdByModel.get(r.model) ?? 0) + usd);
+      tokensByModel.set(r.model, (tokensByModel.get(r.model) ?? 0) + tokens);
+    }
+    usdByProject.set(
+      r.project_path,
+      (usdByProject.get(r.project_path) ?? 0) + usd,
+    );
   }
-  const sessionRows = opts.db
-    .prepare("SELECT id, project_path FROM sessions WHERE last_active_at >= ?")
-    .all(opts.todayStart) as { id: string; project_path: string }[];
-  for (const r of sessionRows) {
-    const existing = perProject.get(r.project_path) ?? { sessions: new Set<string>(), usd: 0 };
-    existing.sessions.add(r.id);
-    perProject.set(r.project_path, existing);
+
+  // ─── Per-project (sessions + USD) ──────────────────────────
+  const sessionsByProject = new Map<string, Set<string>>();
+  for (const s of sessionRows) {
+    const set = sessionsByProject.get(s.project_path) ?? new Set<string>();
+    set.add(s.id);
+    sessionsByProject.set(s.project_path, set);
+  }
+  const perProject = Array.from(sessionsByProject.entries())
+    .map(([project_path, ids]) => ({
+      project_path,
+      sessions: ids.size,
+      usd: usdByProject.get(project_path) ?? 0,
+    }))
+    .sort((a, b) => b.usd - a.usd);
+
+  const totalTurns = turnRows.length;
+
+  // ─── Model breakdown (share of total tokens) ────────────────
+  const modelBreakdown: ModelShareRow[] = Array.from(tokensByModel.entries())
+    .map(([model, tokens]) => ({
+      model,
+      tokens_total: tokens,
+      usd: usdByModel.get(model) ?? 0,
+      share: totalTokens > 0 ? tokens / totalTokens : 0,
+    }))
+    .sort((a, b) => b.share - a.share);
+
+  // ─── Outcomes (count per state) ─────────────────────────────
+  const outcomes: OutcomeCounts = {
+    open: 0, shipped: 0, shipped_partial: 0, reverted: 0, abandoned: 0,
+  };
+  if (sessionIds.length > 0) {
+    const placeholders = sessionIds.map(() => "?").join(",");
+    const rows = db
+      .prepare(
+        `SELECT state, COUNT(*) AS c FROM session_outcomes
+          WHERE session_id IN (${placeholders})
+          GROUP BY state`,
+      )
+      .all(...sessionIds) as { state: string; c: number }[];
+    for (const r of rows) {
+      if (r.state === "open") outcomes.open = r.c;
+      else if (r.state === "shipped") outcomes.shipped = r.c;
+      else if (r.state === "shipped-partial") outcomes.shipped_partial = r.c;
+      else if (r.state === "reverted") outcomes.reverted = r.c;
+      else if (r.state === "abandoned") outcomes.abandoned = r.c;
+    }
+  }
+
+  // ─── Top file (reuse costByFile, take top) ──────────────────
+  const allFiles = costByFile({ db, since });
+  const topFileRow = allFiles[0] ?? null;
+  const topFile = topFileRow
+    ? { path: topFileRow.path, usd: topFileRow.usd, sessions: topFileRow.sessions }
+    : null;
+
+  // ─── Top tools (count by name in period) ────────────────────
+  const toolRows = db
+    .prepare(
+      "SELECT name, COUNT(*) AS c FROM tool_calls WHERE ts >= ? GROUP BY name ORDER BY c DESC LIMIT 3",
+    )
+    .all(since) as { name: string; c: number }[];
+  const topTools: ToolCount[] = toolRows.map((r) => ({ name: r.name, count: r.c }));
+
+  // ─── Cache hit rate ─────────────────────────────────────────
+  const cacheHitRate =
+    totalCacheReadable > 0 ? totalCacheRead / totalCacheReadable : 0;
+
+  // ─── Cost-per-* ─────────────────────────────────────────────
+  const costPerTurn = totalTurns > 0 ? totalUsd / totalTurns : 0;
+  const costPerShipped = outcomes.shipped > 0 ? totalUsd / outcomes.shipped : null;
+
+  // ─── Comparison (prior range) ───────────────────────────────
+  let comparison: PriorComparison | null = null;
+  if (priorRange) {
+    const priorSessions = db
+      .prepare(
+        "SELECT id FROM sessions WHERE last_active_at >= ? AND last_active_at < ?",
+      )
+      .all(priorRange.start, priorRange.end) as { id: string }[];
+
+    const priorTurnRows = db
+      .prepare(
+        `SELECT model, tokens_in, tokens_out, tokens_cache_read, tokens_cache_create
+           FROM turns WHERE ts >= ? AND ts < ?`,
+      )
+      .all(priorRange.start, priorRange.end) as {
+        model: string | null;
+        tokens_in: number;
+        tokens_out: number;
+        tokens_cache_read: number;
+        tokens_cache_create: number;
+      }[];
+    const priorUsd = priorTurnRows.reduce((acc, r) => acc + usdForTurn(r), 0);
+
+    let priorShipped = 0;
+    if (priorSessions.length > 0) {
+      const placeholders = priorSessions.map(() => "?").join(",");
+      const ids = priorSessions.map((s) => s.id);
+      const row = db
+        .prepare(
+          `SELECT COUNT(*) AS c FROM session_outcomes
+            WHERE state = 'shipped' AND session_id IN (${placeholders})`,
+        )
+        .get(...ids) as { c: number };
+      priorShipped = row.c;
+    }
+
+    comparison = {
+      totalUsd: priorUsd,
+      totalSessions: priorSessions.length,
+      outcomesShipped: priorShipped,
+      rangeLabel: priorRange.label,
+    };
   }
 
   return {
-    totalSessions: sessions.c,
-    totalTurns: turnRows.length,
-    totalUsd: turnRows.reduce((acc, r) => acc + usdForTurn(r), 0),
-    perProject: Array.from(perProject.entries()).map(([project_path, v]) => ({
-      project_path,
-      sessions: v.sessions.size,
-      usd: v.usd,
-    })),
+    totalSessions, totalTurns, totalUsd, perProject,
+    activeHours: firstTs !== null && lastTs !== null
+      ? { firstTs, lastTs }
+      : null,
+    modelBreakdown, outcomes,
+    topFile, topTools,
+    cacheHitRate, corrections,
+    costPerTurn, costPerShipped,
+    comparison,
   };
+}
+
+// Backwards-compat alias for the status bar (which uses todayStart, no
+// comparison). Internally calls standupSummary.
+export function todaysStandup(opts: { db: Db; todayStart: number }): StandupSummary {
+  return standupSummary({ db: opts.db, since: opts.todayStart });
 }
 
 export interface Commitment {

@@ -9,8 +9,10 @@ import {
   modelLeaderboard,
   personalRecords,
   todaysStandup,
+  standupSummary,
   recentCommitments,
 } from "../../src/db/analyticsQueries";
+import { OutcomeRepository } from "../../src/db/outcomes";
 
 describe("analyticsQueries", () => {
   let db: Db;
@@ -93,5 +95,85 @@ describe("analyticsQueries", () => {
     // for v1 it joins on FTS table. Simpler test: empty result when no FTS.
     const result = recentCommitments({ db, since: 0 });
     expect(Array.isArray(result)).toBe(true);
+  });
+});
+
+describe("standupSummary", () => {
+  let db: Db;
+  let sessions: SessionRepository;
+  let turns: TurnRepository;
+  let toolCalls: ToolCallRepository;
+  const NOW = 1700000000000;
+  const HOUR = 3600 * 1000;
+
+  beforeEach(() => {
+    db = openDb(":memory:");
+    runMigrations(db);
+    sessions = new SessionRepository(db);
+    turns = new TurnRepository(db);
+    toolCalls = new ToolCallRepository(db);
+
+    sessions.upsert({
+      id: "s1", source: "claude-code", project_path: "/p", file_path: "/p/s1.jsonl",
+      file_mtime: 0, file_size: 0, created_at: NOW - HOUR, last_active_at: NOW,
+      message_count: 4,
+      auto_title: "shipped session", custom_title: null, category_id: null, notes: null,
+      favorited: 0, archived: 0, orphaned: 0, content_indexed: 1, last_parsed_offset: 0,
+      tokens_in: 100, tokens_out: 50, tokens_cache_read: 0, tokens_cache_create: 0,
+      turns_indexed: 1, turns_last_offset: 0,
+    });
+    turns.upsertMany([
+      { id: "u1", session_id: "s1", seq: 0, role: "user", model: null,
+        ts: NOW - HOUR, tokens_in: 0, tokens_out: 0, tokens_cache_read: 0,
+        tokens_cache_create: 0, text_len: 50, latency_ms: null, is_correction: 0 },
+      { id: "a1", session_id: "s1", seq: 1, role: "assistant", model: "claude-opus-4-7",
+        ts: NOW - HOUR + 5000, tokens_in: 100, tokens_out: 50, tokens_cache_read: 0,
+        tokens_cache_create: 0, text_len: 80, latency_ms: 5000, is_correction: 0 },
+    ]);
+    toolCalls.upsertMany([
+      { id: "tc1", turn_id: "a1", session_id: "s1", name: "Edit", target_path: "/p/file.ts",
+        is_error: 0, result_size: 0, ts: NOW - HOUR + 5000 },
+    ]);
+  });
+
+  it("returns enriched fields", () => {
+    const summary = standupSummary({ db, since: 0 });
+    expect(summary.totalSessions).toBeGreaterThan(0);
+    expect(summary.modelBreakdown.length).toBeGreaterThan(0);
+    expect(summary.modelBreakdown[0].model).toBe("claude-opus-4-7");
+    expect(summary.modelBreakdown[0].share).toBeCloseTo(1.0); // only one model
+    expect(summary.activeHours).not.toBeNull();
+    expect(summary.topFile?.path).toBe("/p/file.ts");
+    expect(summary.topTools[0].name).toBe("Edit");
+    expect(summary.cacheHitRate).toBeGreaterThanOrEqual(0);
+    expect(summary.cacheHitRate).toBeLessThanOrEqual(1);
+    expect(summary.costPerTurn).toBeGreaterThan(0);
+    expect(summary.comparison).toBeNull();
+  });
+
+  it("includes comparison when priorRange is provided", () => {
+    const summary = standupSummary({
+      db,
+      since: 0,
+      priorRange: {
+        start: 0,
+        end: 1,
+        label: "the previous period (test fixture)",
+      },
+    });
+    expect(summary.comparison).not.toBeNull();
+    expect(summary.comparison!.rangeLabel).toContain("test fixture");
+  });
+
+  it("counts corrections (none in fixture by default)", () => {
+    const summary = standupSummary({ db, since: 0 });
+    expect(summary.corrections).toBe(0);
+  });
+
+  it("breaks out outcomes when set", () => {
+    new OutcomeRepository(db).setUser("s1", "shipped", null);
+    const summary = standupSummary({ db, since: 0 });
+    expect(summary.outcomes.shipped).toBe(1);
+    expect(summary.costPerShipped).toBeGreaterThan(0);
   });
 });
