@@ -26,6 +26,10 @@ import {
 import { OutcomeRepository } from "../db/outcomes";
 import type { TurnsIndexer } from "../scanner/turnsIndexer";
 import { runFullReindex } from "../scanner/turnsIndexer";
+import { CommitRepository } from "../db/commits";
+import { SessionCommitRepository } from "../db/sessionCommits";
+import { findRepoRoot } from "../git/repoDiscovery";
+import { runFullGitReindex } from "../git/runFullGitReindex";
 
 export class SeshPanel {
   private static instance: SeshPanel | null = null;
@@ -437,6 +441,100 @@ export class SeshPanel {
           });
           break;
         }
+        case "getReviewerBranch": {
+          const repoPath = msg.repoPath ?? this.resolveDefaultRepo();
+          if (!repoPath) {
+            this.send({ kind: "reviewerBranch", repoPath: null, branch: null, commits: [] });
+            break;
+          }
+          const commits = new CommitRepository(this.host.rawDb!);
+          const links = new SessionCommitRepository(this.host.rawDb!);
+          const sessions = this.host.sessions!;
+
+          const recent = commits.listForRepo(repoPath).slice(0, 100);
+          const branch = recent[0]?.branch ?? null;
+
+          const payload = recent.map((c) => {
+            const linkedSessionIds = links.sessionsForCommit(c.sha);
+            const enrichedSessions = linkedSessionIds.map((l) => {
+              const row = sessions.findById(l.session_id);
+              return {
+                session_id: l.session_id,
+                title: row?.custom_title ?? row?.auto_title ?? "(untitled)",
+                confidence: l.confidence,
+              };
+            });
+            return {
+              sha: c.sha,
+              message: c.message,
+              author: c.author,
+              authored_at: c.authored_at,
+              sessions: enrichedSessions,
+            };
+          });
+
+          this.send({ kind: "reviewerBranch", repoPath, branch, commits: payload });
+          break;
+        }
+        case "getReviewerSessions": {
+          const repoPath = msg.repoPath ?? this.resolveDefaultRepo();
+          if (!repoPath) {
+            this.send({ kind: "reviewerSessions", repoPath: null, sessions: [] });
+            break;
+          }
+          const links = new SessionCommitRepository(this.host.rawDb!);
+          const commits = new CommitRepository(this.host.rawDb!);
+          const sessions = this.host.sessions!;
+
+          const repoSessions = sessions.listSessionsByRepo(repoPath);
+          const payload = repoSessions
+            .map((s) => {
+              const linked = links.commitsForSession(s.id);
+              if (linked.length === 0) return null;
+              return {
+                session_id: s.id,
+                title: s.custom_title ?? s.auto_title ?? "(untitled)",
+                last_active_at: s.last_active_at,
+                commits: linked.map((l) => {
+                  const c = commits.findBySha(l.commit_sha);
+                  return {
+                    sha: l.commit_sha,
+                    message: c?.message ?? null,
+                    confidence: l.confidence,
+                  };
+                }),
+              };
+            })
+            .filter((x): x is NonNullable<typeof x> => x !== null);
+
+          this.send({ kind: "reviewerSessions", repoPath, sessions: payload });
+          break;
+        }
+        case "triggerReindexGit": {
+          if (!this.host.currentGitIndexer || !this.host.sessions) break;
+          const cfg = vscode.workspace.getConfiguration("sesh");
+          const windowDays = cfg.get<number>("outcomeInferenceDays", 30);
+          runFullGitReindex({
+            db: this.host.rawDb!,
+            sessions: this.host.sessions,
+            gitIndexer: this.host.currentGitIndexer,
+            windowDays,
+          })
+            .then(() => this.refreshList())
+            .catch((err) => console.warn("[sesh] git reindex failed", err));
+          break;
+        }
+        case "getReviewerPRs": {
+          // Real handler lands in Task 9.2 when ghCompanion module exists.
+          this.send({
+            kind: "reviewerPRs",
+            repoPath: null,
+            ghAvailable: false,
+            ghReason: "not yet implemented",
+            prs: [],
+          });
+          break;
+        }
       }
     } catch (err) {
       this.send({
@@ -548,6 +646,12 @@ export class SeshPanel {
       return 10000;
     }
     return Math.floor(raw);
+  }
+
+  private resolveDefaultRepo(): string | null {
+    const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!folder) return null;
+    return findRepoRoot(folder);
   }
 
   private suggestRemaps(): void {
