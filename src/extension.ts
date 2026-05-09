@@ -8,6 +8,7 @@ import { TurnsIndexer, runFullReindex } from "./scanner/turnsIndexer";
 import { inferOutcomes } from "./scanner/outcomeInferer";
 import { CommitRepository } from "./db/commits";
 import { GitIndexer } from "./git/gitIndexer";
+import { runFullGitReindex } from "./git/runFullGitReindex";
 
 let host: SeshHost | null = null;
 let turnsIndexer: TurnsIndexer | null = null;
@@ -118,6 +119,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         .catch((err) => {
           console.warn("[sesh] eager analytics backfill failed; will run lazily", err);
         });
+    }
+
+    const gitEnabled = cfg.get<boolean>("gitIndexerEnabled", true);
+    if (gitEnabled && gitIndexer) {
+      // Fire and forget. Errors fall through to lazy/manual.
+      void runFullGitReindex({
+        db: host.rawDb!,
+        sessions: host.sessions!,
+        gitIndexer,
+        windowDays: cfg.get<number>("outcomeInferenceDays", 30),
+      }).catch((err) => {
+        console.warn("[sesh] eager git index failed; will run on demand", err);
+      });
     }
 
     // Run outcome inference daily so long-lived VSCode sessions age sessions
