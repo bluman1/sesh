@@ -26,6 +26,7 @@ import {
 import { OutcomeRepository } from "../db/outcomes";
 import type { TurnsIndexer } from "../scanner/turnsIndexer";
 import { runFullReindex } from "../scanner/turnsIndexer";
+import { semanticSearch } from "../db/semanticQueries";
 
 export class SeshPanel {
   private static instance: SeshPanel | null = null;
@@ -435,6 +436,40 @@ export class SeshPanel {
               excerpt: c.excerpt,
             })),
           });
+          break;
+        }
+        case "semanticSearch": {
+          const e = this.host.currentEmbedder;
+          if (!e) {
+            this.send({ kind: "searchResults", query: msg.query, results: [] });
+            break;
+          }
+          void (async () => {
+            try {
+              const hits = await semanticSearch(this.host.rawDb!, e, msg.query, { limit: msg.limit ?? 30 });
+              this.send({
+                kind: "searchResults",
+                query: msg.query,
+                results: hits.map((h) => ({
+                  chunk_id: h.chunk.id,
+                  session_id: h.session_id,
+                  session_title: h.session_title,
+                  session_project_path: h.session_project_path,
+                  snippet: h.chunk.text.length > 240 ? h.chunk.text.slice(0, 240) + "…" : h.chunk.text,
+                  score: h.score,
+                })),
+              });
+            } catch (err) {
+              console.warn("[sesh] semantic search failed", err);
+              this.send({ kind: "searchResults", query: msg.query, results: [] });
+            }
+          })();
+          break;
+        }
+        case "triggerReindexEmbeddings": {
+          const idx = this.host.currentEmbeddingIndexer;
+          if (!idx) break;
+          void idx.run().catch((err) => console.warn("[sesh] embedding reindex failed", err));
           break;
         }
       }
