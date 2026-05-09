@@ -1,0 +1,23 @@
+.sesh-tabbar {
+  display: flex;
+  gap: var(--sesh-space-1);
+  padding: 0 var(--sesh-space-3);
+  border-bottom: 1px solid rgba(128,128,128,0.15);
+  background: var(--vscode-editor-background);
+}
+.sesh-tab {
+  padding: var(--sesh-space-2) var(--sesh-space-3);
+  background: transparent;
+  border: none;
+  color: color-mix(in srgb, var(--vscode-foreground) 62%, transparent);
+  cursor: pointer;
+  font: inherit;
+  border-bottom: 2px solid transparent;
+}
+.sesh-tab:hover {
+  background: var(--sesh-fill-subtle);
+}
+.sesh-tab.is-active {
+  color: var(--vscode-foreground);
+  border-bottom-color: var(--vscode-focusBorder);
+}

@@ -1528,6 +1528,17 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* ─── Placeholder tabs ──────────────────────────────── */
+
+.sesh-placeholder {
+  padding: var(--sesh-space-6);
+  color: color-mix(in srgb, var(--vscode-foreground) 62%, transparent);
+}
+.sesh-placeholder-title {
+  font-size: 1.25em;
+  margin-bottom: var(--sesh-space-2);
+}
+
 /* ─── Remap banner ──────────────────────────────────── */
 
 .sesh-remap-banner {
