@@ -52,6 +52,27 @@ jobs:
       - name: Run tests
         run: npx vitest run
 
+      # `npm ci` populates better-sqlite3 with a Node-ABI prebuild — what
+      # vitest needs above. But VSCode runs extensions inside Electron, so
+      # the .vsix needs an Electron-ABI binary. Swap before packaging.
+      # Also lets us cross-target (darwin runner produces win32 .vsix etc.)
+      # by passing the matrix's platform/arch explicitly.
+      - name: Swap better-sqlite3 binary to Electron-ABI for ${{ matrix.target }}
+        shell: bash
+        run: |
+          PLATFORM="${TARGET%-*}"
+          ARCH="${TARGET##*-}"
+          cd node_modules/better-sqlite3
+          rm -f build/Release/better_sqlite3.node
+          ../../node_modules/.bin/prebuild-install \
+            --runtime=electron \
+            --target=39.8.8 \
+            --platform="$PLATFORM" \
+            --arch="$ARCH" \
+            --force
+        env:
+          TARGET: ${{ matrix.target }}
+
       - name: Build extension + webview
         run: npm run build
 
