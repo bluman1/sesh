@@ -346,7 +346,19 @@ export class SeshPanel {
           this.broadcastProjects();
           break;
         case "getInsights": {
-          const sinceMs = Date.now() - msg.sinceDays * 86400 * 1000;
+          let sinceMs: number;
+          switch (msg.range) {
+            case "today": {
+              const d = new Date();
+              d.setHours(0, 0, 0, 0);
+              sinceMs = d.getTime();
+              break;
+            }
+            case "7d": sinceMs = Date.now() - 7 * 86400 * 1000; break;
+            case "30d": sinceMs = Date.now() - 30 * 86400 * 1000; break;
+            case "1y": sinceMs = Date.now() - 365 * 86400 * 1000; break;
+            case "all": sinceMs = 0; break;
+          }
           let payload: unknown;
           switch (msg.tab) {
             case "standup":

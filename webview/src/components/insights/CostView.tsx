@@ -1,4 +1,6 @@
 import { useInsights } from "../../hooks/useInsights";
+import { type InsightsRange, RANGE_TITLE } from "./range";
+import { fmtUsd, fmtCount, pluralize } from "./format";
 
 interface Row { path: string; usd: number; tool_calls: number; sessions: number; }
 
@@ -8,15 +10,14 @@ function shortPath(p: string): string {
   return ".../" + parts.slice(-2).join("/");
 }
 
-function pluralize(n: number, singular: string, plural = singular + "s"): string {
-  return n === 1 ? singular : plural;
-}
+interface Props { range: InsightsRange; }
 
-export function CostView(): JSX.Element {
-  const { payload } = useInsights("cost", 30);
+export function CostView({ range }: Props): JSX.Element {
+  const { payload } = useInsights("cost", range);
+
   if (!payload) return <div>Loading…</div>;
   const rows = payload as Row[];
-  if (rows.length === 0) return <div>No file-attributed cost in the last 30 days.</div>;
+  if (rows.length === 0) return <div>No file-attributed cost for {RANGE_TITLE[range].toLowerCase()}.</div>;
 
   const total = rows.reduce((acc, r) => acc + r.usd, 0);
 
@@ -24,10 +25,10 @@ export function CostView(): JSX.Element {
     <div>
       <div className="sesh-insights-table-title">
         <span className="sesh-insights-table-title-label">
-          Cost by file (last 30 days)
+          Cost by file ({RANGE_TITLE[range].toLowerCase()})
         </span>
         <span className="sesh-insights-table-title-total">
-          Total: ${total.toFixed(2)}
+          Total: {fmtUsd(total)}
         </span>
       </div>
       <table className="sesh-insights-table">
@@ -43,12 +44,12 @@ export function CostView(): JSX.Element {
           {rows.slice(0, 50).map((r) => (
             <tr key={r.path}>
               <td title={r.path}>{shortPath(r.path)}</td>
-              <td className="numeric">${r.usd.toFixed(2)}</td>
+              <td className="numeric">{fmtUsd(r.usd)}</td>
               <td className="numeric">
-                {r.tool_calls} {pluralize(r.tool_calls, "call")}
+                {fmtCount(r.tool_calls)} {pluralize(r.tool_calls, "call")}
               </td>
               <td className="numeric">
-                {r.sessions} {pluralize(r.sessions, "session")}
+                {fmtCount(r.sessions)} {pluralize(r.sessions, "session")}
               </td>
             </tr>
           ))}

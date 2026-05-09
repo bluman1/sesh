@@ -92,7 +92,7 @@ export type ToHost =
   | { kind: "listRemaps" }
   | { kind: "generateTitle"; id: string }
   | { kind: "openFolderInNewWindow"; path: string }
-  | { kind: "getInsights"; tab: "standup" | "cost" | "leaderboard" | "records"; sinceDays: number }
+  | { kind: "getInsights"; tab: "standup" | "cost" | "leaderboard" | "records"; range: "today" | "7d" | "30d" | "1y" | "all" }
   | { kind: "setOutcome"; sessionId: string; state: "open" | "shipped" | "shipped-partial" | "reverted" | "abandoned"; notes?: string | null }
   | { kind: "triggerReindexAnalytics" }
   | { kind: "getCommitments"; sinceDays: number };

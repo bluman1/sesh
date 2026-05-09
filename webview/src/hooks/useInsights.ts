@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { onHostMessage, postToHost } from "../messaging";
+import type { InsightsRange } from "../components/insights/range";
 
 export type InsightsTabId = "standup" | "cost" | "leaderboard" | "records";
 
-export function useInsights(tab: InsightsTabId, sinceDays = 7): {
+export function useInsights(tab: InsightsTabId, range: InsightsRange): {
   payload: unknown;
   reload: () => void;
 } {
@@ -15,12 +16,12 @@ export function useInsights(tab: InsightsTabId, sinceDays = 7): {
         setPayload(msg.payload);
       }
     });
-    postToHost({ kind: "getInsights", tab, sinceDays });
+    postToHost({ kind: "getInsights", tab, range });
     return off;
-  }, [tab, sinceDays]);
+  }, [tab, range]);
 
   return {
     payload,
-    reload: () => postToHost({ kind: "getInsights", tab, sinceDays }),
+    reload: () => postToHost({ kind: "getInsights", tab, range }),
   };
 }

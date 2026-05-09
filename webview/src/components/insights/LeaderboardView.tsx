@@ -1,4 +1,6 @@
 import { useInsights } from "../../hooks/useInsights";
+import { type InsightsRange, RANGE_TITLE } from "./range";
+import { fmtUsd, fmtCount } from "./format";
 
 interface Row { model: string; turns: number; tokens_in_total: number; tokens_out_total: number; usd: number; }
 
@@ -9,11 +11,14 @@ function shortModel(m: string): string {
   return m;
 }
 
-export function LeaderboardView(): JSX.Element {
-  const { payload } = useInsights("leaderboard", 30);
+interface Props { range: InsightsRange; }
+
+export function LeaderboardView({ range }: Props): JSX.Element {
+  const { payload } = useInsights("leaderboard", range);
+
   if (!payload) return <div>Loading…</div>;
   const rows = payload as Row[];
-  if (rows.length === 0) return <div>No model usage in the last 30 days.</div>;
+  if (rows.length === 0) return <div>No model usage for {RANGE_TITLE[range].toLowerCase()}.</div>;
 
   const total = rows.reduce((acc, r) => acc + r.usd, 0);
 
@@ -21,10 +26,10 @@ export function LeaderboardView(): JSX.Element {
     <div>
       <div className="sesh-insights-table-title">
         <span className="sesh-insights-table-title-label">
-          Model leaderboard (last 30 days)
+          Model leaderboard ({RANGE_TITLE[range].toLowerCase()})
         </span>
         <span className="sesh-insights-table-title-total">
-          Total: ${total.toFixed(2)}
+          Total: {fmtUsd(total)}
         </span>
       </div>
       <table className="sesh-insights-table">
@@ -41,10 +46,10 @@ export function LeaderboardView(): JSX.Element {
           {rows.map((r) => (
             <tr key={r.model}>
               <td title={r.model}>{shortModel(r.model)}</td>
-              <td className="numeric">{r.turns.toLocaleString()}</td>
+              <td className="numeric">{fmtCount(r.turns)}</td>
               <td className="numeric">{r.tokens_in_total.toLocaleString()}</td>
               <td className="numeric">{r.tokens_out_total.toLocaleString()}</td>
-              <td className="numeric">${r.usd.toFixed(2)}</td>
+              <td className="numeric">{fmtUsd(r.usd)}</td>
             </tr>
           ))}
         </tbody>
