@@ -111,7 +111,9 @@ export type ToHost =
   | { kind: "getStyleFingerprint"; sinceDays?: number }
   | { kind: "exportStyleFingerprint" }
   | { kind: "getNextSessionSuggestions" }
-  | { kind: "dismissNextSessionSuggestion"; key: string };
+  | { kind: "dismissNextSessionSuggestion"; key: string }
+  | { kind: "getTopics"; limit?: number }
+  | { kind: "getGlossary"; limit?: number };
 
 export type ToWebview =
   | { kind: "workspace"; currentPath: string | null }
@@ -259,6 +261,26 @@ export type ToWebview =
         text: string;
         weight: number;
         source_session_ids: string[];
+      }>;
+    }
+  | {
+      kind: "topics";
+      topics: Array<{
+        id: string;
+        label: string;
+        representative: string;
+        size: number;
+        session_count: number;
+        example_session_ids: string[];
+      }>;
+    }
+  | {
+      kind: "glossary";
+      entries: Array<{
+        term: string;
+        count: number;
+        session_count: number;
+        example_session_ids: string[];
       }>;
     };
 

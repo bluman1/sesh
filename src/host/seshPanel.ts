@@ -41,6 +41,8 @@ import {
   runCommitsInBranch,
 } from "../git/runGit";
 import { semanticSearch } from "../db/semanticQueries";
+import { computeTopics } from "../db/topicsQuery";
+import { computeGlossary } from "../db/glossaryQuery";
 import { IdeaRepository } from "../db/ideas";
 import { ClaudeMdSuggestionRepository } from "../db/claudeMd";
 import { PromptLintRepository } from "../db/promptLints";
@@ -609,6 +611,21 @@ export class SeshPanel {
         }
         case "dismissNextSessionSuggestion": {
           // For v1, dismissal is webview-local (cleared on reload). No persistence.
+          break;
+        }
+        case "getTopics": {
+          const e = this.host.currentEmbedder;
+          if (!e) {
+            this.send({ kind: "topics", topics: [] });
+            break;
+          }
+          const t = computeTopics(this.host.rawDb!, e.modelName, { limit: msg.limit });
+          this.send({ kind: "topics", topics: t });
+          break;
+        }
+        case "getGlossary": {
+          const g = computeGlossary(this.host.rawDb!, { limit: msg.limit });
+          this.send({ kind: "glossary", entries: g });
           break;
         }
         case "getReviewerBranch": {
