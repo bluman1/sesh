@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { ensureNativePrebuild } from "./native-prebuild";
 import { SeshHost } from "./host/seshHost";
 import { SeshPanel } from "./host/seshPanel";
 import { SeshStatusBar } from "./host/statusBar";
@@ -29,6 +30,8 @@ let embeddingIndexer: EmbeddingIndexer | null = null;
 let embedder: Embedder | null = null;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  ensureNativePrebuild(context.extensionPath);
+
   const output = vscode.window.createOutputChannel("Sesh");
   context.subscriptions.push(output);
 
