@@ -1,0 +1,5 @@
+{"type":"queue-operation","operation":"enqueue","timestamp":"2026-04-21T08:47:11.844Z","sessionId":"s-fixture"}
+{"parentUuid":null,"cwd":"/tmp/proj","type":"user","message":{"role":"user","content":"first prompt"},"uuid":"u1","timestamp":"2026-04-21T08:48:00.000Z"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"reply text"},{"type":"tool_use","id":"tu1","name":"Edit","input":{"file_path":"/p/a.ts"}}],"model":"claude-opus-4-7","usage":{"input_tokens":100,"output_tokens":50,"cache_read_input_tokens":0,"cache_creation_input_tokens":10}},"uuid":"a1","timestamp":"2026-04-21T08:48:05.000Z"}
+{"type":"user","message":{"role":"user","content":"no, do it differently"},"uuid":"u2","timestamp":"2026-04-21T08:48:10.000Z"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"ok"}],"model":"claude-opus-4-7","usage":{"input_tokens":120,"output_tokens":10}},"uuid":"a2","timestamp":"2026-04-21T08:48:15.000Z"}
