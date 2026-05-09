@@ -1,3 +1,9 @@
+export interface SessionAnalyticsChip {
+  outcome: "open" | "shipped" | "shipped-partial" | "reverted" | "abandoned" | null;
+  usd: number;
+  primary_model: string | null;
+}
+
 export interface SessionListItem {
   id: string;
   title: string;
@@ -11,6 +17,7 @@ export interface SessionListItem {
   orphaned: 0 | 1;
   category_id: number | null;
   tags: string[];
+  analytics?: SessionAnalyticsChip;
 }
 
 export interface SessionDetail extends SessionListItem {
