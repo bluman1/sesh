@@ -2,6 +2,17 @@
 // Downloads prebuilt better-sqlite3 binaries for several (electron ABI × platform/arch)
 // combinations and stores them under `prebuilds/<platform>-<arch>-electron-abi-<ABI>/better_sqlite3.node`
 // at the extension root. Idempotent — skips files that already exist.
+//
+// We try multiple better-sqlite3 versions in order until we find a published
+// prebuild for each ABI. Newer versions are preferred for newer ABIs (where
+// the older version may not have built for them); older versions are needed
+// for ABIs the latest release skipped (e.g. v12.9.1 doesn't ship ABI 140 but
+// v12.9.0 does).
+//
+// Some ABIs (notably 134, 137, 138 across all currently-published versions)
+// have NO upstream prebuilds available. Users on those VSCode versions will
+// need to manually rebuild or wait for an upstream release. Run this script
+// periodically to pick up newly-published prebuilds.
 
 const fs = require("node:fs");
 const path = require("node:path");
@@ -9,14 +20,27 @@ const https = require("node:https");
 const { execFileSync } = require("node:child_process");
 const os = require("node:os");
 
-const BSQ_VERSION = "12.9.0"; // must match the version in package.json
+// Tried in order: first version with a matching prebuild wins.
+const BSQ_VERSIONS = ["12.9.1", "12.9.0", "12.8.0", "12.6.2", "12.5.0"];
+
+// Electron ABIs we want covered. The `electron` field is informational
+// (target Electron version that introduced this ABI) — only the abi number
+// is used in the URL.
 const ABIS = [
-  { abi: 128, electron: "32.0.0" },
-  { abi: 130, electron: "33.0.0" },
-  { abi: 133, electron: "34.0.0" },
-  { abi: 137, electron: "36.0.0" },
-  { abi: 138, electron: "38.0.0" },
-  { abi: 140, electron: "39.0.0" },
+  { abi: 119, electron: "28" },
+  { abi: 121, electron: "29" },
+  { abi: 123, electron: "30" },
+  { abi: 125, electron: "31" },
+  { abi: 128, electron: "32" },
+  { abi: 130, electron: "33" },
+  { abi: 132, electron: "33.x" },
+  { abi: 133, electron: "34" },
+  { abi: 135, electron: "35" },
+  { abi: 136, electron: "36" },
+  { abi: 137, electron: "36.x" },
+  { abi: 138, electron: "37/38" },
+  { abi: 139, electron: "38.x" },
+  { abi: 140, electron: "39" },
 ];
 const PLATFORMS = [
   ["darwin", "x64"],
@@ -29,8 +53,8 @@ const PLATFORMS = [
 const ROOT = path.resolve(__dirname, "..");
 const OUT_DIR = path.join(ROOT, "prebuilds");
 
-function urlFor(abi, platform, arch) {
-  return `https://github.com/WiseLibs/better-sqlite3/releases/download/v${BSQ_VERSION}/better-sqlite3-v${BSQ_VERSION}-electron-v${abi}-${platform}-${arch}.tar.gz`;
+function urlFor(version, abi, platform, arch) {
+  return `https://github.com/WiseLibs/better-sqlite3/releases/download/v${version}/better-sqlite3-v${version}-electron-v${abi}-${platform}-${arch}.tar.gz`;
 }
 
 function download(url, dest) {
@@ -41,7 +65,9 @@ function download(url, dest) {
         return get(res.headers.location);
       }
       if (res.statusCode !== 200) {
-        return reject(new Error(`HTTP ${res.statusCode} for ${u}`));
+        file.close();
+        try { fs.unlinkSync(dest); } catch { /* ignore */ }
+        return reject(new Error(`HTTP ${res.statusCode}`));
       }
       res.pipe(file);
       file.on("finish", () => file.close((err) => err ? reject(err) : resolve()));
@@ -50,50 +76,59 @@ function download(url, dest) {
   });
 }
 
-async function fetchOne(abi, electron, platform, arch) {
+async function fetchOne(abi, platform, arch) {
   const dirName = `${platform}-${arch}-electron-abi-${abi}`;
   const outPath = path.join(OUT_DIR, dirName, "better_sqlite3.node");
   if (fs.existsSync(outPath)) {
     console.log(`✓ ${dirName} (cached)`);
-    return;
+    return true;
   }
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), `bsq-prebuild-`));
-  const tarPath = path.join(tmpDir, "binary.tar.gz");
-  const url = urlFor(abi, platform, arch);
-  try {
-    await download(url, tarPath);
-    // Extract tarball.
-    execFileSync("tar", ["-xzf", tarPath, "-C", tmpDir]);
-    const inner = path.join(tmpDir, "build", "Release", "better_sqlite3.node");
-    if (!fs.existsSync(inner)) {
-      throw new Error(`Expected build/Release/better_sqlite3.node in ${url}, not found`);
+
+  for (const version of BSQ_VERSIONS) {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), `bsq-prebuild-`));
+    const tarPath = path.join(tmpDir, "binary.tar.gz");
+    const url = urlFor(version, abi, platform, arch);
+    try {
+      await download(url, tarPath);
+      execFileSync("tar", ["-xzf", tarPath, "-C", tmpDir]);
+      const inner = path.join(tmpDir, "build", "Release", "better_sqlite3.node");
+      if (!fs.existsSync(inner)) {
+        throw new Error(`tarball missing build/Release/better_sqlite3.node`);
+      }
+      fs.copyFileSync(inner, outPath);
+      console.log(`✓ ${dirName} fetched (better-sqlite3 v${version})`);
+      return true;
+    } catch (e) {
+      // 404 or extraction failure — try the next version.
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
     }
-    fs.copyFileSync(inner, outPath);
-    console.log(`✓ ${dirName} fetched`);
-  } catch (e) {
-    console.warn(`✗ ${dirName} skipped: ${e.message}`);
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
   }
+  console.warn(`✗ ${dirName} no upstream prebuild across [${BSQ_VERSIONS.join(", ")}]`);
+  return false;
 }
 
 (async () => {
-  console.log(`Fetching better-sqlite3 ${BSQ_VERSION} prebuilds → ${OUT_DIR}`);
-  for (const { abi, electron } of ABIS) {
+  console.log(`Fetching better-sqlite3 prebuilds → ${OUT_DIR}`);
+  console.log(`Versions tried: ${BSQ_VERSIONS.join(" → ")}`);
+  let ok = 0, miss = 0;
+  for (const { abi } of ABIS) {
     for (const [platform, arch] of PLATFORMS) {
-      await fetchOne(abi, electron, platform, arch);
+      const got = await fetchOne(abi, platform, arch);
+      if (got) ok++; else miss++;
     }
   }
-  // Clean up any empty directories left behind by failed fetches.
-  for (const entry of fs.readdirSync(OUT_DIR)) {
-    const dir = path.join(OUT_DIR, entry);
-    if (fs.statSync(dir).isDirectory()) {
-      const files = fs.readdirSync(dir);
-      if (files.length === 0) {
-        fs.rmdirSync(dir);
+  // Clean up empty leftover directories.
+  if (fs.existsSync(OUT_DIR)) {
+    for (const entry of fs.readdirSync(OUT_DIR)) {
+      const dir = path.join(OUT_DIR, entry);
+      if (fs.statSync(dir).isDirectory()) {
+        const files = fs.readdirSync(dir);
+        if (files.length === 0) fs.rmdirSync(dir);
       }
     }
   }
-  console.log("Done.");
+  console.log(`\nDone — ${ok} fetched, ${miss} missing.`);
+  if (miss > 0) console.log("Missing ABIs are unavailable upstream; users on those VSCode versions will need to manually rebuild.");
 })().catch((e) => { console.error(e); process.exit(1); });

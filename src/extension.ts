@@ -32,10 +32,14 @@ let embedder: Embedder | null = null;
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   ensureNativePrebuild(context.extensionPath);
 
-  const output = vscode.window.createOutputChannel("Sesh");
+  const isDev = context.extensionMode === vscode.ExtensionMode.Development;
+  const output = vscode.window.createOutputChannel(isDev ? "Sesh (dev)" : "Sesh");
   context.subscriptions.push(output);
+  if (isDev) {
+    output.appendLine("[sesh] running in extension-development mode — using ~/.sesh/dev/ for DB");
+  }
 
-  host = new SeshHost(output);
+  host = new SeshHost(output, { dev: isDev });
 
   // Empty tree-data providers so the activity-bar view and secondary-sidebar
   // view both render their viewsWelcome content (a clickable 'Open Sesh
