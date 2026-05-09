@@ -14,6 +14,7 @@ import { extractCodexMetadata } from "../scanner/codex/extract";
 import { extractMetadata } from "../scanner/extract";
 import { ContentIndexer } from "../scanner/contentIndexer";
 import { ProjectsWatcher } from "../scanner/watcher";
+import type { TurnsIndexer } from "../scanner/turnsIndexer";
 import { TranscriptArchive } from "./transcriptArchive";
 
 const DEFAULT_DB_DIR = path.join(os.homedir(), ".sesh");
@@ -30,6 +31,7 @@ export class SeshHost {
   public indexer: ContentIndexer | null = null;
   public archive: TranscriptArchive;
   private watcher: ProjectsWatcher | null = null;
+  private turnsIndexer: TurnsIndexer | null = null;
   public indexProgress: { indexed: number; total: number } = { indexed: 0, total: 0 };
   public onIndexProgress?: () => void;
   public onSessionChanged?: (id: string) => void;
@@ -37,6 +39,15 @@ export class SeshHost {
 
   constructor(public readonly output: vscode.OutputChannel) {
     this.archive = new TranscriptArchive(DEFAULT_ARCHIVE_DIR);
+  }
+
+  setTurnsIndexer(indexer: TurnsIndexer): void {
+    this.turnsIndexer = indexer;
+    // If the watcher is already running, update its deps so subsequent
+    // file-add/change events trigger TurnsIndexer immediately.
+    if (this.watcher) {
+      this.watcher.setTurnsIndexer(indexer);
+    }
   }
 
   private archiveEnabled(): boolean {
@@ -105,6 +116,7 @@ export class SeshHost {
       {
         archive: this.archive,
         archiveEnabled: () => this.archiveEnabled(),
+        turnsIndexer: this.turnsIndexer ?? undefined,
       },
     );
     void this.watcher.start();
