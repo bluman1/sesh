@@ -110,6 +110,8 @@ export class ProjectsWatcher {
       content_indexed: 0,
       last_parsed_offset: 0,
       ...meta.tokens,
+      turns_indexed: 0,
+      turns_last_offset: 0,
     });
     try {
       await this.indexer.indexOne(id, filePath);
@@ -169,6 +171,8 @@ export class ProjectsWatcher {
       content_indexed: 0,
       last_parsed_offset: 0,
       ...meta.tokens,
+      turns_indexed: 0,
+      turns_last_offset: 0,
     });
     try {
       await this.indexer.indexOne(id, filePath, "codex");

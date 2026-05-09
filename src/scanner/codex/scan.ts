@@ -132,6 +132,8 @@ export async function scanCodexSessionsRoot(
       content_indexed: 0,
       last_parsed_offset: 0,
       ...meta.tokens,
+      turns_indexed: 0,
+      turns_last_offset: 0,
     });
     result.upserted++;
   }
