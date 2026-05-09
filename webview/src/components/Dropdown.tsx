@@ -20,6 +20,12 @@ export interface DropdownItem {
   /** Right-aligned secondary text (e.g. count). */
   hint?: string;
   disabled?: boolean;
+  /** When set, the item gets a small ✕ button on hover. Clicking it calls
+   * this callback instead of selecting the item. Used for "delete this
+   * category" affordances. */
+  onDelete?: () => void;
+  /** Tooltip for the delete affordance. Required when `onDelete` is set. */
+  deleteHint?: string;
 }
 
 interface Props {
@@ -155,22 +161,33 @@ export function Dropdown(props: Props): JSX.Element {
                 const enabledIndex = enabled.indexOf(item);
                 const isActive = enabledIndex === activeIndex;
                 const isSelected = item.value === props.value;
+                const ariaDisabled = item.disabled ? true : undefined;
+                const handleSelect = () => {
+                  if (item.disabled) return;
+                  props.onChange(item.value);
+                  setOpen(false);
+                  triggerRef.current?.focus();
+                };
+                // Using role="option" on a div instead of <button> so we can
+                // nest a real <button> for the delete affordance — buttons
+                // can't be nested in HTML.
                 return (
-                  <button
+                  <div
                     key={item.value}
-                    type="button"
                     role="option"
                     aria-selected={isSelected}
-                    className={`sesh-dropdown-item ${isSelected ? "is-selected" : ""} ${isActive ? "is-active" : ""}`}
-                    disabled={item.disabled}
+                    aria-disabled={ariaDisabled}
+                    tabIndex={item.disabled ? -1 : 0}
+                    className={`sesh-dropdown-item ${isSelected ? "is-selected" : ""} ${isActive ? "is-active" : ""} ${item.disabled ? "is-disabled" : ""}`}
                     onMouseEnter={() =>
                       enabledIndex >= 0 && setActiveIndex(enabledIndex)
                     }
-                    onClick={() => {
-                      if (item.disabled) return;
-                      props.onChange(item.value);
-                      setOpen(false);
-                      triggerRef.current?.focus();
+                    onClick={handleSelect}
+                    onKeyDown={(e) => {
+                      if (e.key === " " || e.key === "Enter") {
+                        e.preventDefault();
+                        handleSelect();
+                      }
                     }}
                   >
                     {item.icon && (
@@ -186,7 +203,21 @@ export function Dropdown(props: Props): JSX.Element {
                         className="sesh-dropdown-item-check"
                       />
                     )}
-                  </button>
+                    {item.onDelete && (
+                      <button
+                        type="button"
+                        className="sesh-dropdown-item-delete"
+                        title={item.deleteHint ?? "Delete"}
+                        aria-label={item.deleteHint ?? `Delete ${item.label}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          item.onDelete?.();
+                        }}
+                      >
+                        <Icon name="close" />
+                      </button>
+                    )}
+                  </div>
                 );
               })}
             </Fragment>

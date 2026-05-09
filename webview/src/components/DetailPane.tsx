@@ -55,12 +55,19 @@ function formatTokensExact(n: number): string {
 
 function buildCategoryItems(
   categories: { id: number; name: string }[],
+  onDeleteCategory: (id: number) => void,
 ): DropdownItem[] {
   const items: DropdownItem[] = [
     { value: "__none__", label: "— none —", icon: "circle-slash" },
   ];
   for (const c of categories) {
-    items.push({ value: c.id.toString(), label: c.name, icon: "tag" });
+    items.push({
+      value: c.id.toString(),
+      label: c.name,
+      icon: "tag",
+      onDelete: () => onDeleteCategory(c.id),
+      deleteHint: `Delete category "${c.name}" (clears it from any sessions using it)`,
+    });
   }
   items.push({
     value: "__create__",
@@ -78,7 +85,7 @@ export function DetailPane({
   currentPath,
   searchQuery,
 }: Props): JSX.Element {
-  const { categories, create: createCategory } = useCategories();
+  const { categories, create: createCategory, remove: removeCategory } = useCategories();
   const allTags = useAllTags();
   // titleDraft is `null` when we're showing the server's value as-is;
   // a string once the user starts editing. This lets the displayed title
@@ -418,7 +425,7 @@ export function DetailPane({
             <Dropdown
               value={session.category_id?.toString() ?? "__none__"}
               onChange={handleCategoryChange}
-              items={buildCategoryItems(categories)}
+              items={buildCategoryItems(categories, removeCategory)}
               triggerIcon="tag"
             />
             {creatingCategory && (

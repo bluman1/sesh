@@ -376,6 +376,34 @@ body {
 .sesh-dropdown-item.is-selected:not(.is-active) {
   background: color-mix(in srgb, var(--sesh-accent) 8%, transparent);
 }
+.sesh-dropdown-item.is-disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.sesh-dropdown-item-delete {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  color: var(--sesh-fg-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--sesh-radius-sm);
+  display: inline-flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.1s ease, background-color 0.1s ease, color 0.1s ease;
+}
+.sesh-dropdown-item:hover .sesh-dropdown-item-delete,
+.sesh-dropdown-item.is-active .sesh-dropdown-item-delete {
+  opacity: 1;
+}
+.sesh-dropdown-item-delete:hover {
+  background: color-mix(in srgb, var(--vscode-editorError-foreground, #f48771) 18%, transparent);
+  color: var(--vscode-editorError-foreground, #f48771);
+}
+.sesh-dropdown-item-delete .codicon {
+  font-size: 12px;
+}
 
 /* ─── Tooltip (fixed-positioned, JS-driven) ─────────── */
 
