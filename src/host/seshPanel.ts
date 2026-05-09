@@ -6,6 +6,7 @@ import {
   type SearchFilters,
   type ToHost,
   type ToWebview,
+  type SessionAnalyticsChip,
 } from "../messaging";
 import { searchSessions, countSessionsInScope } from "../db/search";
 import { readTranscript } from "../scanner/transcript";
@@ -15,16 +16,55 @@ import {
   generateTitle,
   TitleGenerationError,
 } from "./titleGenerator";
+import {
+  costByFile,
+  modelLeaderboard,
+  personalRecords,
+  todaysStandup,
+  recentCommitments,
+  usdForTurn,
+} from "../db/analyticsQueries";
+import { OutcomeRepository } from "../db/outcomes";
+import type { TurnsIndexer } from "../scanner/turnsIndexer";
+import type { Db } from "../db/connection";
+
+function buildAnalyticsChip(db: Db, sessionId: string): SessionAnalyticsChip {
+  const outcome = db
+    .prepare("SELECT state FROM session_outcomes WHERE session_id = ?")
+    .get(sessionId) as { state: SessionAnalyticsChip["outcome"] } | undefined;
+  const cost = db
+    .prepare(
+      `SELECT model, SUM(tokens_in) AS ti, SUM(tokens_out) AS to_, SUM(tokens_cache_read) AS tcr, SUM(tokens_cache_create) AS tcc
+       FROM turns WHERE session_id = ? GROUP BY model ORDER BY (SUM(tokens_in) + SUM(tokens_out)) DESC LIMIT 1`,
+    )
+    .get(sessionId) as
+      | { model: string | null; ti: number; to_: number; tcr: number; tcc: number }
+      | undefined;
+  const usd = cost
+    ? usdForTurn({
+        model: cost.model,
+        tokens_in: cost.ti,
+        tokens_out: cost.to_,
+        tokens_cache_read: cost.tcr,
+        tokens_cache_create: cost.tcc,
+      })
+    : 0;
+  return {
+    outcome: outcome?.state ?? null,
+    usd,
+    primary_model: cost?.model ?? null,
+  };
+}
 
 export class SeshPanel {
   private static instance: SeshPanel | null = null;
 
-  static openOrFocus(context: vscode.ExtensionContext, host: SeshHost): void {
+  static openOrFocus(context: vscode.ExtensionContext, host: SeshHost, turnsIndexer: TurnsIndexer): void {
     if (SeshPanel.instance) {
       SeshPanel.instance.panel.reveal(vscode.ViewColumn.Active);
       return;
     }
-    SeshPanel.instance = new SeshPanel(context, host);
+    SeshPanel.instance = new SeshPanel(context, host, turnsIndexer);
   }
 
   private readonly panel: vscode.WebviewPanel;
@@ -34,6 +74,7 @@ export class SeshPanel {
   private constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly host: SeshHost,
+    private readonly turnsIndexer: TurnsIndexer,
   ) {
     this.panel = vscode.window.createWebviewPanel(
       "seshMain",
@@ -140,7 +181,7 @@ export class SeshPanel {
           this.lastFilters = msg.filters;
           const rows = searchSessions(this.host.rawDb!, msg.filters);
           const items = rows.map((row) =>
-            rowToListItem(row, this.host.tags!.getTags(row.id)),
+            rowToListItem(row, this.host.tags!.getTags(row.id), buildAnalyticsChip(this.host.rawDb!, row.id)),
           );
           this.send({
             kind: "sessionList",
@@ -324,6 +365,55 @@ export class SeshPanel {
         case "listProjects":
           this.broadcastProjects();
           break;
+        case "getInsights": {
+          const sinceMs = Date.now() - msg.sinceDays * 86400 * 1000;
+          let payload: unknown;
+          switch (msg.tab) {
+            case "standup":
+              payload = todaysStandup({ db: this.host.rawDb!, todayStart: sinceMs });
+              break;
+            case "cost":
+              payload = costByFile({ db: this.host.rawDb!, since: sinceMs });
+              break;
+            case "leaderboard":
+              payload = modelLeaderboard({ db: this.host.rawDb!, since: sinceMs });
+              break;
+            case "records":
+              payload = personalRecords({ db: this.host.rawDb! });
+              break;
+          }
+          this.send({ kind: "insights", tab: msg.tab, payload });
+          break;
+        }
+        case "setOutcome": {
+          const outcomes = new OutcomeRepository(this.host.rawDb!);
+          outcomes.setUser(msg.sessionId, msg.state, msg.notes ?? null);
+          // Re-broadcast the affected session so chips refresh
+          this.refreshList();
+          break;
+        }
+        case "triggerReindexAnalytics": {
+          // Mark all sessions as needing re-index, then run
+          this.host.rawDb!.prepare("UPDATE sessions SET turns_indexed = 0 WHERE orphaned = 0").run();
+          this.turnsIndexer
+            .run()
+            .then(() => this.refreshList())
+            .catch((err) => console.error("[sesh] reindex analytics failed", err));
+          break;
+        }
+        case "getCommitments": {
+          const sinceMs = Date.now() - msg.sinceDays * 86400 * 1000;
+          const commitments = recentCommitments({ db: this.host.rawDb!, since: sinceMs });
+          this.send({
+            kind: "commitments",
+            commitments: commitments.map((c) => ({
+              session_id: c.session_id,
+              ts: c.ts,
+              excerpt: c.excerpt,
+            })),
+          });
+          break;
+        }
       }
     } catch (err) {
       this.send({
@@ -392,7 +482,7 @@ export class SeshPanel {
     if (!this.host.sessions || !this.host.tags || !this.lastFilters) return;
     const rows = searchSessions(this.host.rawDb!, this.lastFilters);
     const items = rows.map((row) =>
-      rowToListItem(row, this.host.tags!.getTags(row.id)),
+      rowToListItem(row, this.host.tags!.getTags(row.id), buildAnalyticsChip(this.host.rawDb!, row.id)),
     );
     this.send({
       kind: "sessionList",
