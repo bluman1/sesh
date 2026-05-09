@@ -245,6 +245,11 @@ export type ToWebview =
         exclamation_per_1000_chars: number;
         capital_letter_rate: number;
         top_tokens: { token: string; tfidf: number }[];
+        question_rate_pct: number;
+        code_block_rate_pct: number;
+        politeness_per_1000_words: number;
+        vocab_richness: number;
+        top_openings: { phrase: string; count: number }[];
       };
     }
   | {

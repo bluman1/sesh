@@ -13,6 +13,11 @@ export interface StyleFingerprint {
   exclamation_per_1000_chars: number;
   capital_letter_rate: number;
   top_tokens: { token: string; tfidf: number }[];
+  question_rate_pct: number;
+  code_block_rate_pct: number;
+  politeness_per_1000_words: number;
+  vocab_richness: number;
+  top_openings: { phrase: string; count: number }[];
 }
 
 const HEDGES = [
@@ -48,8 +53,17 @@ export function computeStyleFingerprint(db: Db, opts?: { sinceDays?: number }): 
       exclamation_per_1000_chars: 0,
       capital_letter_rate: 0,
       top_tokens: [],
+      question_rate_pct: 0,
+      code_block_rate_pct: 0,
+      politeness_per_1000_words: 0,
+      vocab_richness: 0,
+      top_openings: [],
     };
   }
+
+  const QUESTION_START_RE = /^(what|how|why|when|where|who|can|could|should|would|will|do|does|is|are)\b/i;
+  const CODE_BLOCK_RE = /```[\s\S]*?```/;
+  const POLITENESS_RE = /\b(please|thanks|thank you|thx|thank you so much)\b/gi;
 
   const sessionIds = new Set(chunks.map((c) => c.session_id));
   let totalChars = 0;
@@ -59,10 +73,15 @@ export function computeStyleFingerprint(db: Db, opts?: { sinceDays?: number }): 
   let totalExclamations = 0;
   let totalAlpha = 0;
   let totalCaps = 0;
+  let totalQuestions = 0;
+  let totalCodeBlocks = 0;
+  let totalPoliteness = 0;
 
   // Token frequencies per chunk for tf-idf.
   const docFreq = new Map<string, number>();
   const docTokens: Map<string, number>[] = [];
+  const openingCounts = new Map<string, number>();
+
   for (const c of chunks) {
     const text = c.text;
     totalChars += text.length;
@@ -80,6 +99,24 @@ export function computeStyleFingerprint(db: Db, opts?: { sinceDays?: number }): 
         if (ch >= "A" && ch <= "Z") totalCaps++;
       }
     }
+    // Question rate
+    const trimmed = text.trim();
+    if (trimmed.endsWith("?") || QUESTION_START_RE.test(trimmed)) {
+      totalQuestions++;
+    }
+    // Code block rate
+    if (CODE_BLOCK_RE.test(text)) {
+      totalCodeBlocks++;
+    }
+    // Politeness
+    const polMatches = text.match(POLITENESS_RE);
+    if (polMatches) totalPoliteness += polMatches.length;
+    // Top openings: first 3 words
+    const openWords = text.trim().toLowerCase().replace(/[^\w\s]/g, " ").split(/\s+/).filter(Boolean).slice(0, 3);
+    if (openWords.length === 3) {
+      const phrase = openWords.join(" ");
+      openingCounts.set(phrase, (openingCounts.get(phrase) ?? 0) + 1);
+    }
     const tokenCount = new Map<string, number>();
     for (const w of words) {
       if (STOPWORDS.has(w) || w.length < 3) continue;
@@ -93,8 +130,10 @@ export function computeStyleFingerprint(db: Db, opts?: { sinceDays?: number }): 
 
   const N = docTokens.length;
   const tfidfTotals = new Map<string, number>();
+  let totalNonStopTokens = 0;
   for (const tokens of docTokens) {
     const docLen = [...tokens.values()].reduce((s, n) => s + n, 0) || 1;
+    totalNonStopTokens += docLen;
     for (const [token, count] of tokens) {
       const tf = count / docLen;
       const df = docFreq.get(token) ?? 1;
@@ -107,6 +146,17 @@ export function computeStyleFingerprint(db: Db, opts?: { sinceDays?: number }): 
     .slice(0, 50)
     .map(([token, tfidf]) => ({ token, tfidf }));
 
+  // Vocab richness: unique non-stopword tokens / total non-stopword tokens
+  const vocabRichness = totalNonStopTokens === 0 ? 0 :
+    Math.round((docFreq.size / totalNonStopTokens) * 1000) / 1000;
+
+  // Top openings: phrases appearing >= 2 times, sorted by count desc, top 10
+  const topOpenings = [...openingCounts.entries()]
+    .filter(([, count]) => count >= 2)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([phrase, count]) => ({ phrase, count }));
+
   return {
     generated_at: Date.now(),
     source_session_count: sessionIds.size,
@@ -118,6 +168,11 @@ export function computeStyleFingerprint(db: Db, opts?: { sinceDays?: number }): 
     exclamation_per_1000_chars: Math.round((totalExclamations * 1000 / Math.max(1, totalChars)) * 10) / 10,
     capital_letter_rate: totalAlpha === 0 ? 0 : Math.round((totalCaps / totalAlpha) * 1000) / 1000,
     top_tokens: top,
+    question_rate_pct: Math.round((totalQuestions / chunks.length) * 1000) / 10,
+    code_block_rate_pct: Math.round((totalCodeBlocks / chunks.length) * 1000) / 10,
+    politeness_per_1000_words: Math.round((totalPoliteness * 1000 / Math.max(1, totalWords)) * 10) / 10,
+    vocab_richness: vocabRichness,
+    top_openings: topOpenings,
   };
 }
 

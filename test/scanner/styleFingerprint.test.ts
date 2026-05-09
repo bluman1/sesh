@@ -167,6 +167,143 @@ describe("computeStyleFingerprint", () => {
     expect(fp.generated_at).toBeGreaterThanOrEqual(before);
     expect(fp.generated_at).toBeLessThanOrEqual(after);
   });
+
+  it("computes question rate when chunks end with ?", () => {
+    const now = Date.now();
+    chunkRepo.upsertMany([
+      {
+        id: "c1",
+        source_kind: "user_msg",
+        source_id: "t1",
+        session_id: "s1",
+        position: 0,
+        text: "Can you help me with this?",
+        char_count: 27,
+        created_at: now,
+      },
+      {
+        id: "c2",
+        source_kind: "user_msg",
+        source_id: "t2",
+        session_id: "s1",
+        position: 1,
+        text: "Please refactor this function.",
+        char_count: 30,
+        created_at: now,
+      },
+    ]);
+    const fp = computeStyleFingerprint(db);
+    // 1 of 2 chunks is a question → 50%
+    expect(fp.question_rate_pct).toBe(50);
+  });
+
+  it("computes code-block rate when text contains fenced blocks", () => {
+    const now = Date.now();
+    chunkRepo.upsertMany([
+      {
+        id: "c1",
+        source_kind: "user_msg",
+        source_id: "t1",
+        session_id: "s1",
+        position: 0,
+        text: "Here is the code:\n```\nconst x = 1;\n```",
+        char_count: 39,
+        created_at: now,
+      },
+      {
+        id: "c2",
+        source_kind: "user_msg",
+        source_id: "t2",
+        session_id: "s1",
+        position: 1,
+        text: "No code here, just text.",
+        char_count: 25,
+        created_at: now,
+      },
+    ]);
+    const fp = computeStyleFingerprint(db);
+    // 1 of 2 chunks has a code block → 50%
+    expect(fp.code_block_rate_pct).toBe(50);
+  });
+
+  it("computes politeness rate when 'please' appears", () => {
+    const now = Date.now();
+    chunkRepo.upsertMany([
+      {
+        id: "c1",
+        source_kind: "user_msg",
+        source_id: "t1",
+        session_id: "s1",
+        position: 0,
+        text: "Please fix this bug and thanks for your help.",
+        char_count: 46,
+        created_at: now,
+      },
+    ]);
+    const fp = computeStyleFingerprint(db);
+    expect(fp.politeness_per_1000_words).toBeGreaterThan(0);
+  });
+
+  it("computes vocab richness as ratio of unique to total non-stopword tokens", () => {
+    const now = Date.now();
+    chunkRepo.upsertMany([
+      {
+        id: "c1",
+        source_kind: "user_msg",
+        source_id: "t1",
+        session_id: "s1",
+        position: 0,
+        text: "refactor refactor refactor the authentication module.",
+        char_count: 52,
+        created_at: now,
+      },
+    ]);
+    const fp = computeStyleFingerprint(db);
+    // vocab_richness should be < 1 since "refactor" repeats
+    expect(fp.vocab_richness).toBeGreaterThan(0);
+    expect(fp.vocab_richness).toBeLessThanOrEqual(1);
+  });
+
+  it("extracts top openings from first 3 words", () => {
+    const now = Date.now();
+    chunkRepo.upsertMany([
+      {
+        id: "c1",
+        source_kind: "user_msg",
+        source_id: "t1",
+        session_id: "s1",
+        position: 0,
+        text: "can you please fix this issue",
+        char_count: 30,
+        created_at: now,
+      },
+      {
+        id: "c2",
+        source_kind: "user_msg",
+        source_id: "t2",
+        session_id: "s1",
+        position: 1,
+        text: "can you please refactor that",
+        char_count: 28,
+        created_at: now,
+      },
+      {
+        id: "c3",
+        source_kind: "user_msg",
+        source_id: "t3",
+        session_id: "s2",
+        position: 0,
+        text: "something completely different here",
+        char_count: 35,
+        created_at: now,
+      },
+    ]);
+    const fp = computeStyleFingerprint(db);
+    // "can you please" appears 2 times → should be in top_openings
+    expect(fp.top_openings.some((o) => o.phrase === "can you please")).toBe(true);
+    const opening = fp.top_openings.find((o) => o.phrase === "can you please");
+    expect(opening?.count).toBe(2);
+  });
 });
 
 describe("exportFingerprintToFile", () => {
