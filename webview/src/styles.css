@@ -38,6 +38,13 @@
   --sesh-fg-muted: color-mix(in srgb, var(--vscode-foreground, #cccccc) 62%, transparent);
   --sesh-bg: var(--vscode-editor-background, #1e1e1e);
   --sesh-bg-elevated: var(--vscode-editorWidget-background, #252526);
+  /* Chrome surfaces (toolbar, session list pane) sit slightly lifted above
+   * the content surfaces (detail pane, transcript) so the layout reads as
+   * two layers instead of one flat sheet. The lift is a 6% mix toward
+   * neutral grey so it works in both directions: dark themes lighten,
+   * light themes darken. Theme-independent — won't pick up a yellow tint
+   * the way --vscode-sideBar-background sometimes does. */
+  --sesh-bg-chrome: color-mix(in srgb, var(--sesh-bg) 94%, #808080 6%);
   /* Major structural separators (toolbar↔body, list↔detail).
    * Deliberately NOT --vscode-widget-border / --vscode-panel-border —
    * those resolve to a saturated accent (yellow, blue, etc.) on some
@@ -109,6 +116,7 @@ body {
 /* ─── Toolbar ───────────────────────────────────────── */
 
 .sesh-toolbar {
+  background: var(--sesh-bg-chrome);
   border-bottom: 1px solid var(--sesh-border);
   padding: var(--sesh-space-2) var(--sesh-space-3);
   flex: 0 0 auto;
@@ -431,6 +439,9 @@ body {
 .sesh-pane {
   height: 100%;
   overflow: hidden;
+}
+.sesh-pane-list {
+  background: var(--sesh-bg-chrome);
 }
 .sesh-resize-handle {
   position: relative;
