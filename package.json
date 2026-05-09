@@ -56,6 +56,10 @@
       {
         "command": "sesh.archiveSize",
         "title": "Sesh: Show archive size"
+      },
+      {
+        "command": "sesh.reindexAnalytics",
+        "title": "Sesh: Reindex analytics"
       }
     ],
     "viewsContainers": {

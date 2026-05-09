@@ -75,6 +75,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   );
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand("sesh.reindexAnalytics", async () => {
+      if (!host || !turnsIndexer) return;
+      host.rawDb!.prepare("UPDATE sessions SET turns_indexed = 0 WHERE orphaned = 0").run();
+      await turnsIndexer.run();
+      const windowDays = vscode.workspace
+        .getConfiguration("sesh")
+        .get<number>("outcomeInferenceDays", 30);
+      inferOutcomes({ db: host.rawDb!, now: Date.now(), windowDays });
+      vscode.window.showInformationMessage("Sesh: analytics reindexed.");
+    }),
+  );
+
   try {
     await host.start();
     // Construct analytics repos and indexer now that rawDb is available.
