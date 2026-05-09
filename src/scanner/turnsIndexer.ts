@@ -3,6 +3,7 @@ import type { SessionRepository } from "../db/sessions";
 import type { TurnRepository } from "../db/turns";
 import type { ToolCallRepository } from "../db/toolCalls";
 import { extractTurns } from "./extractTurns";
+import { inferOutcomes } from "./outcomeInferer";
 
 export class TurnsIndexer {
   private cancelled = false;
@@ -74,4 +75,19 @@ export class TurnsIndexer {
     });
     tx();
   }
+}
+
+/**
+ * Shared helper used by both the command-palette reindex command and the
+ * webview-triggered reindex path. Marks all non-orphaned sessions for
+ * re-indexing, runs the TurnsIndexer, then runs outcome inference.
+ */
+export async function runFullReindex(
+  db: Db,
+  turnsIndexer: TurnsIndexer,
+  windowDays: number,
+): Promise<void> {
+  db.prepare("UPDATE sessions SET turns_indexed = 0 WHERE orphaned = 0").run();
+  await turnsIndexer.run();
+  inferOutcomes({ db, now: Date.now(), windowDays });
 }

@@ -26,6 +26,7 @@ import {
 } from "../db/analyticsQueries";
 import { OutcomeRepository } from "../db/outcomes";
 import type { TurnsIndexer } from "../scanner/turnsIndexer";
+import { runFullReindex } from "../scanner/turnsIndexer";
 import type { Db } from "../db/connection";
 
 function buildAnalyticsChips(
@@ -243,6 +244,7 @@ export class SeshPanel {
           if (row.turns_indexed === 0 && row.orphaned === 0) {
             try {
               await this.turnsIndexer.indexOne(row.id, row.file_path, row.source);
+              this.refreshList();
             } catch (err) {
               console.warn("[sesh] lazy turn indexing failed", err);
             }
@@ -441,10 +443,10 @@ export class SeshPanel {
           break;
         }
         case "triggerReindexAnalytics": {
-          // Mark all sessions as needing re-index, then run
-          this.host.rawDb!.prepare("UPDATE sessions SET turns_indexed = 0 WHERE orphaned = 0").run();
-          this.turnsIndexer
-            .run()
+          const windowDays = vscode.workspace
+            .getConfiguration("sesh")
+            .get<number>("outcomeInferenceDays", 30);
+          runFullReindex(this.host.rawDb!, this.turnsIndexer, windowDays)
             .then(() => this.refreshList())
             .catch((err) => console.error("[sesh] reindex analytics failed", err));
           break;

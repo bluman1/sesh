@@ -4,7 +4,7 @@ import { SeshPanel } from "./host/seshPanel";
 import { SeshStatusBar } from "./host/statusBar";
 import { TurnRepository } from "./db/turns";
 import { ToolCallRepository } from "./db/toolCalls";
-import { TurnsIndexer } from "./scanner/turnsIndexer";
+import { TurnsIndexer, runFullReindex } from "./scanner/turnsIndexer";
 import { inferOutcomes } from "./scanner/outcomeInferer";
 
 let host: SeshHost | null = null;
@@ -79,12 +79,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     vscode.commands.registerCommand("sesh.reindexAnalytics", async () => {
       if (!host || !turnsIndexer) return;
-      host.rawDb!.prepare("UPDATE sessions SET turns_indexed = 0 WHERE orphaned = 0").run();
-      await turnsIndexer.run();
       const windowDays = vscode.workspace
         .getConfiguration("sesh")
         .get<number>("outcomeInferenceDays", 30);
-      inferOutcomes({ db: host.rawDb!, now: Date.now(), windowDays });
+      await runFullReindex(host.rawDb!, turnsIndexer, windowDays);
       vscode.window.showInformationMessage("Sesh: analytics reindexed.");
     }),
   );
@@ -95,6 +93,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const turnRepo = new TurnRepository(host.rawDb!);
     const toolCallRepo = new ToolCallRepository(host.rawDb!);
     turnsIndexer = new TurnsIndexer(host.rawDb!, host.sessions!, turnRepo, toolCallRepo);
+    host.setTurnsIndexer(turnsIndexer);
     const cfg = vscode.workspace.getConfiguration("sesh");
     const shouldOpenFromMarker = consumePendingOpenMarker(context, output);
     if (shouldOpenFromMarker || cfg.get<boolean>("openOnActivation", false)) {
@@ -114,6 +113,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           console.warn("[sesh] eager analytics backfill failed; will run lazily", err);
         });
     }
+
+    // Run outcome inference daily so long-lived VSCode sessions age sessions
+    // out to 'abandoned' without requiring a restart or manual reindex.
+    const dailyInferenceTimer = setInterval(() => {
+      if (!host?.rawDb) return;
+      const windowDays = vscode.workspace
+        .getConfiguration("sesh")
+        .get<number>("outcomeInferenceDays", 30);
+      inferOutcomes({ db: host.rawDb, now: Date.now(), windowDays });
+    }, 24 * 60 * 60 * 1000);
+    context.subscriptions.push({ dispose: () => clearInterval(dailyInferenceTimer) });
 
     const statusBar = new SeshStatusBar(host.rawDb!);
     statusBar.start();

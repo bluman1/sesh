@@ -7,6 +7,7 @@ import { sessionIdFromCodexFilename } from "./codex/scan";
 import { SESH_META_CWD } from "../host/seshPaths";
 import type { SessionRepository } from "../db/sessions";
 import type { ContentIndexer } from "./contentIndexer";
+import type { TurnsIndexer } from "./turnsIndexer";
 import type { TranscriptArchive } from "../host/transcriptArchive";
 
 export interface WatcherEvents {
@@ -17,6 +18,7 @@ export interface WatcherEvents {
 export interface WatcherDeps {
   archive?: TranscriptArchive;
   archiveEnabled?: () => boolean;
+  turnsIndexer?: TurnsIndexer;
 }
 
 export class ProjectsWatcher {
@@ -31,6 +33,10 @@ export class ProjectsWatcher {
     private readonly events: WatcherEvents = {},
     private readonly deps: WatcherDeps = {},
   ) {}
+
+  setTurnsIndexer(indexer: TurnsIndexer): void {
+    this.deps.turnsIndexer = indexer;
+  }
 
   async start(): Promise<void> {
     try {
@@ -118,6 +124,13 @@ export class ProjectsWatcher {
     } catch {
       // ignore
     }
+    if (this.deps.turnsIndexer) {
+      try {
+        await this.deps.turnsIndexer.indexOne(id, filePath, "claude-code");
+      } catch {
+        // ignore
+      }
+    }
     if (this.deps.archive && this.deps.archiveEnabled?.()) {
       try {
         await this.deps.archive.archiveIfNeeded(filePath, id);
@@ -178,6 +191,13 @@ export class ProjectsWatcher {
       await this.indexer.indexOne(id, filePath, "codex");
     } catch {
       // ignore
+    }
+    if (this.deps.turnsIndexer) {
+      try {
+        await this.deps.turnsIndexer.indexOne(id, filePath, "codex");
+      } catch {
+        // ignore
+      }
     }
     if (this.deps.archive && this.deps.archiveEnabled?.()) {
       try {
