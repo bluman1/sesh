@@ -2,7 +2,7 @@
 
 > Browse, annotate, and resume saved Claude Code and Codex CLI sessions — without leaving VSCode.
 
-[![Tests](https://img.shields.io/badge/tests-336%20passing-brightgreen)](#development)
+[![Tests](https://img.shields.io/badge/tests-401%20passing-brightgreen)](#development)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![VSCode](https://img.shields.io/badge/VSCode-^1.94.0-007acc)](https://code.visualstudio.com/)
@@ -33,7 +33,7 @@ Schema is source-pluggable — adding another source means a parser + a `source`
 
 ## Features in detail
 
-**Tab navigation.** The panel has five tabs: Sessions, Knowledge, Insights, Ideas, and Reviewer. Sessions, Knowledge, Insights, and Ideas are live; Reviewer is a placeholder for an upcoming substrate.
+**Tab navigation.** The panel has five tabs — Sessions, Knowledge, Insights, Ideas, and Reviewer — all live.
 
 **Knowledge tab.** Semantic search across every session you've had — no exact phrase match needed. Type anything and Sesh finds the most relevant turns by meaning. The side panel also surfaces *CLAUDE.md tips*: patterns where you've corrected the assistant repeatedly, turned into ready-to-paste CLAUDE.md additions.
 
@@ -45,6 +45,10 @@ Schema is source-pluggable — adding another source means a parser + a `source`
 - *Models* — per-model turn counts and USD cost, sorted by spend.
 - *Records* — personal bests: longest session, longest streak, total spend.
 - *Style* — your writing fingerprint: average sentence length, hedging rate, top tokens. Export as JSON via the command palette (`Sesh: Export style fingerprint`).
+
+**Reviewer tab.** Three sub-tabs: *Branch* shows recent commits in the current repo with linked sessions and confidence percentages. *Sessions* groups sessions in this repo by their linked commits. *PRs* lists open pull requests (via `gh` CLI) with linked-session counts — shows a friendly empty-state when `gh` is missing or not authenticated.
+
+**Outcome auto-flip.** Session outcome states upgrade automatically from git history: confidence ≥ 0.5 → `shipped`; 0.2–0.5 → `shipped-partial`; a later revert commit touching the same files → `reverted`. User-marked outcomes are never overwritten.
 
 **Status bar.** When `sesh.statusBarShowCost` is on, the status bar shows `$(history) $X.XX today` and updates every minute. It hides on days with no activity. Click it to open the panel.
 
@@ -77,6 +81,7 @@ Schema is source-pluggable — adding another source means a parser + a `source`
 | `sesh.statusBarShowCost` | `true` | Show today's spend in the status bar. |
 | `sesh.indexBackfillMode` | `"eager"` | `eager` indexes all sessions in the background at activation. `lazy` defers until you open a session. |
 | `sesh.outcomeInferenceDays` | `30` | Days of inactivity before an un-reviewed session is auto-marked abandoned. |
+| `sesh.gitIndexerEnabled` | `true` | Enable git-log indexing and commit-linkage. Set to `false` for huge monorepos where walking git history is too slow. |
 | `sesh.embeddingsEnabled` | `true` | Enable local semantic indexing. Powers the Knowledge tab, Ideas tab, CLAUDE.md tips, and prompt linting. Disable to skip all embedding work. |
 | `sesh.embedder` | `"local"` | Which embedder to use. `local` runs entirely on-device via `@huggingface/transformers` (no network, no key needed — recommended). `ollama` targets a local Ollama server. `cloud` targets an OpenAI-compatible endpoint. |
 | `sesh.embedderModel` | `""` | Override the embedder's model. Leave blank for the default: `Xenova/all-MiniLM-L6-v2` (local), `nomic-embed-text` (ollama), `text-embedding-3-small` (cloud). |
@@ -92,6 +97,7 @@ Schema is source-pluggable — adding another source means a parser + a `source`
 - `Sesh: Rescan all projects` — re-scan + reimport ghosts + reindex FTS.
 - `Sesh: Show archive size` — disk size of the opt-in archive directory.
 - `Sesh: Reindex analytics` — rebuild all turn, tool-call, and outcome data. Run this after a pricing-table change or if Insights numbers look wrong.
+- `Sesh: Reindex git` — re-run the full git discovery → index → link → outcome-infer pipeline. Run this after cloning a new repo or if Reviewer data looks stale.
 - `Sesh: Reindex embeddings` — re-run the full embedding indexer. Use this after switching `sesh.embedder` or after a long offline period.
 - `Sesh: Suggest CLAUDE.md improvements` — run the correction miner and open the Knowledge tab tips panel. Copy the surfaced patterns straight into your CLAUDE.md.
 - `Sesh: Export style fingerprint` — compute your writing metrics and save as a JSON file via the system save dialog.
@@ -116,7 +122,7 @@ Sesh is a TypeScript-strict, esbuild-bundled extension with a Vite-bundled React
 ```bash
 npm install
 npm run typecheck                                    # tsc --noEmit on host
-npm test                                             # 336 tests pass (host Node binary)
+npm test                                             # 401 tests pass (host Node binary)
 npm run build                                        # bundles extension + webview
 npx @electron/rebuild -f -w better-sqlite3 -v 39.8.8 # before pressing F5
 ```
@@ -162,12 +168,23 @@ src/
 │   ├── toolCalls.ts          ToolCallRepository
 │   ├── outcomes.ts           OutcomeRepository
 │   ├── analyticsQueries.ts   usdForTurn · costByFile · modelLeaderboard · personalRecords · todaysStandup · recentCommitments
+│   ├── commits.ts            CommitRepository
+│   ├── sessionCommits.ts     SessionCommitRepository
 │   ├── chunks.ts             ChunkRepository
 │   ├── embeddings.ts         EmbeddingRepository
 │   ├── ideas.ts              IdeaRepository
 │   ├── claudeMd.ts           ClaudeMdSuggestionRepository
 │   ├── promptLints.ts        PromptLintRepository
 │   └── semanticQueries.ts    cosine search + idea cluster retrieval
+├── git/
+│   ├── repoDiscovery.ts      findRepoRoot — walks up to .git
+│   ├── gitLog.ts             parseGitLog — numstat → Commit[] + CommitFile[]
+│   ├── runGit.ts             runGitLog · runCurrentBranch async shell wrappers
+│   ├── gitIndexer.ts         GitIndexer — incremental, mirrors TurnsIndexer lifecycle
+│   ├── discoverRepos.ts      caches repo_path on sessions
+│   ├── linker.ts             linkSessionsToCommits — Jaccard × time-overlap × decay
+│   ├── runFullGitReindex.ts  discovery → index → link → infer pipeline
+│   └── ghCompanion.ts        gh CLI wrappers (isGhAvailable · listOpenPRsWithCommits)
 └── scanner/
     ├── jsonl.ts              streaming reader — handles .jsonl.gz transparently
     ├── extract.ts            metadata extractor (Claude Code shape)
@@ -175,7 +192,7 @@ src/
     ├── scan.ts               walks ~/.claude/projects/, top-level *.jsonl only
     ├── extractTurns.ts       parse JSONL → Turn[] + ToolCall[]
     ├── turnsIndexer.ts       incremental turn indexer (eager + lazy paths)
-    ├── outcomeInferer.ts     age-based abandoned inference
+    ├── outcomeInferer.ts     git-aware inference: shipped · shipped-partial · reverted · abandoned
     ├── sessionsIndex.ts      imports ghost (pruned-transcript) sessions
     ├── systemTags.ts         shared SYSTEM_TAG_RE
     ├── contentIndexer.ts     background FTS populate, source-aware
@@ -201,9 +218,9 @@ webview/src/
 │   ├── KnowledgeTab.tsx      semantic search + CLAUDE.md tips panel
 │   ├── IdeasTab.tsx          idea graveyard, grouped by cluster
 │   ├── AnalyticsChip.tsx     outcome dot · cost · model badge on session rows
+│   ├── ReviewerTab.tsx       3 sub-tabs: Branch · Sessions · PRs
 │   ├── PromptLintBadge.tsx   badge on session detail when a prompt lint has fired
 │   ├── NextSessionBanner.tsx banner above sessions list: idea clusters + commitments
-│   ├── PlaceholderTab.tsx    stub for Reviewer
 │   └── insights/             StandupView · CostView · LeaderboardView · RecordsView · StyleView
 └── hooks/                    useSessions, useSessionDetail, useCategories, useAllTags, useProjects, useInsights
 ```

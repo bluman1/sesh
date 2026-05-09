@@ -29,6 +29,7 @@ function makeRow(overrides: Partial<SessionRow> = {}): SessionRow {
     tokens_cache_create: 0,
     turns_indexed: 0,
     turns_last_offset: 0,
+    repo_path: null,
     ...overrides,
   };
 }
@@ -185,5 +186,68 @@ describe("SessionRepository", () => {
     const queue = repo.listForTurnsIndexing();
     const ids = queue.map((q) => q.id).sort();
     expect(ids).toEqual(["b"]);
+  });
+
+  it("upserts default repo_path = null", () => {
+    repo.upsert(makeRow());
+    const row = repo.findById("abc-123")!;
+    expect(row.repo_path).toBeNull();
+  });
+
+  it("setRepoPath writes the repo_path", () => {
+    repo.upsert(makeRow());
+    repo.setRepoPath("abc-123", "/Users/m/proj");
+    expect(repo.findById("abc-123")?.repo_path).toBe("/Users/m/proj");
+  });
+
+  it("setRepoPath accepts null to clear", () => {
+    repo.upsert(makeRow());
+    repo.setRepoPath("abc-123", "/Users/m/proj");
+    repo.setRepoPath("abc-123", null);
+    expect(repo.findById("abc-123")?.repo_path).toBeNull();
+  });
+
+  it("listSessionsByRepo returns only sessions with that repo_path", () => {
+    repo.upsert(makeRow({ id: "a", file_path: "/p/a.jsonl" }));
+    repo.upsert(makeRow({ id: "b", file_path: "/p/b.jsonl" }));
+    repo.setRepoPath("a", "/Users/m/proj");
+    repo.setRepoPath("b", "/Users/m/other");
+    const ids = repo.listSessionsByRepo("/Users/m/proj").map((s) => s.id);
+    expect(ids).toEqual(["a"]);
+  });
+
+  it("listDistinctRepoPaths returns deduped repo paths and excludes orphans", () => {
+    repo.upsert(makeRow({ id: "a", file_path: "/p/a.jsonl" }));
+    repo.upsert(makeRow({ id: "b", file_path: "/p/b.jsonl" }));
+    repo.upsert(makeRow({ id: "c", file_path: "/p/c.jsonl" }));
+    repo.upsert(makeRow({ id: "d", file_path: "/p/d.jsonl", orphaned: 1 }));
+    repo.setRepoPath("a", "/Users/m/proj");
+    repo.setRepoPath("b", "/Users/m/proj"); // duplicate path
+    repo.setRepoPath("c", "/Users/m/other");
+    repo.setRepoPath("d", "/Users/m/orphan-repo"); // should be excluded (orphaned)
+    const paths = repo.listDistinctRepoPaths().sort();
+    expect(paths).toEqual(["/Users/m/other", "/Users/m/proj"]);
+  });
+
+  it("listDistinctRepoPaths excludes sessions with null repo_path", () => {
+    repo.upsert(makeRow({ id: "a", file_path: "/p/a.jsonl" }));
+    // never set repo_path → null
+    expect(repo.listDistinctRepoPaths()).toEqual([]);
+  });
+
+  it("listSessionsNeedingRepoDiscovery returns only sessions with null repo_path", () => {
+    repo.upsert(makeRow({ id: "a", file_path: "/p/a.jsonl" }));
+    repo.upsert(makeRow({ id: "b", file_path: "/p/b.jsonl" }));
+    repo.upsert(makeRow({ id: "c", file_path: "/p/c.jsonl" }));
+    repo.setRepoPath("b", "/Users/m/proj");
+    const ids = repo.listSessionsNeedingRepoDiscovery().map((s) => s.id).sort();
+    expect(ids).toEqual(["a", "c"]);
+  });
+
+  it("listSessionsNeedingRepoDiscovery excludes orphaned sessions", () => {
+    repo.upsert(makeRow({ id: "a", file_path: "/p/a.jsonl" }));
+    repo.upsert(makeRow({ id: "b", file_path: "/p/b.jsonl", orphaned: 1 }));
+    const ids = repo.listSessionsNeedingRepoDiscovery().map((s) => s.id);
+    expect(ids).toEqual(["a"]);
   });
 });

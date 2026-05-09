@@ -3,8 +3,8 @@ import { TabBar, type SeshTab } from "./components/TabBar";
 import { SessionsTab } from "./components/SessionsTab";
 import { InsightsTab } from "./components/InsightsTab";
 import { KnowledgeTab } from "./components/KnowledgeTab";
-import { PlaceholderTab } from "./components/PlaceholderTab";
 import { IdeasTab } from "./components/IdeasTab";
+import { ReviewerTab } from "./components/ReviewerTab";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 export function App(): JSX.Element {
@@ -21,12 +21,15 @@ export function App(): JSX.Element {
       <TabBar active={tab} onChange={setTab} />
       <ErrorBoundary key={tab} surface={tabSurfaceName(tab)}>
         {tab === "sessions" && (
-          <SessionsTab selectedId={selectedSessionId} onSelect={setSelectedSessionId} />
+          <SessionsTab
+            selectedId={selectedSessionId}
+            onSelect={setSelectedSessionId}
+          />
         )}
         {tab === "knowledge" && <KnowledgeTab onNavigateToSession={navigateToSession} />}
         {tab === "insights" && <InsightsTab />}
         {tab === "ideas" && <IdeasTab onNavigateToSession={navigateToSession} />}
-        {tab === "reviewer" && <PlaceholderTab name="Reviewer" />}
+        {tab === "reviewer" && <ReviewerTab onNavigateToSession={navigateToSession} />}
       </ErrorBoundary>
     </div>
   );

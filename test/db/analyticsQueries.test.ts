@@ -36,7 +36,7 @@ describe("analyticsQueries", () => {
       auto_title: "shipped session", custom_title: null, category_id: null, notes: null,
       favorited: 0, archived: 0, orphaned: 0, content_indexed: 1, last_parsed_offset: 0,
       tokens_in: 100, tokens_out: 50, tokens_cache_read: 0, tokens_cache_create: 0,
-      turns_indexed: 1, turns_last_offset: 0,
+      turns_indexed: 1, turns_last_offset: 0, repo_path: null,
     });
     turns.upsertMany([
       { id: "u1", session_id: "s1", seq: 0, role: "user", model: null,
@@ -120,7 +120,7 @@ describe("standupSummary", () => {
       auto_title: "shipped session", custom_title: null, category_id: null, notes: null,
       favorited: 0, archived: 0, orphaned: 0, content_indexed: 1, last_parsed_offset: 0,
       tokens_in: 100, tokens_out: 50, tokens_cache_read: 0, tokens_cache_create: 0,
-      turns_indexed: 1, turns_last_offset: 0,
+      turns_indexed: 1, turns_last_offset: 0, repo_path: null,
     });
     turns.upsertMany([
       { id: "u1", session_id: "s1", seq: 0, role: "user", model: null,

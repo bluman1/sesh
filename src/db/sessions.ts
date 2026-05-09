@@ -25,10 +25,11 @@ export interface SessionRow {
   tokens_cache_create: number;
   turns_indexed: 0 | 1;
   turns_last_offset: number;
+  repo_path: string | null;
 }
 
 const COLUMNS =
-  "id, source, project_path, file_path, file_mtime, file_size, created_at, last_active_at, message_count, auto_title, custom_title, category_id, notes, favorited, archived, orphaned, content_indexed, last_parsed_offset, tokens_in, tokens_out, tokens_cache_read, tokens_cache_create, turns_indexed, turns_last_offset";
+  "id, source, project_path, file_path, file_mtime, file_size, created_at, last_active_at, message_count, auto_title, custom_title, category_id, notes, favorited, archived, orphaned, content_indexed, last_parsed_offset, tokens_in, tokens_out, tokens_cache_read, tokens_cache_create, turns_indexed, turns_last_offset, repo_path";
 
 export class SessionRepository {
   constructor(private db: Db) {}
@@ -41,8 +42,10 @@ export class SessionRepository {
            @created_at, @last_active_at, @message_count, @auto_title, @custom_title,
            @category_id, @notes, @favorited, @archived, @orphaned, @content_indexed,
            @last_parsed_offset, @tokens_in, @tokens_out, @tokens_cache_read,
-           @tokens_cache_create, @turns_indexed, @turns_last_offset
+           @tokens_cache_create, @turns_indexed, @turns_last_offset, @repo_path
          )
+         -- repo_path intentionally excluded — GitIndexer resolves it separately;
+         -- a JSONL re-scan must not overwrite it.
          ON CONFLICT(id) DO UPDATE SET
            file_mtime = excluded.file_mtime,
            file_size = excluded.file_size,
@@ -63,6 +66,17 @@ export class SessionRepository {
       .prepare(`SELECT ${COLUMNS} FROM sessions WHERE id = ?`)
       .get(id) as SessionRow | undefined;
     return row ?? null;
+  }
+
+  findByIds(ids: string[]): Map<string, SessionRow> {
+    const map = new Map<string, SessionRow>();
+    if (ids.length === 0) return map;
+    const placeholders = ids.map(() => "?").join(",");
+    const rows = this.db
+      .prepare(`SELECT ${COLUMNS} FROM sessions WHERE id IN (${placeholders})`)
+      .all(...ids) as SessionRow[];
+    for (const r of rows) map.set(r.id, r);
+    return map;
   }
 
   listByProject(projectPath: string): SessionRow[] {
@@ -256,6 +270,41 @@ export class SessionRepository {
         "SELECT id, file_path FROM sessions WHERE turns_indexed = 1 AND orphaned = 0 ORDER BY last_active_at DESC",
       )
       .all() as { id: string; file_path: string }[];
+  }
+
+  setRepoPath(id: string, repoPath: string | null): void {
+    this.db
+      .prepare("UPDATE sessions SET repo_path = ? WHERE id = ?")
+      .run(repoPath, id);
+  }
+
+  // Returns orphaned sessions too — Reviewer tab needs to show all sessions
+  // that ever touched a repo, even if their JSONL has since been deleted.
+  // This is intentionally asymmetric with listDistinctRepoPaths /
+  // listSessionsNeedingRepoDiscovery, which DO filter on orphaned = 0.
+  listSessionsByRepo(repoPath: string): SessionRow[] {
+    return this.db
+      .prepare(
+        `SELECT ${COLUMNS} FROM sessions WHERE repo_path = ? ORDER BY last_active_at DESC`,
+      )
+      .all(repoPath) as SessionRow[];
+  }
+
+  listDistinctRepoPaths(): string[] {
+    const rows = this.db
+      .prepare(
+        "SELECT DISTINCT repo_path FROM sessions WHERE repo_path IS NOT NULL AND orphaned = 0",
+      )
+      .all() as { repo_path: string }[];
+    return rows.map((r) => r.repo_path);
+  }
+
+  listSessionsNeedingRepoDiscovery(): { id: string; project_path: string }[] {
+    return this.db
+      .prepare(
+        "SELECT id, project_path FROM sessions WHERE repo_path IS NULL AND orphaned = 0",
+      )
+      .all() as { id: string; project_path: string }[];
   }
 
   listRemaps(): { from_path: string; to_path: string }[] {

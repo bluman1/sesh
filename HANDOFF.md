@@ -110,7 +110,88 @@ All three new commands registered:
 
 ### Test count
 
-336 tests across 46 test files. Run `npx vitest run` to confirm.
+401 tests across 55 test files (combined substrate 2 + 3 baselines). Run `npx vitest run` to confirm.
+
+---
+
+## Substrate 3 — Git-Link
+
+Migration 005 (`src/db/migrations/005_git_link.sql`) adds git-linkage tables and a repo_path cache column.
+
+### New tables
+
+| Table | Purpose |
+|---|---|
+| `commits` | One row per commit: `sha`, `repo_path`, `branch`, `authored_at`, `author`, `message`. |
+| `commit_files` | One row per file touched in a commit: `sha`, `path`, `status`, `additions`, `deletions`. |
+| `session_commits` | Join table: `session_id`, `commit_sha`, `confidence` (0–1 float). |
+
+`sessions` gained `repo_path` — a cached result from repo-discovery to avoid repeated filesystem walks.
+
+### New repos
+
+- `src/db/commits.ts` — `CommitRepository`: upsertCommit, upsertFiles, listForRepo[Since], findBySha, listFiles, latestCommitTimestampForRepo, deleteForRepo.
+- `src/db/sessionCommits.ts` — `SessionCommitRepository`: upsertMany, commitsForSession, sessionsForCommit, deleteForSession, topConfidenceForSession.
+
+### New scanner / git modules
+
+- `src/git/repoDiscovery.ts` — `findRepoRoot`: walks up the directory tree to find the enclosing `.git`.
+- `src/git/gitLog.ts` — `parseGitLog`: reads `--numstat` output into `Commit[]` + `CommitFile[]` arrays.
+- `src/git/runGit.ts` — `runGitLog` and `runCurrentBranch`: async shell wrappers around `git`.
+- `src/git/gitIndexer.ts` — `GitIndexer`: incremental indexer, lifecycle mirrors `TurnsIndexer`. Uses `latestCommitTimestampForRepo` to pick up only new commits on subsequent runs.
+- `src/git/discoverRepos.ts` — walks sessions without a `repo_path`, calls `findRepoRoot`, writes result back.
+- `src/git/linker.ts` — `linkSessionsToCommits`: confidence = Jaccard(session files ∩ commit files) × time-overlap × 0.3 time-decay. Threshold 0.2 — links below that are discarded.
+- `src/git/runFullGitReindex.ts` — orchestrates discovery → index → link → infer-outcomes in one pipeline.
+- `src/git/ghCompanion.ts` — `gh` CLI wrappers: `isGhAvailable`, `listOpenPRsWithCommits`, `parseGhPRList`, `parseGhPRView`.
+
+### Outcome inference upgrade
+
+`src/scanner/outcomeInferer.ts` now uses git linkage when available:
+
+| Condition | Inferred state |
+|---|---|
+| Top linked commit confidence ≥ 0.5 | `shipped` |
+| 0.2 ≤ top confidence < 0.5 | `shipped-partial` |
+| A `Revert "..."` commit (authored after the original) touches a file the session's commits also touched | `reverted` |
+| No git linkage; session inactive > `outcomeInferenceDays` days | `abandoned` |
+
+`user_marked` outcomes still win — inference never overwrites them.
+
+### Reviewer tab
+
+`webview/src/components/ReviewerTab.tsx` — replaces the placeholder. Three sub-tabs:
+
+| Sub-tab | Content |
+|---|---|
+| Branch | Recent commits in the current repo with linked sessions and confidence percentages. |
+| Sessions | Sessions in this repo grouped by their linked commits. |
+| PRs | Open PRs via `gh` CLI with linked-session counts. Graceful empty-state when `gh` is missing or unauthenticated. |
+
+Data flows via new messaging pairs:
+
+- **ToHost**: `getReviewerBranch`, `getReviewerSessions`, `getReviewerPRs`, `triggerReindexGit`
+- **ToWebview**: `reviewerBranch`, `reviewerSessions`, `reviewerPRs`
+
+### New command
+
+`sesh.reindexGit` (`Sesh: Reindex git`) — runs the full discovery → index → link → infer pipeline manually. Registered in `extension.ts`.
+
+### New setting
+
+| Key | Default | Effect |
+|---|---|---|
+| `sesh.gitIndexerEnabled` | `true` | Disable git indexing for huge monorepos where walking git log is too slow. |
+
+### Known limitations / deferred
+
+- Per-line AI git-blame deferred to a future sub-substrate.
+- Renames not tracked — `--numstat` only; `--diff-filter=R` path is not wired up.
+- Branch-aware filtering on the Branch view uses the `branch` column captured at index time; no `git for-each-ref` cross-reference.
+- Cross-repo (submodule-spanning) session linking is out of scope.
+
+### Test counts
+
+245 tests passing across 35 test files (was 180 pre-substrate-3).
 
 ---
 
@@ -229,6 +310,7 @@ Delete `~/.sesh/db.sqlite` to rebuild from source on next activation. You lose a
 | 002_search | FTS5 `session_content_fts` |
 | 003_tokens | `tokens_in`, `tokens_out` on `sessions` |
 | 004_analytics | `turns`, `tool_calls`, `session_outcomes`; backfill columns on `sessions` |
+| 005_git_link | `commits`, `commit_files`, `session_commits`; `repo_path` on `sessions` |
 
 ### Architecture
 
@@ -247,13 +329,24 @@ src/
 │   ├── turns.ts              TurnRepository
 │   ├── toolCalls.ts          ToolCallRepository
 │   ├── outcomes.ts           OutcomeRepository
-│   └── analyticsQueries.ts   usdForTurn · costByFile · modelLeaderboard · personalRecords · todaysStandup · recentCommitments
+│   ├── analyticsQueries.ts   usdForTurn · costByFile · modelLeaderboard · personalRecords · todaysStandup · recentCommitments
+│   ├── commits.ts            CommitRepository
+│   └── sessionCommits.ts     SessionCommitRepository
+├── git/
+│   ├── repoDiscovery.ts      findRepoRoot — walks up to find .git
+│   ├── gitLog.ts             parseGitLog — numstat → Commit[] + CommitFile[]
+│   ├── runGit.ts             runGitLog · runCurrentBranch async shell wrappers
+│   ├── gitIndexer.ts         GitIndexer — incremental commit indexer
+│   ├── discoverRepos.ts      caches repo_path on sessions
+│   ├── linker.ts             linkSessionsToCommits — Jaccard × time-overlap × decay
+│   ├── runFullGitReindex.ts  discovery → index → link → infer pipeline
+│   └── ghCompanion.ts        gh CLI wrappers (isGhAvailable · listOpenPRsWithCommits)
 └── scanner/
     ├── jsonl.ts              streaming reader (.jsonl + .jsonl.gz)
     ├── extract.ts, transcript.ts, scan.ts
     ├── extractTurns.ts       parse JSONL → Turn[] + ToolCall[]
     ├── turnsIndexer.ts       incremental turn indexer
-    ├── outcomeInferer.ts     age-based abandoned inference
+    ├── outcomeInferer.ts     git-aware outcome inference (shipped · shipped-partial · reverted · abandoned)
     ├── sessionsIndex.ts, systemTags.ts, contentIndexer.ts, watcher.ts
     └── codex/                Codex CLI source adapter
 
@@ -264,7 +357,8 @@ webview/src/
 │   ├── SessionsTab.tsx       existing session list + detail pane
 │   ├── InsightsTab.tsx       4 sub-views: Today · By file · Models · Records
 │   ├── AnalyticsChip.tsx     outcome dot · cost · model badge on session rows
-│   ├── PlaceholderTab.tsx    stub for Knowledge / Ideas / Reviewer
+│   ├── ReviewerTab.tsx       3 sub-tabs: Branch · Sessions · PRs
+│   ├── PlaceholderTab.tsx    stub for Knowledge / Ideas
 │   └── insights/             StandupView · CostView · LeaderboardView · RecordsView
 └── hooks/
     ├── useInsights.ts        subscribes to insights messages
@@ -284,8 +378,7 @@ Load-bearing — don't remove without thinking hard:
 ### What's next (substrate backlog)
 
 - **Substrate 2** — knowledge / ideas tabs (content extraction, linking, surfacing).
-- **Substrate 3** — git-link: connect sessions to commits/PRs; enable shipped/reverted outcome inference from git history.
-- Reviewer tab.
+- **Substrate 4a** — Reviewer tab enhancements: per-line AI git-blame, rename tracking, cross-repo linking.
 
 ### Development
 

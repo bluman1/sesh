@@ -62,6 +62,10 @@
         "title": "Sesh: Reindex analytics"
       },
       {
+        "command": "sesh.reindexGit",
+        "title": "Sesh: Reindex git"
+      },
+      {
         "command": "sesh.reindexEmbeddings",
         "title": "Sesh: Reindex embeddings"
       },
@@ -161,6 +165,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show today's spend in the status bar."
+        },
+        "sesh.gitIndexerEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Index commits and link sessions to commits at activation. Powers the Reviewer tab and auto-shipped/auto-reverted outcome inference. Disable if git indexing is causing slowdowns on huge monorepos."
         },
         "sesh.embeddingsEnabled": {
           "type": "boolean",

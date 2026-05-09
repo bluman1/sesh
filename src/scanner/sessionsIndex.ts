@@ -121,6 +121,7 @@ export async function scanSessionsIndex(
         tokens_cache_create: 0,
         turns_indexed: 0,
         turns_last_offset: 0,
+        repo_path: null,
       });
       result.imported++;
     }

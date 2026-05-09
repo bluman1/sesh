@@ -27,8 +27,8 @@ describe("runMigrations", () => {
         .prepare("SELECT version FROM schema_version ORDER BY version")
         .all() as { version: number }[]
     ).map((r) => r.version);
-    // Substrate 2 adds migration 006; substrate 3 will add 005 when it merges.
-    // Assert that 006 is present and is the max applied.
+    // 005 is substrate 3 (git-link); 006 is substrate 2 (semantic).
+    expect(versions).toContain(5);
     expect(versions).toContain(6);
     expect(versions[versions.length - 1]).toBe(6);
     db.close();
@@ -80,16 +80,13 @@ describe("runMigrations", () => {
 
     expect(() => runMigrations(db)).not.toThrow();
 
-    // v1 should have been auto-recorded, then v2 + v3 + v4 + v006 applied normally.
+    // v1 should have been auto-recorded, then v2 + v3 + v4 + v5 + v6 applied.
     const versions = (
       db
         .prepare("SELECT version FROM schema_version ORDER BY version")
         .all() as { version: number }[]
     ).map((r) => r.version);
-    expect(versions).toContain(1);
-    expect(versions).toContain(4);
-    expect(versions).toContain(6);
-    expect(versions[versions.length - 1]).toBe(6);
+    expect(versions).toEqual([1, 2, 3, 4, 5, 6]);
 
     // The original sessions table is intact (not dropped/recreated).
     const sessionsCol = db
@@ -152,21 +149,40 @@ describe("runMigrations", () => {
     expect(names.has("turns_last_offset")).toBe(true);
   });
 
-  it("creates semantic tables in migration 006", () => {
+  it("creates the git-link tables in migration 005", () => {
     const db = openDb(":memory:");
     runMigrations(db);
-
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
       .all() as { name: string }[];
     const names = new Set(tables.map((t) => t.name));
+    expect(names.has("commits")).toBe(true);
+    expect(names.has("commit_files")).toBe(true);
+    expect(names.has("session_commits")).toBe(true);
+  });
 
+  it("adds repo_path column to sessions in migration 005", () => {
+    const db = openDb(":memory:");
+    runMigrations(db);
+    const cols = db
+      .prepare("PRAGMA table_info(sessions)")
+      .all() as { name: string }[];
+    const names = new Set(cols.map((c) => c.name));
+    expect(names.has("repo_path")).toBe(true);
+  });
+
+  it("creates the semantic tables in migration 006", () => {
+    const db = openDb(":memory:");
+    runMigrations(db);
+    const tables = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+      .all() as { name: string }[];
+    const names = new Set(tables.map((t) => t.name));
     expect(names.has("chunks")).toBe(true);
     expect(names.has("embeddings")).toBe(true);
     expect(names.has("ideas")).toBe(true);
     expect(names.has("claude_md_suggestions")).toBe(true);
     expect(names.has("prompt_lints")).toBe(true);
-
     db.close();
   });
 });

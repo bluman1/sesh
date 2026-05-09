@@ -31,6 +31,7 @@ function makeSession(id: string, lastActiveAt = Date.now()) {
     tokens_cache_create: 0,
     turns_indexed: 1 as const,
     turns_last_offset: 0,
+        repo_path: null,
   };
 }
 

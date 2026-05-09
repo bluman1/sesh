@@ -6,6 +6,9 @@ import { TurnRepository } from "./db/turns";
 import { ToolCallRepository } from "./db/toolCalls";
 import { TurnsIndexer, runFullReindex } from "./scanner/turnsIndexer";
 import { inferOutcomes } from "./scanner/outcomeInferer";
+import { CommitRepository } from "./db/commits";
+import { GitIndexer } from "./git/gitIndexer";
+import { runFullGitReindex } from "./git/runFullGitReindex";
 import { ChunkRepository } from "./db/chunks";
 import { EmbeddingRepository } from "./db/embeddings";
 import { createEmbedder } from "./embed/factory";
@@ -21,6 +24,7 @@ import { PromptLintRepository } from "./db/promptLints";
 
 let host: SeshHost | null = null;
 let turnsIndexer: TurnsIndexer | null = null;
+let gitIndexer: GitIndexer | null = null;
 let embeddingIndexer: EmbeddingIndexer | null = null;
 let embedder: Embedder | null = null;
 
@@ -130,6 +134,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   );
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand("sesh.reindexGit", async () => {
+      if (!host || !gitIndexer) return;
+      const windowDays = vscode.workspace
+        .getConfiguration("sesh")
+        .get<number>("outcomeInferenceDays", 30);
+      await runFullGitReindex({
+        db: host.rawDb!,
+        sessions: host.sessions!,
+        gitIndexer,
+        windowDays,
+      });
+      vscode.window.showInformationMessage("Sesh: git reindexed.");
+    }),
+  );
+
   try {
     await host.start();
     // Construct analytics repos and indexer now that rawDb is available.
@@ -137,6 +157,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const toolCallRepo = new ToolCallRepository(host.rawDb!);
     turnsIndexer = new TurnsIndexer(host.rawDb!, host.sessions!, turnRepo, toolCallRepo);
     host.setTurnsIndexer(turnsIndexer);
+    const commitRepo = new CommitRepository(host.rawDb!);
+    gitIndexer = new GitIndexer(host.rawDb!, host.sessions!, commitRepo);
+    host.setGitIndexer(gitIndexer);
     const cfg = vscode.workspace.getConfiguration("sesh");
 
     const embeddingsEnabled = cfg.get<boolean>("embeddingsEnabled", true);
@@ -228,6 +251,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         });
     }
 
+    const gitEnabled = cfg.get<boolean>("gitIndexerEnabled", true);
+    if (gitEnabled && gitIndexer) {
+      // Fire and forget. Errors fall through to lazy/manual.
+      void runFullGitReindex({
+        db: host.rawDb!,
+        sessions: host.sessions!,
+        gitIndexer,
+        windowDays: cfg.get<number>("outcomeInferenceDays", 30),
+      }).catch((err) => {
+        console.warn("[sesh] eager git index failed; will run on demand", err);
+      });
+    }
+
     // Run outcome inference daily so long-lived VSCode sessions age sessions
     // out to 'abandoned' without requiring a restart or manual reindex.
     const dailyInferenceTimer = setInterval(() => {
@@ -285,6 +321,7 @@ export async function deactivate(): Promise<void> {
   await host?.stop();
   host = null;
   turnsIndexer = null;
+  gitIndexer = null;
   embeddingIndexer = null;
   embedder = null;
 }

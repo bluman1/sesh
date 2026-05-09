@@ -15,6 +15,7 @@ import { extractMetadata } from "../scanner/extract";
 import { ContentIndexer } from "../scanner/contentIndexer";
 import { ProjectsWatcher } from "../scanner/watcher";
 import type { TurnsIndexer } from "../scanner/turnsIndexer";
+import type { GitIndexer } from "../git/gitIndexer";
 import type { EmbeddingIndexer } from "../scanner/embeddingIndexer";
 import type { IdeaIndexer } from "../scanner/ideaIndexer";
 import type { CorrectionMiner } from "../scanner/correctionMiner";
@@ -37,6 +38,7 @@ export class SeshHost {
   public archive: TranscriptArchive;
   private watcher: ProjectsWatcher | null = null;
   private turnsIndexer: TurnsIndexer | null = null;
+  private gitIndexer: GitIndexer | null = null;
   private embeddingIndexer: EmbeddingIndexer | null = null;
   private ideaIndexer: IdeaIndexer | null = null;
   private correctionMiner: CorrectionMiner | null = null;
@@ -60,8 +62,20 @@ export class SeshHost {
     }
   }
 
+  setGitIndexer(indexer: GitIndexer): void {
+    this.gitIndexer = indexer;
+  }
+
+  get currentGitIndexer(): GitIndexer | null {
+    return this.gitIndexer;
+  }
+
   setEmbeddingIndexer(indexer: EmbeddingIndexer): void {
     this.embeddingIndexer = indexer;
+  }
+
+  get currentEmbeddingIndexer(): EmbeddingIndexer | null {
+    return this.embeddingIndexer;
   }
 
   setIdeaIndexer(indexer: IdeaIndexer): void {
@@ -90,10 +104,6 @@ export class SeshHost {
 
   setEmbedder(e: Embedder): void {
     this.embedder = e;
-  }
-
-  get currentEmbeddingIndexer(): EmbeddingIndexer | null {
-    return this.embeddingIndexer;
   }
 
   get currentEmbedder(): Embedder | null {
