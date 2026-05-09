@@ -20,7 +20,7 @@ import {
   costByFile,
   modelLeaderboard,
   personalRecords,
-  todaysStandup,
+  standupSummary,
   recentCommitments,
 } from "../db/analyticsQueries";
 import { OutcomeRepository } from "../db/outcomes";
@@ -347,22 +347,53 @@ export class SeshPanel {
           break;
         case "getInsights": {
           let sinceMs: number;
+          let priorRange: { start: number; end: number; label: string } | undefined;
           switch (msg.range) {
             case "today": {
-              const d = new Date();
-              d.setHours(0, 0, 0, 0);
-              sinceMs = d.getTime();
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              sinceMs = today.getTime();
+              const yesterdayStart = sinceMs - 86400 * 1000;
+              priorRange = { start: yesterdayStart, end: sinceMs, label: "yesterday" };
               break;
             }
-            case "7d": sinceMs = Date.now() - 7 * 86400 * 1000; break;
-            case "30d": sinceMs = Date.now() - 30 * 86400 * 1000; break;
-            case "1y": sinceMs = Date.now() - 365 * 86400 * 1000; break;
-            case "all": sinceMs = 0; break;
+            case "7d":
+              sinceMs = Date.now() - 7 * 86400 * 1000;
+              priorRange = {
+                start: Date.now() - 14 * 86400 * 1000,
+                end: sinceMs,
+                label: "the previous 7 days",
+              };
+              break;
+            case "30d":
+              sinceMs = Date.now() - 30 * 86400 * 1000;
+              priorRange = {
+                start: Date.now() - 60 * 86400 * 1000,
+                end: sinceMs,
+                label: "the previous 30 days",
+              };
+              break;
+            case "1y":
+              sinceMs = Date.now() - 365 * 86400 * 1000;
+              priorRange = {
+                start: Date.now() - 730 * 86400 * 1000,
+                end: sinceMs,
+                label: "the previous year",
+              };
+              break;
+            case "all":
+              sinceMs = 0;
+              priorRange = undefined;
+              break;
           }
           let payload: unknown;
           switch (msg.tab) {
             case "standup":
-              payload = todaysStandup({ db: this.host.rawDb!, todayStart: sinceMs });
+              payload = standupSummary({
+                db: this.host.rawDb!,
+                since: sinceMs,
+                priorRange,
+              });
               break;
             case "cost":
               payload = costByFile({ db: this.host.rawDb!, since: sinceMs });

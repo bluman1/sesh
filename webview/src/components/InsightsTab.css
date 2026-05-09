@@ -197,6 +197,39 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ─── Vital signs (dense standup sections) ─────────── */
+.sesh-vital-signs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sesh-space-1);
+  margin-bottom: var(--sesh-space-4);
+}
+.sesh-vital-line {
+  color: color-mix(in srgb, var(--vscode-foreground) 75%, transparent);
+  font-size: 0.95em;
+}
+.sesh-vital-emphasis {
+  color: var(--vscode-foreground);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.sesh-comparison-good .sesh-comparison-arrow,
+.sesh-comparison-good .sesh-comparison-delta {
+  color: var(--vscode-charts-green, #4caf50);
+}
+.sesh-comparison-bad .sesh-comparison-arrow,
+.sesh-comparison-bad .sesh-comparison-delta {
+  color: var(--vscode-charts-red, #e57373);
+}
+.sesh-comparison-flat .sesh-comparison-arrow,
+.sesh-comparison-flat .sesh-comparison-delta {
+  color: color-mix(in srgb, var(--vscode-foreground) 50%, transparent);
+}
+.sesh-comparison-prior {
+  color: color-mix(in srgb, var(--vscode-foreground) 50%, transparent);
+  font-size: 0.9em;
+}
+
 /* ─── Records list ─────────── */
 .sesh-records-list { list-style: none; padding: 0; margin: 0; }
 .sesh-records-row {
