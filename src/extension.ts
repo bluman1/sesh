@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { SeshHost } from "./host/seshHost";
 import { SeshPanel } from "./host/seshPanel";
+import { SeshStatusBar } from "./host/statusBar";
 import { TurnRepository } from "./db/turns";
 import { ToolCallRepository } from "./db/toolCalls";
 import { TurnsIndexer } from "./scanner/turnsIndexer";
@@ -113,6 +114,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           console.warn("[sesh] eager analytics backfill failed; will run lazily", err);
         });
     }
+
+    const statusBar = new SeshStatusBar(host.rawDb!);
+    statusBar.start();
+    context.subscriptions.push({ dispose: () => statusBar.dispose() });
   } catch (err) {
     output.appendLine(`[sesh] activation error: ${(err as Error).message}`);
     vscode.window.showErrorMessage(`Sesh failed to start: ${(err as Error).message}`);
