@@ -59,4 +59,17 @@ describe("extractTurns", () => {
     const a1 = result.turns.find((t) => t.id === "a1")!;
     expect(a1.text_len).toBe("reply text".length);
   });
+
+  it("does NOT flag is_correction on benign 'no problem' / 'no thanks' but DOES on 'no,' / 'wait,'", async () => {
+    const fixture = path.join(__dirname, "..", "fixtures", "correction-edge-cases.jsonl");
+    const result = await extractTurns(fixture, "edge-cases");
+    const u2 = result.turns.find((t) => t.id === "u2")!;
+    const u3 = result.turns.find((t) => t.id === "u3")!;
+    const u4 = result.turns.find((t) => t.id === "u4")!;
+    const u5 = result.turns.find((t) => t.id === "u5")!;
+    expect(u2.is_correction).toBe(0); // "no problem, continue"
+    expect(u3.is_correction).toBe(0); // "no thanks"
+    expect(u4.is_correction).toBe(1); // "no, do it differently"
+    expect(u5.is_correction).toBe(1); // "wait, what?"
+  });
 });
