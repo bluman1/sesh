@@ -3,6 +3,7 @@ import { TabBar, type SeshTab } from "./components/TabBar";
 import { SessionsTab } from "./components/SessionsTab";
 import { InsightsTab } from "./components/InsightsTab";
 import { PlaceholderTab } from "./components/PlaceholderTab";
+import { ReviewerTab } from "./components/ReviewerTab";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 export function App(): JSX.Element {
@@ -15,7 +16,7 @@ export function App(): JSX.Element {
         {tab === "knowledge" && <PlaceholderTab name="Knowledge" />}
         {tab === "insights" && <InsightsTab />}
         {tab === "ideas" && <PlaceholderTab name="Ideas" />}
-        {tab === "reviewer" && <PlaceholderTab name="Reviewer" />}
+        {tab === "reviewer" && <ReviewerTab />}
       </ErrorBoundary>
     </div>
   );

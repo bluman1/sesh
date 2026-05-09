@@ -1,0 +1,47 @@
+.sesh-reviewer { display: flex; flex-direction: column; height: 100%; }
+.sesh-reviewer-nav {
+  display: flex; gap: var(--sesh-space-1);
+  padding: var(--sesh-space-2) var(--sesh-space-3);
+  border-bottom: 1px solid var(--sesh-border-subtle);
+}
+.sesh-reviewer-tab {
+  padding: var(--sesh-space-1) var(--sesh-space-3);
+  border: none;
+  background: transparent;
+  color: color-mix(in srgb, var(--vscode-foreground) 62%, transparent);
+  cursor: pointer;
+  border-radius: var(--sesh-radius-pill);
+  font: inherit;
+}
+.sesh-reviewer-tab.is-active {
+  background: var(--sesh-fill-subtle);
+  color: var(--vscode-foreground);
+}
+.sesh-reviewer-body { flex: 1; overflow: auto; padding: var(--sesh-space-4); }
+
+.sesh-reviewer-header {
+  margin-bottom: var(--sesh-space-3);
+  color: color-mix(in srgb, var(--vscode-foreground) 80%, transparent);
+}
+.sesh-reviewer-list { list-style: none; padding: 0; margin: 0; }
+.sesh-reviewer-commit {
+  padding: var(--sesh-space-2) 0;
+  border-bottom: 1px solid var(--sesh-border-subtle);
+}
+.sesh-reviewer-commit:last-child { border-bottom: none; }
+.sesh-reviewer-commit-title { font-weight: 500; }
+.sesh-reviewer-commit-meta {
+  color: color-mix(in srgb, var(--vscode-foreground) 62%, transparent);
+  font-size: 0.9em;
+  margin-top: 2px;
+}
+.sesh-reviewer-sha { color: var(--vscode-charts-blue, #4d8df6); }
+.sesh-reviewer-linked-sessions {
+  list-style: none;
+  padding: var(--sesh-space-1) 0 0 var(--sesh-space-3);
+  margin: 0;
+  font-size: 0.9em;
+}
+.sesh-reviewer-confidence {
+  color: color-mix(in srgb, var(--vscode-foreground) 50%, transparent);
+}
