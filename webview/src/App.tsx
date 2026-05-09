@@ -4,6 +4,7 @@ import { SessionsTab } from "./components/SessionsTab";
 import { InsightsTab } from "./components/InsightsTab";
 import { KnowledgeTab } from "./components/KnowledgeTab";
 import { PlaceholderTab } from "./components/PlaceholderTab";
+import { IdeasTab } from "./components/IdeasTab";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 export function App(): JSX.Element {
@@ -24,7 +25,7 @@ export function App(): JSX.Element {
         )}
         {tab === "knowledge" && <KnowledgeTab onNavigateToSession={navigateToSession} />}
         {tab === "insights" && <InsightsTab />}
-        {tab === "ideas" && <PlaceholderTab name="Ideas" />}
+        {tab === "ideas" && <IdeasTab onNavigateToSession={navigateToSession} />}
         {tab === "reviewer" && <PlaceholderTab name="Reviewer" />}
       </ErrorBoundary>
     </div>
