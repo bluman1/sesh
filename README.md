@@ -2,7 +2,7 @@
 
 > Browse, annotate, and resume saved Claude Code and Codex CLI sessions — without leaving VSCode.
 
-[![Tests](https://img.shields.io/badge/tests-175%20passing-brightgreen)](#development)
+[![Tests](https://img.shields.io/badge/tests-336%20passing-brightgreen)](#development)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![VSCode](https://img.shields.io/badge/VSCode-^1.94.0-007acc)](https://code.visualstudio.com/)
@@ -33,13 +33,18 @@ Schema is source-pluggable — adding another source means a parser + a `source`
 
 ## Features in detail
 
-**Tab navigation.** The panel has five tabs: Sessions, Knowledge, Insights, Ideas, and Reviewer. Sessions and Insights are live; the others are placeholders for upcoming substrates.
+**Tab navigation.** The panel has five tabs: Sessions, Knowledge, Insights, Ideas, and Reviewer. Sessions, Knowledge, Insights, and Ideas are live; Reviewer is a placeholder for an upcoming substrate.
 
-**Insights tab.** Four sub-views:
+**Knowledge tab.** Semantic search across every session you've had — no exact phrase match needed. Type anything and Sesh finds the most relevant turns by meaning. The side panel also surfaces *CLAUDE.md tips*: patterns where you've corrected the assistant repeatedly, turned into ready-to-paste CLAUDE.md additions.
+
+**Ideas tab.** A graveyard of intent-bearing things you've said across sessions ("I should refactor X", "we need to add Y"), clustered by similarity. Nothing slips through the cracks.
+
+**Insights tab.** Five sub-views:
 - *Today* — a daily standup: sessions active today, turns, and total spend broken down by project.
 - *By file* — which files have attracted the most LLM spend across all sessions.
 - *Models* — per-model turn counts and USD cost, sorted by spend.
 - *Records* — personal bests: longest session, longest streak, total spend.
+- *Style* — your writing fingerprint: average sentence length, hedging rate, top tokens. Export as JSON via the command palette (`Sesh: Export style fingerprint`).
 
 **Status bar.** When `sesh.statusBarShowCost` is on, the status bar shows `$(history) $X.XX today` and updates every minute. It hides on days with no activity. Click it to open the panel.
 
@@ -72,6 +77,13 @@ Schema is source-pluggable — adding another source means a parser + a `source`
 | `sesh.statusBarShowCost` | `true` | Show today's spend in the status bar. |
 | `sesh.indexBackfillMode` | `"eager"` | `eager` indexes all sessions in the background at activation. `lazy` defers until you open a session. |
 | `sesh.outcomeInferenceDays` | `30` | Days of inactivity before an un-reviewed session is auto-marked abandoned. |
+| `sesh.embeddingsEnabled` | `true` | Enable local semantic indexing. Powers the Knowledge tab, Ideas tab, CLAUDE.md tips, and prompt linting. Disable to skip all embedding work. |
+| `sesh.embedder` | `"local"` | Which embedder to use. `local` runs entirely on-device via `@huggingface/transformers` (no network, no key needed — recommended). `ollama` targets a local Ollama server. `cloud` targets an OpenAI-compatible endpoint. |
+| `sesh.embedderModel` | `""` | Override the embedder's model. Leave blank for the default: `Xenova/all-MiniLM-L6-v2` (local), `nomic-embed-text` (ollama), `text-embedding-3-small` (cloud). |
+| `sesh.embedderApiKey` | `""` | API key for the cloud embedder. Stored in plaintext in VSCode settings — only set if you accept that risk. |
+| `sesh.embedderApiUrl` | `""` | Override the embedder endpoint URL. Blank uses the embedder's default. |
+| `sesh.ideaMining` | `true` | Mine intent-bearing user messages into the Ideas tab graveyard. |
+| `sesh.ideaMiningSinceDays` | `30` | Only mine ideas from sessions active within this many days. |
 
 ## Commands
 
@@ -80,6 +92,9 @@ Schema is source-pluggable — adding another source means a parser + a `source`
 - `Sesh: Rescan all projects` — re-scan + reimport ghosts + reindex FTS.
 - `Sesh: Show archive size` — disk size of the opt-in archive directory.
 - `Sesh: Reindex analytics` — rebuild all turn, tool-call, and outcome data. Run this after a pricing-table change or if Insights numbers look wrong.
+- `Sesh: Reindex embeddings` — re-run the full embedding indexer. Use this after switching `sesh.embedder` or after a long offline period.
+- `Sesh: Suggest CLAUDE.md improvements` — run the correction miner and open the Knowledge tab tips panel. Copy the surfaced patterns straight into your CLAUDE.md.
+- `Sesh: Export style fingerprint` — compute your writing metrics and save as a JSON file via the system save dialog.
 
 `Sesh: Open` is wired to the activity-bar entry, the secondary-sidebar entry (right strip, alongside Claude / Codex), the editor-title button (history icon), and the welcome-view links — pick whichever fits your layout.
 
@@ -101,7 +116,7 @@ Sesh is a TypeScript-strict, esbuild-bundled extension with a Vite-bundled React
 ```bash
 npm install
 npm run typecheck                                    # tsc --noEmit on host
-npm test                                             # 175 tests pass (host Node binary)
+npm test                                             # 336 tests pass (host Node binary)
 npm run build                                        # bundles extension + webview
 npx @electron/rebuild -f -w better-sqlite3 -v 39.8.8 # before pressing F5
 ```
@@ -125,20 +140,34 @@ To minimize flips during a dev session: finish all code changes, then **rebuild 
 
 ```
 src/
-├── extension.ts              activate() — status bar, commands, view registration
+├── extension.ts              activate() — status bar, commands, view registration, eager indexing chain
 ├── host/
-│   ├── seshHost.ts           DB + scan + ghost import + FTS + watcher + archive + turns backfill
+│   ├── seshHost.ts           DB + scan + ghost import + FTS + watcher + archive + turns backfill + semantic refs
 │   ├── seshPanel.ts          singleton WebviewPanel, message dispatcher, light/dark iconPath
 │   ├── statusBar.ts          SeshStatusBar — today's spend, refreshes every 60 s
 │   └── transcriptArchive.ts  opt-in gzipped sidecar (sesh.archiveTranscripts)
 ├── messaging.ts              typed host↔webview protocol
+├── embed/
+│   ├── types.ts              Embedder interface + EmbedderConfig union
+│   ├── xenovaEmbedder.ts     on-device WASM via @huggingface/transformers (default)
+│   ├── ollamaEmbedder.ts     local Ollama HTTP
+│   ├── cloudEmbedder.ts      OpenAI-compatible cloud endpoint
+│   ├── factory.ts            createEmbedder(cfg)
+│   ├── cosine.ts             cosineSimilarity(a, b)
+│   └── chunkText.ts          sliding-window text chunker
 ├── db/
 │   ├── connection.ts, migrate.ts, migrations/
 │   ├── sessions.ts, tags.ts, categories.ts, search.ts
 │   ├── turns.ts              TurnRepository
 │   ├── toolCalls.ts          ToolCallRepository
 │   ├── outcomes.ts           OutcomeRepository
-│   └── analyticsQueries.ts   usdForTurn · costByFile · modelLeaderboard · personalRecords · todaysStandup · recentCommitments
+│   ├── analyticsQueries.ts   usdForTurn · costByFile · modelLeaderboard · personalRecords · todaysStandup · recentCommitments
+│   ├── chunks.ts             ChunkRepository
+│   ├── embeddings.ts         EmbeddingRepository
+│   ├── ideas.ts              IdeaRepository
+│   ├── claudeMd.ts           ClaudeMdSuggestionRepository
+│   ├── promptLints.ts        PromptLintRepository
+│   └── semanticQueries.ts    cosine search + idea cluster retrieval
 └── scanner/
     ├── jsonl.ts              streaming reader — handles .jsonl.gz transparently
     ├── extract.ts            metadata extractor (Claude Code shape)
@@ -151,6 +180,14 @@ src/
     ├── systemTags.ts         shared SYSTEM_TAG_RE
     ├── contentIndexer.ts     background FTS populate, source-aware
     ├── watcher.ts            chokidar add/change/unlink (Claude Code only for now)
+    ├── chunkExtractor.ts     split turns into overlapping text chunks
+    ├── embeddingIndexer.ts   incremental chunk → vector indexer (cancelable)
+    ├── ideaDetector.ts       pure classifier: is this turn intent-bearing?
+    ├── ideaIndexer.ts        mine + cluster ideas from recent sessions
+    ├── correctionMiner.ts    cluster correction turns → CLAUDE.md suggestions
+    ├── promptLinter.ts       match opening prompt against correction patterns
+    ├── styleFingerprint.ts   writing metrics: sentence length, hedging rate, top tokens
+    ├── nextSessionSuggester.ts  banner text from idea clusters + recent commitments
     └── codex/                Codex CLI source adapter (extract + scan + transcript + sessionText)
 
 webview/src/
@@ -160,10 +197,14 @@ webview/src/
 ├── components/
 │   ├── TabBar.tsx            tab navigation
 │   ├── SessionsTab.tsx       session list + detail pane
-│   ├── InsightsTab.tsx       4 sub-views: Today · By file · Models · Records
+│   ├── InsightsTab.tsx       5 sub-views: Today · By file · Models · Records · Style
+│   ├── KnowledgeTab.tsx      semantic search + CLAUDE.md tips panel
+│   ├── IdeasTab.tsx          idea graveyard, grouped by cluster
 │   ├── AnalyticsChip.tsx     outcome dot · cost · model badge on session rows
-│   ├── PlaceholderTab.tsx    stub for Knowledge / Ideas / Reviewer
-│   └── insights/             StandupView · CostView · LeaderboardView · RecordsView
+│   ├── PromptLintBadge.tsx   badge on session detail when a prompt lint has fired
+│   ├── NextSessionBanner.tsx banner above sessions list: idea clusters + commitments
+│   ├── PlaceholderTab.tsx    stub for Reviewer
+│   └── insights/             StandupView · CostView · LeaderboardView · RecordsView · StyleView
 └── hooks/                    useSessions, useSessionDetail, useCategories, useAllTags, useProjects, useInsights
 ```
 

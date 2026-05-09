@@ -4,6 +4,116 @@ Internal reference for Claude sessions and engineers picking up the project. Wri
 
 ---
 
+## Substrate 2 — Semantic (embeddings · Knowledge · Ideas · CLAUDE.md improver · prompt linter · style fingerprint · next-session suggester)
+
+### Schema — migration 006
+
+`src/db/migrations/006_semantic.sql` adds five tables:
+
+| Table | Purpose |
+|---|---|
+| `chunks` | Sliding-window text chunks extracted from turns (≤200 tokens, 50-token stride). `session_id`, `turn_id`, `seq`, `text`, `role`. |
+| `embeddings` | One row per chunk: `chunk_id`, `model` (embedder model), `vector` (BLOB, 384 floats for default model). |
+| `ideas` | Intent-bearing user messages mined by `ideaDetector`: `session_id`, `turn_id`, `text`, `cluster_id` (nullable, assigned by cosine clustering). |
+| `claude_md_suggestions` | Patterns from repeated corrections: `pattern` text, `suggestion`, `example_session_id`, `score`. |
+| `prompt_lints` | Per-session lints: `session_id`, `matched_pattern`, `suggestion`, `score`. |
+
+Note: migration 005 was never created — sequence jumps from 004 to 006 intentionally.
+
+### New repos
+
+| Repo | File |
+|---|---|
+| `ChunkRepository` | `src/db/chunks.ts` |
+| `EmbeddingRepository` | `src/db/embeddings.ts` |
+| `IdeaRepository` | `src/db/ideas.ts` |
+| `ClaudeMdSuggestionRepository` | `src/db/claudeMd.ts` |
+| `PromptLintRepository` | `src/db/promptLints.ts` |
+
+Also new: `src/db/semanticQueries.ts` — pure functions for semantic search (cosine ranking against stored embedding vectors) and idea cluster retrieval.
+
+### Embedder runtime (`src/embed/`)
+
+| File | Purpose |
+|---|---|
+| `types.ts` | `Embedder` interface + `EmbedderConfig` union |
+| `xenovaEmbedder.ts` | `XenovaEmbedder` — on-device WASM via `@huggingface/transformers`. Default model: `Xenova/all-MiniLM-L6-v2` (384 dims). Lazy-loads the pipeline on first call. |
+| `ollamaEmbedder.ts` | `OllamaEmbedder` — local Ollama HTTP endpoint. Default model: `nomic-embed-text`. |
+| `cloudEmbedder.ts` | `CloudEmbedder` — OpenAI-compatible endpoint. Default model: `text-embedding-3-small`. |
+| `factory.ts` | `createEmbedder(cfg)` — routes to the right impl. |
+| `cosine.ts` | `cosineSimilarity(a, b)` — pure, no deps. |
+| `chunkText.ts` | `chunkText(text, opts)` — sliding window chunker used by `chunkExtractor`. |
+
+`@huggingface/transformers` is externalized from the esbuild bundle (runtime dep, not inlined). `onnxruntime-node` is similarly external.
+
+### New scanner modules
+
+| Module | File | What it does |
+|---|---|---|
+| `chunkExtractor` | `src/scanner/chunkExtractor.ts` | Splits indexed turns into `Chunk` rows. Runs before embedding. |
+| `EmbeddingIndexer` | `src/scanner/embeddingIndexer.ts` | Walks un-embedded chunks, batches calls to the `Embedder`, stores vectors. Incremental; skips already-embedded chunks. Supports `cancel()`. |
+| `ideaDetector` | `src/scanner/ideaDetector.ts` | Pure classifier: given a turn text, returns `true` if it's intent-bearing ("I should…", "we need to…", "TODO", etc.). |
+| `IdeaIndexer` | `src/scanner/ideaIndexer.ts` | Walks recent sessions, calls `ideaDetector`, upserts `ideas` rows, assigns cluster IDs by cosine distance. |
+| `CorrectionMiner` | `src/scanner/correctionMiner.ts` | Finds `is_correction=1` turns, clusters by embedding similarity, writes `claude_md_suggestions`. |
+| `PromptLinter` | `src/scanner/promptLinter.ts` | On session open, compares the opening prompt against stored correction patterns; writes `prompt_lints` if a pattern fires. |
+| `styleFingerprint` | `src/scanner/styleFingerprint.ts` | Computes writing-style metrics from user turns: avg sentence length, hedging rate, top tokens. Exports to JSON via `exportFingerprintToFile`. |
+| `nextSessionSuggester` | `src/scanner/nextSessionSuggester.ts` | Combines recurring idea clusters + recent commitments into a banner text shown above the Sessions list. |
+
+### New webview components and views
+
+| Component | Location | What it does |
+|---|---|---|
+| `KnowledgeTab` | `webview/src/components/KnowledgeTab.tsx` | Semantic search across all sessions (no exact phrase needed) + CLAUDE.md tips panel surfacing `claude_md_suggestions`. |
+| `IdeasTab` | `webview/src/components/IdeasTab.tsx` | Graveyard of intent-bearing user messages, grouped by cluster. |
+| `StyleView` | `webview/src/components/insights/StyleView.tsx` | Insights sub-tab showing avg sentence length, hedging rate, top tokens. |
+| `PromptLintBadge` | `webview/src/components/PromptLintBadge.tsx` | Badge on session detail header when a `prompt_lint` has fired for that session. |
+| `NextSessionBanner` | `webview/src/components/NextSessionBanner.tsx` | Banner above the Sessions list combining idea clusters + recent commitments. |
+
+`InsightsTab` updated to add a fifth sub-view: **Style** (`StyleView`).
+
+### Activation wiring (`src/extension.ts`)
+
+After `host.start()`, when `sesh.embeddingsEnabled` is `true` (the default):
+
+1. `Embedder` constructed via `createEmbedder` from config.
+2. `ChunkRepository`, `EmbeddingRepository` constructed.
+3. `EmbeddingIndexer` constructed; `host.setEmbeddingIndexer` + `host.setEmbedder` called.
+4. If `sesh.ideaMining` is `true`: `IdeaRepository` + `IdeaIndexer` constructed; `host.setIdeaIndexer` called.
+5. `CorrectionMiner` constructed; `host.setCorrectionMiner` called.
+6. `PromptLinter` constructed; `host.setPromptLinter` called.
+7. **Eager chain** fires in background (void async IIFE): `embeddingIndexer.run()` → `ideaIndexer.run()` → `correctionMiner.run()` → `promptLinter.run()`. Errors are caught and logged; they don't surface to the user.
+
+All three new commands registered:
+- `sesh.reindexEmbeddings` — re-runs `embeddingIndexer.run()`.
+- `sesh.suggestClaudeMd` — re-runs `correctionMiner.run()`, then opens the panel (Knowledge tab).
+- `sesh.exportStyleFingerprint` — computes fingerprint and opens a save dialog.
+
+### New settings
+
+| Key | Default | Effect |
+|---|---|---|
+| `sesh.embeddingsEnabled` | `true` | Enable/disable the entire semantic layer. |
+| `sesh.embedder` | `"local"` | `local` (XenovaEmbedder, on-device WASM), `ollama` (local Ollama), `cloud` (OpenAI-compatible). |
+| `sesh.embedderModel` | `""` | Override model; blank uses embedder default. |
+| `sesh.embedderApiKey` | `""` | API key for cloud embedder (stored in VSCode settings plaintext). |
+| `sesh.embedderApiUrl` | `""` | Override endpoint URL; blank uses embedder default. |
+| `sesh.ideaMining` | `true` | Enable/disable idea graveyard population. |
+| `sesh.ideaMiningSinceDays` | `30` | Only mine ideas from sessions active within this many days. |
+
+### New commands
+
+| Command | Effect |
+|---|---|
+| `Sesh: Reindex embeddings` | Re-runs the full embedding indexer. |
+| `Sesh: Suggest CLAUDE.md improvements` | Runs correction miner, opens panel to Knowledge tab tips panel. |
+| `Sesh: Export style fingerprint` | Computes style metrics and saves as JSON via save dialog. |
+
+### Test count
+
+336 tests across 46 test files. Run `npx vitest run` to confirm.
+
+---
+
 ## Substrate 1 — Analytics
 
 Migration 004 (`src/db/migrations/004_analytics.sql`) added three new tables and backfilled two columns onto `sessions`.

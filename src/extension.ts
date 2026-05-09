@@ -138,12 +138,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     host.setTurnsIndexer(turnsIndexer);
     const cfg = vscode.workspace.getConfiguration("sesh");
 
-    const embeddingsEnabled = cfg.get<boolean>("sesh.embeddingsEnabled", true);
+    const embeddingsEnabled = cfg.get<boolean>("embeddingsEnabled", true);
     if (embeddingsEnabled) {
-      const cfgKind = cfg.get<string>("sesh.embedder", "local");
-      const model = cfg.get<string>("sesh.embedderModel", "");
-      const apiKey = cfg.get<string>("sesh.embedderApiKey", "");
-      const apiUrl = cfg.get<string>("sesh.embedderApiUrl", "");
+      const cfgKind = cfg.get<string>("embedder", "local");
+      const model = cfg.get<string>("embedderModel", "");
+      const apiKey = cfg.get<string>("embedderApiKey", "");
+      const apiUrl = cfg.get<string>("embedderApiUrl", "");
       let embedderCfg: EmbedderConfig;
       if (cfgKind === "ollama") {
         embedderCfg = { kind: "ollama", url: apiUrl || undefined, model: model || undefined };
@@ -167,7 +167,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       host.setEmbeddingIndexer(embeddingIndexer);
       host.setEmbedder(embedder);
 
-      const ideasEnabled = cfg.get<boolean>("sesh.ideaMining", true);
+      const ideasEnabled = cfg.get<boolean>("ideaMining", true);
       let ideaIndexer: IdeaIndexer | null = null;
       if (ideasEnabled) {
         const ideaRepo = new IdeaRepository(host.rawDb!);
@@ -175,7 +175,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           ideaRepo,
           chunkRepo,
           embedder,
-          cfg.get<number>("sesh.ideaMiningSinceDays", 30),
+          cfg.get<number>("ideaMiningSinceDays", 30),
         );
         host.setIdeaIndexer(ideaIndexer);
       }
