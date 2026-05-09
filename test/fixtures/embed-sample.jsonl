@@ -1,0 +1,2 @@
+{"type":"user","message":{"role":"user","content":"What is the capital of France?"},"uuid":"u1","timestamp":"2026-01-01T10:00:00.000Z"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"The capital of France is Paris. It is a major European city and global center for art, fashion, gastronomy and culture."}],"model":"claude-opus-4-7","usage":{"input_tokens":20,"output_tokens":30}},"uuid":"a1","timestamp":"2026-01-01T10:00:05.000Z"}
