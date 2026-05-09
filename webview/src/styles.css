@@ -1724,3 +1724,63 @@ body {
   background: var(--sesh-fill-subtle);
   color: var(--vscode-foreground);
 }
+
+/* ─── SearchBar ────────────────────────────────────── */
+
+.sesh-search-bar {
+  padding: var(--sesh-space-2) var(--sesh-space-3) 0;
+}
+.sesh-search-bar-input {
+  width: 100%;
+  padding: 8px var(--sesh-space-3);
+  background: var(--sesh-bg-elevated);
+  color: var(--vscode-foreground);
+  border: 1px solid var(--sesh-border-subtle);
+  border-radius: var(--sesh-radius-md);
+  font: inherit;
+  font-size: var(--sesh-text-base);
+  box-sizing: border-box;
+}
+.sesh-search-bar-input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--sesh-accent) 55%, transparent);
+}
+
+/* ─── Semantic hits section ────────────────────────── */
+
+.sesh-semantic-section {
+  border-top: 1px solid var(--sesh-border-subtle);
+  padding: var(--sesh-space-2) 0;
+  margin-top: var(--sesh-space-2);
+}
+.sesh-semantic-section-title {
+  padding: 0 var(--sesh-space-3);
+  margin-bottom: var(--sesh-space-1);
+  color: var(--sesh-fg-muted);
+  font-size: var(--sesh-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.sesh-semantic-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px var(--sesh-space-3);
+  cursor: pointer;
+  border-radius: var(--sesh-radius-md);
+}
+.sesh-semantic-row:hover {
+  background: color-mix(in srgb, var(--sesh-accent) 5%, var(--sesh-fill-subtle));
+}
+.sesh-semantic-row-title {
+  font-weight: 500;
+  font-size: var(--sesh-text-base);
+  color: var(--vscode-foreground);
+}
+.sesh-semantic-row-snippet {
+  color: color-mix(in srgb, var(--vscode-foreground) 70%, transparent);
+  font-size: var(--sesh-text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

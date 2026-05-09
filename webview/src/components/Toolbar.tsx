@@ -68,7 +68,6 @@ export function Toolbar(props: Props): JSX.Element {
     filters,
     onScopeChange,
     onSelectFolder,
-    onQueryChange,
     onToggleArchived,
     onToggleFavorited,
     onToggleCategory,
@@ -102,16 +101,6 @@ export function Toolbar(props: Props): JSX.Element {
   return (
     <div className="sesh-toolbar">
       <div className="sesh-toolbar-row">
-        <div className="sesh-search-wrap">
-          <Icon name="search" className="sesh-search-icon" />
-          <input
-            className="sesh-search-input"
-            type="search"
-            placeholder="Search annotations + transcripts…"
-            value={filters.query}
-            onChange={(e) => onQueryChange(e.target.value)}
-          />
-        </div>
         <Dropdown
           className="sesh-scope-dropdown"
           value={selectValue}
