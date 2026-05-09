@@ -79,4 +79,22 @@ describe("ToolCallRepository", () => {
     expect(top.find((t) => t.name === "Edit")?.count).toBe(2);
     expect(top.find((t) => t.name === "Bash")?.count).toBe(1);
   });
+
+  it("upsertMany is idempotent and updates mutable fields", () => {
+    repo.upsertMany([makeToolCall({ id: "tc1", name: "Edit", is_error: 0 })]);
+    repo.upsertMany([makeToolCall({ id: "tc1", name: "Read", is_error: 1 })]);
+    const rows = repo.listBySession("s1");
+    expect(rows.length).toBe(1);
+    expect(rows[0].name).toBe("Read");
+    expect(rows[0].is_error).toBe(1);
+  });
+
+  it("deleteBySession removes all tool calls for that session", () => {
+    repo.upsertMany([
+      makeToolCall({ id: "tc1" }),
+      makeToolCall({ id: "tc2" }),
+    ]);
+    repo.deleteBySession("s1");
+    expect(repo.listBySession("s1")).toEqual([]);
+  });
 });
