@@ -4,3 +4,5 @@ out/
 *.vsix
 webview/dist/
 webview/node_modules/
+# Prebuilt native binaries fetched at publish time — ~30MB, not committed
+prebuilds/

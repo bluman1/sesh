@@ -219,7 +219,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "rebuild-native": "electron-rebuild -f -w better-sqlite3",
-    "vscode:prepublish": "npm run build"
+    "prebuilds:fetch": "node scripts/fetch-prebuilds.js",
+    "vscode:prepublish": "npm run prebuilds:fetch && npm run build"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
