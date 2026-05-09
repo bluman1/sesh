@@ -21,7 +21,6 @@ function shortModel(model: string | null): string | null {
 
 function fmtUsd(usd: number): string {
   if (usd < 0.01) return "<$0.01";
-  if (usd < 1) return `$${usd.toFixed(2)}`;
   return `$${usd.toFixed(2)}`;
 }
 
