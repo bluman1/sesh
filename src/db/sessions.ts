@@ -264,6 +264,14 @@ export class SessionRepository {
     }[];
   }
 
+  listForEmbeddingIndexing(): { id: string; file_path: string }[] {
+    return this.db
+      .prepare(
+        "SELECT id, file_path FROM sessions WHERE turns_indexed = 1 AND orphaned = 0 ORDER BY last_active_at DESC",
+      )
+      .all() as { id: string; file_path: string }[];
+  }
+
   setRepoPath(id: string, repoPath: string | null): void {
     this.db
       .prepare("UPDATE sessions SET repo_path = ? WHERE id = ?")

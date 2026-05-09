@@ -1569,3 +1569,86 @@ body {
   gap: var(--sesh-space-1);
   flex-shrink: 0;
 }
+
+/* Prompt lint badge (above transcript in DetailPane) */
+.sesh-prompt-lint {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sesh-space-1);
+  margin-bottom: var(--sesh-space-2);
+  padding: 0 var(--sesh-space-4);
+}
+.sesh-prompt-lint-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sesh-space-2);
+  padding: 6px var(--sesh-space-2);
+  background: color-mix(in srgb, var(--vscode-charts-yellow, #d29922) 15%, transparent);
+  border-radius: var(--sesh-radius-sm);
+  font-size: var(--sesh-text-xs);
+}
+.sesh-prompt-lint-message { flex: 1 1 auto; color: var(--vscode-foreground); }
+.sesh-prompt-lint-dismiss {
+  background: transparent;
+  border: none;
+  color: var(--sesh-fg-muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* ─── Next Session Banner ─────────── */
+.sesh-next-banner {
+  border: 1px solid var(--sesh-border-subtle);
+  border-radius: var(--sesh-radius-md);
+  background: color-mix(in srgb, var(--sesh-accent) 6%, var(--sesh-bg-elevated));
+  padding: var(--sesh-space-2) var(--sesh-space-3);
+  margin: var(--sesh-space-2) var(--sesh-space-3);
+}
+.sesh-next-banner-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sesh-space-1);
+}
+.sesh-next-banner-close,
+.sesh-next-banner-dismiss {
+  background: transparent;
+  border: none;
+  color: var(--sesh-fg-muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.sesh-next-banner-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.sesh-next-banner-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sesh-space-2);
+  padding: 4px 0;
+}
+.sesh-next-banner-kind {
+  flex: 0 0 auto;
+  font-size: var(--sesh-text-xs);
+  text-transform: lowercase;
+  padding: 2px 8px;
+  border-radius: var(--sesh-radius-pill);
+  background: var(--sesh-fill-subtle);
+  color: var(--sesh-fg-muted);
+}
+.sesh-next-banner-kind-idea { color: var(--vscode-charts-purple, #a371f7); }
+.sesh-next-banner-kind-commitment { color: var(--vscode-charts-green, #3fb950); }
+.sesh-next-banner-text {
+  flex: 1 1 auto;
+  background: transparent;
+  border: none;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sesh-next-banner-text:hover { text-decoration: underline; }

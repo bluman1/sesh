@@ -3,6 +3,7 @@ import { Toolbar } from "./Toolbar";
 import { SessionList } from "./SessionList";
 import { DetailPane } from "./DetailPane";
 import { RemapBanner } from "./RemapBanner";
+import { NextSessionBanner } from "./NextSessionBanner";
 import { useSessions } from "../hooks/useSessions";
 import { useSessionDetail } from "../hooks/useSessionDetail";
 import { useCategories } from "../hooks/useCategories";
@@ -39,6 +40,7 @@ export function SessionsTab({ selectedId, onSelect }: Props): JSX.Element {
         projects={projects}
       />
       <RemapBanner />
+      <NextSessionBanner onNavigateToSession={onSelect} />
       {sessionsApi.error && <div className="sesh-error">{sessionsApi.error}</div>}
       {sessionsApi.indexProgress.total > 0 &&
         sessionsApi.indexProgress.indexed < sessionsApi.indexProgress.total && (

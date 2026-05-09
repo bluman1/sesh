@@ -40,6 +40,12 @@ import {
   runRemoteUrl,
   runCommitsInBranch,
 } from "../git/runGit";
+import { semanticSearch } from "../db/semanticQueries";
+import { IdeaRepository } from "../db/ideas";
+import { ClaudeMdSuggestionRepository } from "../db/claudeMd";
+import { PromptLintRepository } from "../db/promptLints";
+import { computeStyleFingerprint, exportFingerprintToFile } from "../scanner/styleFingerprint";
+import { suggestNextSessionTopics } from "../scanner/nextSessionSuggester";
 
 export class SeshPanel {
   private static instance: SeshPanel | null = null;
@@ -449,6 +455,160 @@ export class SeshPanel {
               excerpt: c.excerpt,
             })),
           });
+          break;
+        }
+        case "semanticSearch": {
+          const e = this.host.currentEmbedder;
+          if (!e) {
+            this.send({ kind: "searchResults", query: msg.query, results: [] });
+            break;
+          }
+          void (async () => {
+            try {
+              const hits = await semanticSearch(this.host.rawDb!, e, msg.query, { limit: msg.limit ?? 30 });
+              this.send({
+                kind: "searchResults",
+                query: msg.query,
+                results: hits.map((h) => ({
+                  chunk_id: h.chunk.id,
+                  session_id: h.session_id,
+                  session_title: h.session_title,
+                  session_project_path: h.session_project_path,
+                  snippet: h.chunk.text.length > 240 ? h.chunk.text.slice(0, 240) + "…" : h.chunk.text,
+                  score: h.score,
+                })),
+              });
+            } catch (err) {
+              console.warn("[sesh] semantic search failed", err);
+              this.send({ kind: "searchResults", query: msg.query, results: [] });
+            }
+          })();
+          break;
+        }
+        case "triggerReindexEmbeddings": {
+          const idx = this.host.currentEmbeddingIndexer;
+          if (!idx) break;
+          void idx.run().catch((err) => console.warn("[sesh] embedding reindex failed", err));
+          break;
+        }
+        case "getIdeas": {
+          const repo = new IdeaRepository(this.host.rawDb!);
+          const clusters = repo.listClusters();
+          this.send({
+            kind: "ideas",
+            clusters: clusters.map((c) => ({
+              cluster_id: c.cluster_id,
+              size: c.size,
+              ideas: c.ideas.map((i) => ({
+                id: i.id,
+                text: i.text,
+                source_session_id: i.source_session_id,
+                confidence: i.confidence,
+                detected_at: i.detected_at,
+                status: i.status,
+              })),
+            })),
+          });
+          break;
+        }
+        case "setIdeaStatus": {
+          const repo = new IdeaRepository(this.host.rawDb!);
+          repo.setStatus(msg.id, msg.status);
+          // Re-send updated clusters.
+          const clusters = repo.listClusters();
+          this.send({
+            kind: "ideas",
+            clusters: clusters.map((c) => ({
+              cluster_id: c.cluster_id,
+              size: c.size,
+              ideas: c.ideas.map((i) => ({
+                id: i.id,
+                text: i.text,
+                source_session_id: i.source_session_id,
+                confidence: i.confidence,
+                detected_at: i.detected_at,
+                status: i.status,
+              })),
+            })),
+          });
+          break;
+        }
+        case "getClaudeMdSuggestions": {
+          const repo = new ClaudeMdSuggestionRepository(this.host.rawDb!);
+          const open = repo.listOpen();
+          this.send({
+            kind: "claudeMdSuggestions",
+            suggestions: open.map((s) => ({
+              id: s.id,
+              body: s.body,
+              source_count: s.source_count,
+              detected_at: s.detected_at,
+              status: s.status,
+            })),
+          });
+          break;
+        }
+        case "setClaudeMdStatus": {
+          const repo = new ClaudeMdSuggestionRepository(this.host.rawDb!);
+          repo.setStatus(msg.id, msg.status);
+          const open = repo.listOpen();
+          this.send({
+            kind: "claudeMdSuggestions",
+            suggestions: open.map((s) => ({
+              id: s.id,
+              body: s.body,
+              source_count: s.source_count,
+              detected_at: s.detected_at,
+              status: s.status,
+            })),
+          });
+          break;
+        }
+        case "getPromptLints": {
+          const repo = new PromptLintRepository(this.host.rawDb!);
+          const lints = repo.listForSession(msg.sessionId);
+          this.send({
+            kind: "promptLints",
+            sessionId: msg.sessionId,
+            lints: lints.map((l) => ({
+              id: l.id,
+              turn_id: l.turn_id,
+              message: l.message,
+              similar_session_ids: l.similar_session_ids,
+            })),
+          });
+          break;
+        }
+        case "setPromptLintStatus": {
+          const repo = new PromptLintRepository(this.host.rawDb!);
+          repo.setStatus(msg.id, msg.status);
+          break;
+        }
+        case "getStyleFingerprint": {
+          const fp = computeStyleFingerprint(this.host.rawDb!, { sinceDays: msg.sinceDays });
+          this.send({ kind: "styleFingerprint", fingerprint: fp });
+          break;
+        }
+        case "exportStyleFingerprint": {
+          void (async () => {
+            const fp = computeStyleFingerprint(this.host.rawDb!);
+            const uri = await vscode.window.showSaveDialog({
+              defaultUri: vscode.Uri.file("sesh-style-fingerprint.json"),
+              filters: { "JSON": ["json"] },
+            });
+            if (!uri) return;
+            exportFingerprintToFile(fp, uri.fsPath);
+            vscode.window.showInformationMessage(`Saved fingerprint to ${uri.fsPath}`);
+          })();
+          break;
+        }
+        case "getNextSessionSuggestions": {
+          const items = suggestNextSessionTopics(this.host.rawDb!, { limit: 5 });
+          this.send({ kind: "nextSessionSuggestions", suggestions: items });
+          break;
+        }
+        case "dismissNextSessionSuggestion": {
+          // For v1, dismissal is webview-local (cleared on reload). No persistence.
           break;
         }
         case "getReviewerBranch": {

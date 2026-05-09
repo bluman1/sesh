@@ -22,10 +22,15 @@ describe("runMigrations", () => {
     const db = openDb(":memory:");
     runMigrations(db);
     runMigrations(db);
-    const v = db
-      .prepare("SELECT MAX(version) as v FROM schema_version")
-      .get() as { v: number };
-    expect(v.v).toBe(5);
+    const versions = (
+      db
+        .prepare("SELECT version FROM schema_version ORDER BY version")
+        .all() as { version: number }[]
+    ).map((r) => r.version);
+    // 005 is substrate 3 (git-link); 006 is substrate 2 (semantic).
+    expect(versions).toContain(5);
+    expect(versions).toContain(6);
+    expect(versions[versions.length - 1]).toBe(6);
     db.close();
   });
 
@@ -75,13 +80,13 @@ describe("runMigrations", () => {
 
     expect(() => runMigrations(db)).not.toThrow();
 
-    // v1 should have been auto-recorded, then v2 + v3 applied normally.
+    // v1 should have been auto-recorded, then v2 + v3 + v4 + v5 + v6 applied.
     const versions = (
       db
         .prepare("SELECT version FROM schema_version ORDER BY version")
         .all() as { version: number }[]
     ).map((r) => r.version);
-    expect(versions).toEqual([1, 2, 3, 4, 5]);
+    expect(versions).toEqual([1, 2, 3, 4, 5, 6]);
 
     // The original sessions table is intact (not dropped/recreated).
     const sessionsCol = db
@@ -164,5 +169,20 @@ describe("runMigrations", () => {
       .all() as { name: string }[];
     const names = new Set(cols.map((c) => c.name));
     expect(names.has("repo_path")).toBe(true);
+  });
+
+  it("creates the semantic tables in migration 006", () => {
+    const db = openDb(":memory:");
+    runMigrations(db);
+    const tables = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+      .all() as { name: string }[];
+    const names = new Set(tables.map((t) => t.name));
+    expect(names.has("chunks")).toBe(true);
+    expect(names.has("embeddings")).toBe(true);
+    expect(names.has("ideas")).toBe(true);
+    expect(names.has("claude_md_suggestions")).toBe(true);
+    expect(names.has("prompt_lints")).toBe(true);
+    db.close();
   });
 });

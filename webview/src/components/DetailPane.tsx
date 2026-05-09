@@ -12,6 +12,7 @@ import { SourceBadge } from "./SourceBadge";
 import { Tooltip } from "./Tooltip";
 import { useCategories } from "../hooks/useCategories";
 import { useAllTags } from "../hooks/useAllTags";
+import { PromptLintBadge } from "./PromptLintBadge";
 
 interface Props {
   session: SessionDetail | null;
@@ -512,6 +513,8 @@ export function DetailPane({
           />
         </div>
       </section>
+
+      <PromptLintBadge sessionId={session?.id ?? null} />
 
       <section className="sesh-detail-section sesh-detail-transcript">
         <div className="sesh-section-label">

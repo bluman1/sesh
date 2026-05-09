@@ -1,0 +1,122 @@
+.sesh-knowledge { display: flex; flex-direction: column; height: 100%; }
+.sesh-knowledge-toolbar {
+  display: flex;
+  gap: var(--sesh-space-2);
+  align-items: center;
+  padding: var(--sesh-space-3);
+  border-bottom: 1px solid var(--sesh-border-subtle);
+}
+.sesh-knowledge-input {
+  width: 100%;
+  padding: var(--sesh-space-2) var(--sesh-space-3);
+  background: var(--sesh-bg-elevated);
+  color: var(--vscode-foreground);
+  border: 1px solid var(--sesh-border-subtle);
+  border-radius: var(--sesh-radius-md);
+  font: inherit;
+  font-size: var(--sesh-text-base);
+}
+.sesh-knowledge-input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--sesh-accent) 55%, transparent);
+}
+.sesh-knowledge-body { flex: 1; overflow: auto; padding: var(--sesh-space-3); }
+.sesh-knowledge-empty,
+.sesh-knowledge-loading {
+  padding: var(--sesh-space-3);
+  color: var(--sesh-fg-muted);
+  font-size: var(--sesh-text-base);
+}
+.sesh-knowledge-results { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--sesh-space-1); }
+.sesh-knowledge-result { list-style: none; }
+.sesh-knowledge-result-button {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--sesh-radius-md);
+  padding: 11px var(--sesh-space-3);
+  cursor: pointer;
+  font: inherit;
+  color: var(--vscode-foreground);
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+.sesh-knowledge-result-button:hover {
+  background: color-mix(in srgb, var(--sesh-accent) 5%, var(--sesh-fill-subtle));
+  border-color: var(--sesh-border-subtle);
+}
+.sesh-knowledge-result-line-1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sesh-space-2);
+}
+.sesh-knowledge-result-title {
+  font-weight: 500;
+  font-size: var(--sesh-text-base);
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sesh-knowledge-result-score {
+  flex: 0 0 auto;
+  color: var(--sesh-fg-muted);
+  font-size: var(--sesh-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+.sesh-knowledge-result-snippet {
+  color: color-mix(in srgb, var(--vscode-foreground) 78%, transparent);
+  font-size: var(--sesh-text-sm);
+  white-space: pre-wrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.sesh-knowledge-tips-button {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--sesh-border-subtle);
+  border-radius: var(--sesh-radius-md);
+  color: var(--sesh-fg-muted);
+  padding: var(--sesh-space-2) var(--sesh-space-3);
+  font: inherit;
+  cursor: pointer;
+}
+.sesh-knowledge-tips-button:hover {
+  background: var(--sesh-fill-subtle);
+  color: var(--vscode-foreground);
+}
+.sesh-knowledge-tips {
+  border-bottom: 1px solid var(--sesh-border-subtle);
+  padding: var(--sesh-space-3);
+  background: var(--sesh-bg-elevated);
+}
+.sesh-knowledge-tips-empty { color: var(--sesh-fg-muted); }
+.sesh-knowledge-tips-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--sesh-space-3); }
+.sesh-knowledge-tip { border: 1px solid var(--sesh-border-subtle); border-radius: var(--sesh-radius-md); padding: var(--sesh-space-3); background: var(--sesh-bg); }
+.sesh-knowledge-tip-body {
+  white-space: pre-wrap;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: var(--sesh-text-sm);
+  margin: 0 0 var(--sesh-space-2) 0;
+  color: var(--vscode-foreground);
+}
+.sesh-knowledge-tip-actions { display: flex; gap: var(--sesh-space-1); }
+.sesh-knowledge-tip-action {
+  background: transparent;
+  border: 1px solid var(--sesh-border-subtle);
+  border-radius: var(--sesh-radius-sm);
+  padding: 2px var(--sesh-space-2);
+  font-size: var(--sesh-text-xs);
+  color: var(--sesh-fg-muted);
+  cursor: pointer;
+}
+.sesh-knowledge-tip-action:hover {
+  background: var(--sesh-fill-subtle);
+  color: var(--vscode-foreground);
+}

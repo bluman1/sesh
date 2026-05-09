@@ -97,7 +97,19 @@ export type ToHost =
   | { kind: "getReviewerBranch"; repoPath?: string; branch?: string; limit?: number; offset?: number }
   | { kind: "getReviewerSessions"; repoPath?: string; limit?: number; offset?: number }
   | { kind: "getReviewerPRs"; repoPath?: string }
-  | { kind: "triggerReindexGit" };
+  | { kind: "triggerReindexGit" }
+  | { kind: "semanticSearch"; query: string; limit?: number }
+  | { kind: "triggerReindexEmbeddings" }
+  | { kind: "getIdeas" }
+  | { kind: "setIdeaStatus"; id: string; status: "open" | "dismissed" | "done" | "scheduled" }
+  | { kind: "getClaudeMdSuggestions" }
+  | { kind: "setClaudeMdStatus"; id: string; status: "open" | "accepted" | "dismissed" }
+  | { kind: "getPromptLints"; sessionId: string }
+  | { kind: "setPromptLintStatus"; id: string; status: "open" | "dismissed" }
+  | { kind: "getStyleFingerprint"; sinceDays?: number }
+  | { kind: "exportStyleFingerprint" }
+  | { kind: "getNextSessionSuggestions" }
+  | { kind: "dismissNextSessionSuggestion"; key: string };
 
 export type ToWebview =
   | { kind: "workspace"; currentPath: string | null }
@@ -170,6 +182,77 @@ export type ToWebview =
         url: string;
         commits: { sha: string; sessions: string[] }[];
       }[];
+    }
+  | {
+      kind: "searchResults";
+      query: string;
+      results: Array<{
+        chunk_id: string;
+        session_id: string;
+        session_title: string;
+        session_project_path: string;
+        snippet: string;
+        score: number;
+      }>;
+    }
+  | {
+      kind: "ideas";
+      clusters: Array<{
+        cluster_id: string;
+        size: number;
+        ideas: Array<{
+          id: string;
+          text: string;
+          source_session_id: string;
+          confidence: number;
+          detected_at: number;
+          status: "open" | "dismissed" | "done" | "scheduled";
+        }>;
+      }>;
+    }
+  | {
+      kind: "claudeMdSuggestions";
+      suggestions: Array<{
+        id: string;
+        body: string;
+        source_count: number;
+        detected_at: number;
+        status: "open" | "accepted" | "dismissed";
+      }>;
+    }
+  | {
+      kind: "promptLints";
+      sessionId: string;
+      lints: Array<{
+        id: string;
+        turn_id: string;
+        message: string;
+        similar_session_ids: string[];
+      }>;
+    }
+  | {
+      kind: "styleFingerprint";
+      fingerprint: {
+        generated_at: number;
+        source_session_count: number;
+        source_chunk_count: number;
+        total_chars: number;
+        avg_user_chars_per_turn: number;
+        avg_words_per_sentence: number;
+        hedging_per_1000_words: number;
+        exclamation_per_1000_chars: number;
+        capital_letter_rate: number;
+        top_tokens: { token: string; tfidf: number }[];
+      };
+    }
+  | {
+      kind: "nextSessionSuggestions";
+      suggestions: Array<{
+        kind: "idea" | "commitment";
+        text: string;
+        weight: number;
+        source_session_ids: string[];
+      }>;
     };
 
 declare global {

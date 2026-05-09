@@ -16,6 +16,11 @@ import { ContentIndexer } from "../scanner/contentIndexer";
 import { ProjectsWatcher } from "../scanner/watcher";
 import type { TurnsIndexer } from "../scanner/turnsIndexer";
 import type { GitIndexer } from "../git/gitIndexer";
+import type { EmbeddingIndexer } from "../scanner/embeddingIndexer";
+import type { IdeaIndexer } from "../scanner/ideaIndexer";
+import type { CorrectionMiner } from "../scanner/correctionMiner";
+import type { PromptLinter } from "../scanner/promptLinter";
+import type { Embedder } from "../embed/types";
 import { TranscriptArchive } from "./transcriptArchive";
 
 const DEFAULT_DB_DIR = path.join(os.homedir(), ".sesh");
@@ -34,6 +39,11 @@ export class SeshHost {
   private watcher: ProjectsWatcher | null = null;
   private turnsIndexer: TurnsIndexer | null = null;
   private gitIndexer: GitIndexer | null = null;
+  private embeddingIndexer: EmbeddingIndexer | null = null;
+  private ideaIndexer: IdeaIndexer | null = null;
+  private correctionMiner: CorrectionMiner | null = null;
+  private promptLinter: PromptLinter | null = null;
+  private embedder: Embedder | null = null;
   public indexProgress: { indexed: number; total: number } = { indexed: 0, total: 0 };
   public onIndexProgress?: () => void;
   public onSessionChanged?: (id: string) => void;
@@ -58,6 +68,46 @@ export class SeshHost {
 
   get currentGitIndexer(): GitIndexer | null {
     return this.gitIndexer;
+  }
+
+  setEmbeddingIndexer(indexer: EmbeddingIndexer): void {
+    this.embeddingIndexer = indexer;
+  }
+
+  get currentEmbeddingIndexer(): EmbeddingIndexer | null {
+    return this.embeddingIndexer;
+  }
+
+  setIdeaIndexer(indexer: IdeaIndexer): void {
+    this.ideaIndexer = indexer;
+  }
+
+  get currentIdeaIndexer(): IdeaIndexer | null {
+    return this.ideaIndexer;
+  }
+
+  setCorrectionMiner(miner: CorrectionMiner): void {
+    this.correctionMiner = miner;
+  }
+
+  get currentCorrectionMiner(): CorrectionMiner | null {
+    return this.correctionMiner;
+  }
+
+  setPromptLinter(linter: PromptLinter): void {
+    this.promptLinter = linter;
+  }
+
+  get currentPromptLinter(): PromptLinter | null {
+    return this.promptLinter;
+  }
+
+  setEmbedder(e: Embedder): void {
+    this.embedder = e;
+  }
+
+  get currentEmbedder(): Embedder | null {
+    return this.embedder;
   }
 
   private archiveEnabled(): boolean {

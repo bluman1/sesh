@@ -2,7 +2,8 @@ import { useState, useCallback } from "react";
 import { TabBar, type SeshTab } from "./components/TabBar";
 import { SessionsTab } from "./components/SessionsTab";
 import { InsightsTab } from "./components/InsightsTab";
-import { PlaceholderTab } from "./components/PlaceholderTab";
+import { KnowledgeTab } from "./components/KnowledgeTab";
+import { IdeasTab } from "./components/IdeasTab";
 import { ReviewerTab } from "./components/ReviewerTab";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
@@ -25,9 +26,9 @@ export function App(): JSX.Element {
             onSelect={setSelectedSessionId}
           />
         )}
-        {tab === "knowledge" && <PlaceholderTab name="Knowledge" />}
+        {tab === "knowledge" && <KnowledgeTab onNavigateToSession={navigateToSession} />}
         {tab === "insights" && <InsightsTab />}
-        {tab === "ideas" && <PlaceholderTab name="Ideas" />}
+        {tab === "ideas" && <IdeasTab onNavigateToSession={navigateToSession} />}
         {tab === "reviewer" && <ReviewerTab onNavigateToSession={navigateToSession} />}
       </ErrorBoundary>
     </div>

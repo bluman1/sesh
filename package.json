@@ -64,6 +64,18 @@
       {
         "command": "sesh.reindexGit",
         "title": "Sesh: Reindex git"
+      },
+      {
+        "command": "sesh.reindexEmbeddings",
+        "title": "Sesh: Reindex embeddings"
+      },
+      {
+        "command": "sesh.suggestClaudeMd",
+        "title": "Sesh: Suggest CLAUDE.md improvements"
+      },
+      {
+        "command": "sesh.exportStyleFingerprint",
+        "title": "Sesh: Export style fingerprint"
       }
     ],
     "viewsContainers": {
@@ -142,7 +154,10 @@
         },
         "sesh.indexBackfillMode": {
           "type": "string",
-          "enum": ["eager", "lazy"],
+          "enum": [
+            "eager",
+            "lazy"
+          ],
           "default": "eager",
           "description": "Eager: background-index all sessions at activation. Lazy: index a session on first view."
         },
@@ -155,13 +170,50 @@
           "type": "boolean",
           "default": true,
           "description": "Index commits and link sessions to commits at activation. Powers the Reviewer tab and auto-shipped/auto-reverted outcome inference. Disable if git indexing is causing slowdowns on huge monorepos."
+        },
+        "sesh.embeddingsEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable local semantic indexing of session transcripts. Powers the Knowledge tab."
+        },
+        "sesh.embedder": {
+          "type": "string",
+          "enum": ["local", "ollama", "cloud"],
+          "default": "local",
+          "description": "Which embedder to use. 'local' runs entirely on-device via @huggingface/transformers (recommended). 'ollama' targets a local Ollama server. 'cloud' targets an OpenAI-compatible endpoint."
+        },
+        "sesh.embedderModel": {
+          "type": "string",
+          "default": "",
+          "description": "Override embedder model. Leave blank for the embedder's default (Xenova/all-MiniLM-L6-v2 for local, nomic-embed-text for ollama, text-embedding-3-small for cloud)."
+        },
+        "sesh.embedderApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key for the cloud embedder. Stored in plaintext in VSCode settings — only set if you accept that risk."
+        },
+        "sesh.embedderApiUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Override the embedder endpoint URL. Blank uses the embedder's default."
+        },
+        "sesh.ideaMining": {
+          "type": "boolean",
+          "default": true,
+          "description": "Mine intent-bearing user messages into the Ideas tab graveyard."
+        },
+        "sesh.ideaMiningSinceDays": {
+          "type": "number",
+          "default": 30,
+          "minimum": 1,
+          "description": "Only mine ideas from sessions active within this many days."
         }
       }
     }
   },
   "scripts": {
     "build": "npm run build:webview && npm run build:extension",
-    "build:extension": "esbuild src/extension.ts --bundle --platform=node --target=node20 --sourcemap --external:vscode --external:better-sqlite3 --external:fsevents --outfile=out/extension.js && node -e \"require('fs').cpSync('src/db/migrations', 'out/migrations', {recursive:true})\"",
+    "build:extension": "esbuild src/extension.ts --bundle --platform=node --target=node20 --sourcemap --external:vscode --external:better-sqlite3 --external:fsevents --external:@huggingface/transformers --external:onnxruntime-node --outfile=out/extension.js && node -e \"require('fs').cpSync('src/db/migrations', 'out/migrations', {recursive:true})\"",
     "build:webview": "cd webview && npm install --no-audit --no-fund && npm run build",
     "watch": "npm run build:extension -- --watch",
     "test": "vitest run",
@@ -170,6 +222,7 @@
     "vscode:prepublish": "npm run build"
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
     "better-sqlite3": "^12.9.0",
     "chokidar": "^3.6.0"
   },
