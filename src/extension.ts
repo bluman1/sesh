@@ -4,6 +4,7 @@ import { SeshPanel } from "./host/seshPanel";
 import { TurnRepository } from "./db/turns";
 import { ToolCallRepository } from "./db/toolCalls";
 import { TurnsIndexer } from "./scanner/turnsIndexer";
+import { inferOutcomes } from "./scanner/outcomeInferer";
 
 let host: SeshHost | null = null;
 let turnsIndexer: TurnsIndexer | null = null;
@@ -84,6 +85,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const shouldOpenFromMarker = consumePendingOpenMarker(context, output);
     if (shouldOpenFromMarker || cfg.get<boolean>("openOnActivation", false)) {
       SeshPanel.openOrFocus(context, host, turnsIndexer);
+    }
+
+    const backfillMode = cfg.get<string>("indexBackfillMode", "eager");
+    if (backfillMode === "eager") {
+      // Fire and forget. Errors fall through to lazy mode (run on first view).
+      turnsIndexer
+        .run()
+        .then(() => {
+          const windowDays = cfg.get<number>("outcomeInferenceDays", 30);
+          inferOutcomes({ db: host!.rawDb!, now: Date.now(), windowDays });
+        })
+        .catch((err) => {
+          console.warn("[sesh] eager analytics backfill failed; will run lazily", err);
+        });
     }
   } catch (err) {
     output.appendLine(`[sesh] activation error: ${(err as Error).message}`);

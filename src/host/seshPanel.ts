@@ -240,6 +240,13 @@ export class SeshPanel {
             this.send({ kind: "error", message: `Session not found: ${msg.id}` });
             return;
           }
+          if (row.turns_indexed === 0 && row.orphaned === 0) {
+            try {
+              await this.turnsIndexer.indexOne(row.id, row.file_path, row.source);
+            } catch (err) {
+              console.warn("[sesh] lazy turn indexing failed", err);
+            }
+          }
           const detail = rowToDetail(row, this.host.tags.getTags(msg.id));
           this.send({ kind: "sessionDetail", session: detail });
           break;
