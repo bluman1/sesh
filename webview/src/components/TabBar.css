@@ -2,7 +2,7 @@
   display: flex;
   gap: var(--sesh-space-1);
   padding: 0 var(--sesh-space-3);
-  border-bottom: 1px solid rgba(128,128,128,0.15);
+  border-bottom: 1px solid var(--sesh-border-subtle);
   background: var(--vscode-editor-background);
 }
 .sesh-tab {
