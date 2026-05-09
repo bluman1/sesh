@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { openDb, type Db } from "../../src/db/connection";
+import { openDb } from "../../src/db/connection";
 import { runMigrations } from "../../src/db/migrate";
 import { SessionRepository } from "../../src/db/sessions";
 import { discoverRepos } from "../../src/git/discoverRepos";

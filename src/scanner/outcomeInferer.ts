@@ -40,18 +40,19 @@ export function inferOutcomes(opts: InferOpts): void {
          s.last_active_at AS last_active_at,
          (SELECT MAX(sc.confidence) FROM session_commits sc WHERE sc.session_id = s.id) AS top_confidence,
          CASE WHEN EXISTS (
-           -- A revert commit (message starts with 'Revert "') that touches
+           -- A revert commit (message starts with 'Revert "') authored AFTER and touching
            -- a path also touched by one of this session's linked commits.
            SELECT 1
              FROM commits revert
              JOIN commit_files revert_files ON revert_files.sha = revert.sha
              JOIN commit_files orig_files ON orig_files.path = revert_files.path
+             JOIN commits orig ON orig.sha = orig_files.sha
              JOIN session_commits sc
                ON sc.commit_sha = orig_files.sha
               AND sc.session_id = s.id
             WHERE revert.repo_path = s.repo_path
               AND revert.message LIKE 'Revert "%'
-              AND revert.authored_at > orig_files.sha IS NOT NULL
+              AND revert.authored_at > orig.authored_at
               AND revert.sha != sc.commit_sha
          ) THEN 1 ELSE 0 END AS is_reverted
        FROM sessions s
