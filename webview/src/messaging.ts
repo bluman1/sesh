@@ -95,7 +95,9 @@ export type ToHost =
   | { kind: "triggerReindexAnalytics" }
   | { kind: "getCommitments"; sinceDays: number }
   | { kind: "semanticSearch"; query: string; limit?: number }
-  | { kind: "triggerReindexEmbeddings" };
+  | { kind: "triggerReindexEmbeddings" }
+  | { kind: "getIdeas" }
+  | { kind: "setIdeaStatus"; id: string; status: "open" | "dismissed" | "done" | "scheduled" };
 
 export type ToWebview =
   | { kind: "workspace"; currentPath: string | null }
@@ -138,6 +140,21 @@ export type ToWebview =
         session_project_path: string;
         snippet: string;
         score: number;
+      }>;
+    }
+  | {
+      kind: "ideas";
+      clusters: Array<{
+        cluster_id: string;
+        size: number;
+        ideas: Array<{
+          id: string;
+          text: string;
+          source_session_id: string;
+          confidence: number;
+          detected_at: number;
+          status: "open" | "dismissed" | "done" | "scheduled";
+        }>;
       }>;
     };
 
