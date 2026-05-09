@@ -63,6 +63,17 @@ export class CommitRepository {
     return row ?? null;
   }
 
+  findByShas(shas: string[]): Map<string, CommitRow> {
+    const map = new Map<string, CommitRow>();
+    if (shas.length === 0) return map;
+    const placeholders = shas.map(() => "?").join(",");
+    const rows = this.db
+      .prepare(`SELECT ${COMMIT_COLUMNS} FROM commits WHERE sha IN (${placeholders})`)
+      .all(...shas) as CommitRow[];
+    for (const r of rows) map.set(r.sha, r);
+    return map;
+  }
+
   listForRepo(repoPath: string): CommitRow[] {
     return this.db
       .prepare(

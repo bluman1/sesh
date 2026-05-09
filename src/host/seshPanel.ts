@@ -35,6 +35,11 @@ import {
   listOpenPRsWithCommits,
   type PRWithCommits,
 } from "../git/ghCompanion";
+import {
+  runListLocalBranches,
+  runRemoteUrl,
+  runCommitsInBranch,
+} from "../git/runGit";
 
 export class SeshPanel {
   private static instance: SeshPanel | null = null;
@@ -447,38 +452,82 @@ export class SeshPanel {
           break;
         }
         case "getReviewerBranch": {
-          const repoPath = msg.repoPath ?? this.resolveDefaultRepo();
-          if (!repoPath) {
-            this.send({ kind: "reviewerBranch", repoPath: null, branch: null, commits: [] });
-            break;
-          }
-          const commits = new CommitRepository(this.host.rawDb!);
-          const links = new SessionCommitRepository(this.host.rawDb!);
-          const sessions = this.host.sessions!;
+          void (async () => {
+            const repoPath = msg.repoPath ?? this.resolveDefaultRepo();
+            if (!repoPath) {
+              this.send({
+                kind: "reviewerBranch",
+                repoPath: null,
+                branch: null,
+                branches: [],
+                repoUrl: null,
+                commits: [],
+              });
+              return;
+            }
+            const commitRepo = new CommitRepository(this.host.rawDb!);
+            const links = new SessionCommitRepository(this.host.rawDb!);
+            const sessions = this.host.sessions!;
 
-          const recent = commits.listForRepo(repoPath).slice(0, 100);
-          const branch = recent[0]?.branch ?? null;
+            const [branches, repoUrl] = await Promise.all([
+              runListLocalBranches(repoPath),
+              runRemoteUrl(repoPath),
+            ]);
 
-          const payload = recent.map((c) => {
-            const linkedSessionIds = links.sessionsForCommit(c.sha);
-            const enrichedSessions = linkedSessionIds.map((l) => {
-              const row = sessions.findById(l.session_id);
+            // Determine which branch to display
+            let selectedBranch: string | null = null;
+            if (msg.branch && branches.includes(msg.branch)) {
+              selectedBranch = msg.branch;
+            } else if (branches.length > 0) {
+              selectedBranch = branches[0];
+            }
+
+            // Load commits from DB (ordered by authored_at DESC)
+            let recent = commitRepo.listForRepo(repoPath).slice(0, 100);
+
+            // Filter to commits reachable from the selected branch
+            if (selectedBranch) {
+              const inBranch = await runCommitsInBranch(repoPath, selectedBranch);
+              recent = recent.filter((c) => inBranch.has(c.sha)).slice(0, 100);
+            }
+
+            // Batched lookups — 2 queries instead of N+1
+            const shas = recent.map((c) => c.sha);
+            const sessionsByCommit = links.sessionsForCommits(shas);
+            const allSessionIds = new Set<string>();
+            for (const rows of sessionsByCommit.values()) {
+              for (const r of rows) allSessionIds.add(r.session_id);
+            }
+            const sessionRowsById = sessions.findByIds([...allSessionIds]);
+
+            const payload = recent.map((c) => {
+              const linked = sessionsByCommit.get(c.sha) ?? [];
+              const enrichedSessions = linked.map((l) => {
+                const row = sessionRowsById.get(l.session_id);
+                return {
+                  session_id: l.session_id,
+                  title: row?.custom_title ?? row?.auto_title ?? "(untitled)",
+                  confidence: l.confidence,
+                };
+              });
               return {
-                session_id: l.session_id,
-                title: row?.custom_title ?? row?.auto_title ?? "(untitled)",
-                confidence: l.confidence,
+                sha: c.sha,
+                message: c.message,
+                author: c.author,
+                authored_at: c.authored_at,
+                sessions: enrichedSessions,
               };
             });
-            return {
-              sha: c.sha,
-              message: c.message,
-              author: c.author,
-              authored_at: c.authored_at,
-              sessions: enrichedSessions,
-            };
-          });
 
-          this.send({ kind: "reviewerBranch", repoPath, branch, commits: payload });
+            this.send({
+              kind: "reviewerBranch",
+              repoPath,
+              branch: selectedBranch,
+              branches,
+              repoUrl,
+              commits: payload,
+            });
+          })();
           break;
         }
         case "getReviewerSessions": {
@@ -488,20 +537,30 @@ export class SeshPanel {
             break;
           }
           const links = new SessionCommitRepository(this.host.rawDb!);
-          const commits = new CommitRepository(this.host.rawDb!);
+          const commitRepo = new CommitRepository(this.host.rawDb!);
           const sessions = this.host.sessions!;
 
           const repoSessions = sessions.listSessionsByRepo(repoPath);
+          const sessionIds = repoSessions.map((s) => s.id);
+
+          // Batched lookups — 2 queries instead of N+1
+          const commitsBySession = links.commitsForSessions(sessionIds);
+          const allCommitShas = new Set<string>();
+          for (const rows of commitsBySession.values()) {
+            for (const r of rows) allCommitShas.add(r.commit_sha);
+          }
+          const commitRowsBySha = commitRepo.findByShas([...allCommitShas]);
+
           const payload = repoSessions
             .map((s) => {
-              const linked = links.commitsForSession(s.id);
-              if (linked.length === 0) return null;
+              const linked = commitsBySession.get(s.id);
+              if (!linked || linked.length === 0) return null;
               return {
                 session_id: s.id,
                 title: s.custom_title ?? s.auto_title ?? "(untitled)",
                 last_active_at: s.last_active_at,
                 commits: linked.map((l) => {
-                  const c = commits.findBySha(l.commit_sha);
+                  const c = commitRowsBySha.get(l.commit_sha);
                   return {
                     sha: l.commit_sha,
                     message: c?.message ?? null,

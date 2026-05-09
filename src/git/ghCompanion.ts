@@ -34,14 +34,31 @@ export function parseGhPRView(stdout: string): string[] {
   return (data.commits ?? []).map((c) => c.oid);
 }
 
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms),
+    ),
+  ]);
+}
+
 export async function isGhAvailable(): Promise<{ ok: boolean; reason?: string }> {
   try {
-    await execFileAsync("gh", ["--version"], { maxBuffer: 1024 * 1024 });
+    await withTimeout(
+      execFileAsync("gh", ["--version"], { maxBuffer: 1024 * 1024 }),
+      8000,
+      "gh --version",
+    );
   } catch {
     return { ok: false, reason: "GitHub CLI (`gh`) is not installed or not in PATH." };
   }
   try {
-    await execFileAsync("gh", ["auth", "status"], { maxBuffer: 1024 * 1024 });
+    await withTimeout(
+      execFileAsync("gh", ["auth", "status"], { maxBuffer: 1024 * 1024 }),
+      8000,
+      "gh auth status",
+    );
   } catch {
     return { ok: false, reason: "GitHub CLI is installed but not authenticated. Run `gh auth login`." };
   }
@@ -49,24 +66,33 @@ export async function isGhAvailable(): Promise<{ ok: boolean; reason?: string }>
 }
 
 export async function listOpenPRsWithCommits(repoPath: string): Promise<PRWithCommits[]> {
-  const { stdout: listOut } = await execFileAsync(
-    "gh",
-    ["pr", "list", "--state", "open", "--json", "number,title,headRefName,url"],
-    { cwd: repoPath, maxBuffer: 5 * 1024 * 1024 },
+  const { stdout: listOut } = await withTimeout(
+    execFileAsync(
+      "gh",
+      ["pr", "list", "--state", "open", "--json", "number,title,headRefName,url"],
+      { cwd: repoPath, maxBuffer: 5 * 1024 * 1024 },
+    ),
+    8000,
+    "gh pr list",
   );
   const prs = parseGhPRList(listOut);
-  const enriched: PRWithCommits[] = [];
-  for (const p of prs) {
-    try {
-      const { stdout } = await execFileAsync(
-        "gh",
-        ["pr", "view", String(p.number), "--json", "commits"],
-        { cwd: repoPath, maxBuffer: 5 * 1024 * 1024 },
-      );
-      enriched.push({ ...p, commit_shas: parseGhPRView(stdout) });
-    } catch {
-      enriched.push({ ...p, commit_shas: [] });
-    }
-  }
+  const enriched = await Promise.all(
+    prs.map(async (p) => {
+      try {
+        const { stdout } = await withTimeout(
+          execFileAsync(
+            "gh",
+            ["pr", "view", String(p.number), "--json", "commits"],
+            { cwd: repoPath, maxBuffer: 5 * 1024 * 1024 },
+          ),
+          8000,
+          `gh pr view ${p.number}`,
+        );
+        return { ...p, commit_shas: parseGhPRView(stdout) };
+      } catch {
+        return { ...p, commit_shas: [] };
+      }
+    }),
+  );
   return enriched;
 }

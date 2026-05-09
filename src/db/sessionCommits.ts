@@ -42,6 +42,43 @@ export class SessionCommitRepository {
       .all(sha) as SessionCommitRow[];
   }
 
+  sessionsForCommits(shas: string[]): Map<string, SessionCommitRow[]> {
+    const map = new Map<string, SessionCommitRow[]>();
+    if (shas.length === 0) return map;
+    const placeholders = shas.map(() => "?").join(",");
+    const rows = this.db
+      .prepare(
+        `SELECT ${COLS} FROM session_commits WHERE commit_sha IN (${placeholders}) ORDER BY confidence DESC`,
+      )
+      .all(...shas) as SessionCommitRow[];
+    for (const r of rows) {
+      let bucket = map.get(r.commit_sha);
+      if (!bucket) {
+        bucket = [];
+        map.set(r.commit_sha, bucket);
+      }
+      bucket.push(r);
+    }
+    return map;
+  }
+
+  commitsForSessions(sessionIds: string[]): Map<string, SessionCommitRow[]> {
+    const map = new Map<string, SessionCommitRow[]>();
+    if (sessionIds.length === 0) return map;
+    const placeholders = sessionIds.map(() => "?").join(",");
+    const rows = this.db
+      .prepare(
+        `SELECT ${COLS} FROM session_commits WHERE session_id IN (${placeholders}) ORDER BY confidence DESC`,
+      )
+      .all(...sessionIds) as SessionCommitRow[];
+    for (const r of rows) {
+      let bucket = map.get(r.session_id);
+      if (!bucket) { bucket = []; map.set(r.session_id, bucket); }
+      bucket.push(r);
+    }
+    return map;
+  }
+
   deleteForSession(sessionId: string): void {
     this.db
       .prepare("DELETE FROM session_commits WHERE session_id = ?")

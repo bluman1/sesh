@@ -68,6 +68,17 @@ export class SessionRepository {
     return row ?? null;
   }
 
+  findByIds(ids: string[]): Map<string, SessionRow> {
+    const map = new Map<string, SessionRow>();
+    if (ids.length === 0) return map;
+    const placeholders = ids.map(() => "?").join(",");
+    const rows = this.db
+      .prepare(`SELECT ${COLUMNS} FROM sessions WHERE id IN (${placeholders})`)
+      .all(...ids) as SessionRow[];
+    for (const r of rows) map.set(r.id, r);
+    return map;
+  }
+
   listByProject(projectPath: string): SessionRow[] {
     return this.db
       .prepare(

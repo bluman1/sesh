@@ -54,3 +54,61 @@ export async function runCurrentBranch(repoPath: string): Promise<string | null>
     return null;
   }
 }
+
+/**
+ * List local branches sorted by most recently committed, newest first.
+ */
+export async function runListLocalBranches(repoPath: string): Promise<string[]> {
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["for-each-ref", "refs/heads", "--format=%(refname:short)", "--sort=-committerdate"],
+      { cwd: repoPath, maxBuffer: 1024 * 1024 },
+    );
+    return stdout.split("\n").map((s) => s.trim()).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Get the GitHub remote URL for a repo (normalised to https form), or null.
+ */
+export async function runRemoteUrl(repoPath: string): Promise<string | null> {
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["config", "--get", "remote.origin.url"],
+      { cwd: repoPath, maxBuffer: 1024 * 1024 },
+    );
+    return normalizeRemoteUrl(stdout.trim());
+  } catch {
+    return null;
+  }
+}
+
+function normalizeRemoteUrl(url: string): string | null {
+  if (!url) return null;
+  // SSH form: git@github.com:owner/repo.git → https://github.com/owner/repo
+  const sshMatch = url.match(/^git@([^:]+):(.+?)(?:\.git)?$/);
+  if (sshMatch) return `https://${sshMatch[1]}/${sshMatch[2]}`;
+  // HTTPS form: drop trailing .git
+  return url.replace(/\.git$/, "") || null;
+}
+
+/**
+ * Return the set of commit SHAs reachable from the given branch (up to 5000).
+ * Used to filter the DB commit list to only commits in a specific branch.
+ */
+export async function runCommitsInBranch(repoPath: string, branch: string): Promise<Set<string>> {
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["log", branch, "--pretty=%H", "-n", "5000"],
+      { cwd: repoPath, maxBuffer: 50 * 1024 * 1024 },
+    );
+    return new Set(stdout.split("\n").map((s) => s.trim()).filter(Boolean));
+  } catch {
+    return new Set();
+  }
+}

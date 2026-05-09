@@ -96,7 +96,7 @@ export type ToHost =
   | { kind: "setOutcome"; sessionId: string; state: "open" | "shipped" | "shipped-partial" | "reverted" | "abandoned"; notes?: string | null }
   | { kind: "triggerReindexAnalytics" }
   | { kind: "getCommitments"; sinceDays: number }
-  | { kind: "getReviewerBranch"; repoPath?: string }
+  | { kind: "getReviewerBranch"; repoPath?: string; branch?: string }
   | { kind: "getReviewerSessions"; repoPath?: string }
   | { kind: "getReviewerPRs"; repoPath?: string }
   | { kind: "triggerReindexGit" };
@@ -136,6 +136,8 @@ export type ToWebview =
       kind: "reviewerBranch";
       repoPath: string | null;
       branch: string | null;
+      branches: string[];
+      repoUrl: string | null;
       commits: {
         sha: string;
         message: string | null;
