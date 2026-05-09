@@ -45,3 +45,10 @@
 .sesh-reviewer-confidence {
   color: color-mix(in srgb, var(--vscode-foreground) 50%, transparent);
 }
+.sesh-reviewer-empty {
+  padding: var(--sesh-space-3);
+  color: color-mix(in srgb, var(--vscode-foreground) 70%, transparent);
+}
+.sesh-reviewer-empty a {
+  color: var(--vscode-textLink-foreground);
+}
