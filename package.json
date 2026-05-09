@@ -68,6 +68,10 @@
       {
         "command": "sesh.suggestClaudeMd",
         "title": "Sesh: Suggest CLAUDE.md improvements"
+      },
+      {
+        "command": "sesh.exportStyleFingerprint",
+        "title": "Sesh: Export style fingerprint"
       }
     ],
     "viewsContainers": {

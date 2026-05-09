@@ -30,6 +30,8 @@ import { semanticSearch } from "../db/semanticQueries";
 import { IdeaRepository } from "../db/ideas";
 import { ClaudeMdSuggestionRepository } from "../db/claudeMd";
 import { PromptLintRepository } from "../db/promptLints";
+import { computeStyleFingerprint, exportFingerprintToFile } from "../scanner/styleFingerprint";
+import { suggestNextSessionTopics } from "../scanner/nextSessionSuggester";
 
 export class SeshPanel {
   private static instance: SeshPanel | null = null;
@@ -566,6 +568,33 @@ export class SeshPanel {
         case "setPromptLintStatus": {
           const repo = new PromptLintRepository(this.host.rawDb!);
           repo.setStatus(msg.id, msg.status);
+          break;
+        }
+        case "getStyleFingerprint": {
+          const fp = computeStyleFingerprint(this.host.rawDb!, { sinceDays: msg.sinceDays });
+          this.send({ kind: "styleFingerprint", fingerprint: fp });
+          break;
+        }
+        case "exportStyleFingerprint": {
+          void (async () => {
+            const fp = computeStyleFingerprint(this.host.rawDb!);
+            const uri = await vscode.window.showSaveDialog({
+              defaultUri: vscode.Uri.file("sesh-style-fingerprint.json"),
+              filters: { "JSON": ["json"] },
+            });
+            if (!uri) return;
+            exportFingerprintToFile(fp, uri.fsPath);
+            vscode.window.showInformationMessage(`Saved fingerprint to ${uri.fsPath}`);
+          })();
+          break;
+        }
+        case "getNextSessionSuggestions": {
+          const items = suggestNextSessionTopics(this.host.rawDb!, { limit: 5 });
+          this.send({ kind: "nextSessionSuggestions", suggestions: items });
+          break;
+        }
+        case "dismissNextSessionSuggestion": {
+          // For v1, dismissal is webview-local (cleared on reload). No persistence.
           break;
         }
       }

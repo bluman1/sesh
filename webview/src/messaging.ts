@@ -101,7 +101,11 @@ export type ToHost =
   | { kind: "getClaudeMdSuggestions" }
   | { kind: "setClaudeMdStatus"; id: string; status: "open" | "accepted" | "dismissed" }
   | { kind: "getPromptLints"; sessionId: string }
-  | { kind: "setPromptLintStatus"; id: string; status: "open" | "dismissed" };
+  | { kind: "setPromptLintStatus"; id: string; status: "open" | "dismissed" }
+  | { kind: "getStyleFingerprint"; sinceDays?: number }
+  | { kind: "exportStyleFingerprint" }
+  | { kind: "getNextSessionSuggestions" }
+  | { kind: "dismissNextSessionSuggestion"; key: string };
 
 export type ToWebview =
   | { kind: "workspace"; currentPath: string | null }
@@ -179,6 +183,30 @@ export type ToWebview =
         turn_id: string;
         message: string;
         similar_session_ids: string[];
+      }>;
+    }
+  | {
+      kind: "styleFingerprint";
+      fingerprint: {
+        generated_at: number;
+        source_session_count: number;
+        source_chunk_count: number;
+        total_chars: number;
+        avg_user_chars_per_turn: number;
+        avg_words_per_sentence: number;
+        hedging_per_1000_words: number;
+        exclamation_per_1000_chars: number;
+        capital_letter_rate: number;
+        top_tokens: { token: string; tfidf: number }[];
+      };
+    }
+  | {
+      kind: "nextSessionSuggestions";
+      suggestions: Array<{
+        kind: "idea" | "commitment";
+        text: string;
+        weight: number;
+        source_session_ids: string[];
       }>;
     };
 

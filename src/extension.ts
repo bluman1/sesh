@@ -116,6 +116,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await vscode.commands.executeCommand("sesh.open");
       vscode.window.showInformationMessage("Sesh: CLAUDE.md suggestions refreshed. Open the Knowledge tab.");
     }),
+    vscode.commands.registerCommand("sesh.exportStyleFingerprint", async () => {
+      const { computeStyleFingerprint, exportFingerprintToFile } = await import("./scanner/styleFingerprint");
+      const fp = computeStyleFingerprint(host!.rawDb!);
+      const uri = await vscode.window.showSaveDialog({
+        defaultUri: vscode.Uri.file("sesh-style-fingerprint.json"),
+        filters: { "JSON": ["json"] },
+      });
+      if (!uri) return;
+      exportFingerprintToFile(fp, uri.fsPath);
+      vscode.window.showInformationMessage(`Saved fingerprint to ${uri.fsPath}`);
+    }),
   );
 
   try {

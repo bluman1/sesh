@@ -3,15 +3,17 @@ import { StandupView } from "./insights/StandupView";
 import { CostView } from "./insights/CostView";
 import { LeaderboardView } from "./insights/LeaderboardView";
 import { RecordsView } from "./insights/RecordsView";
+import { StyleView } from "./insights/StyleView";
 import { type InsightsRange, RANGE_OPTIONS } from "./insights/range";
 import "./InsightsTab.css";
 
-type SubTab = "standup" | "cost" | "leaderboard" | "records";
+type SubTab = "standup" | "cost" | "leaderboard" | "records" | "style";
 const SUBS: { id: SubTab; label: string }[] = [
   { id: "standup", label: "Standup" },
   { id: "cost", label: "By file" },
   { id: "leaderboard", label: "Models" },
   { id: "records", label: "Records" },
+  { id: "style", label: "Style" },
 ];
 
 export function InsightsTab(): JSX.Element {
@@ -32,7 +34,7 @@ export function InsightsTab(): JSX.Element {
             </button>
           ))}
         </div>
-        {sub !== "records" && (
+        {sub !== "records" && sub !== "style" && (
           <div className="sesh-insights-ranges">
             {RANGE_OPTIONS.map((r) => (
               <button
@@ -51,6 +53,7 @@ export function InsightsTab(): JSX.Element {
         {sub === "cost" && <CostView range={range} />}
         {sub === "leaderboard" && <LeaderboardView range={range} />}
         {sub === "records" && <RecordsView />}
+        {sub === "style" && <StyleView />}
       </div>
     </div>
   );
