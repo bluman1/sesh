@@ -1,5 +1,11 @@
 import type { SessionRow } from "./db/sessions";
 
+export interface SessionAnalyticsChip {
+  outcome: "open" | "shipped" | "shipped-partial" | "reverted" | "abandoned" | null;
+  usd: number;
+  primary_model: string | null;
+}
+
 export interface SessionListItem {
   id: string;
   title: string;
@@ -13,6 +19,7 @@ export interface SessionListItem {
   orphaned: 0 | 1;
   category_id: number | null;
   tags: string[];
+  analytics?: SessionAnalyticsChip;
 }
 
 export interface SessionDetail extends SessionListItem {
@@ -115,7 +122,11 @@ export type ToWebview =
     }
   | { kind: "error"; message: string };
 
-export function rowToListItem(row: SessionRow, tags: string[]): SessionListItem {
+export function rowToListItem(
+  row: SessionRow,
+  tags: string[],
+  analytics?: SessionAnalyticsChip,
+): SessionListItem {
   return {
     id: row.id,
     title: row.custom_title ?? row.auto_title ?? "(untitled)",
@@ -129,6 +140,7 @@ export function rowToListItem(row: SessionRow, tags: string[]): SessionListItem 
     orphaned: row.orphaned,
     category_id: row.category_id,
     tags,
+    analytics,
   };
 }
 
