@@ -26,3 +26,172 @@
   border-bottom: 1px solid var(--sesh-border-subtle);
 }
 .sesh-insights-table th { color: color-mix(in srgb, var(--vscode-foreground) 62%, transparent); font-weight: 500; }
+
+/* ─── Magazine layout (StandupView) ─────────── */
+.sesh-magazine-headline {
+  font-size: 2.5em;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  letter-spacing: -0.02em;
+}
+.sesh-magazine-subtitle {
+  color: color-mix(in srgb, var(--vscode-foreground) 62%, transparent);
+  margin-bottom: var(--sesh-space-5);
+  font-size: 0.95em;
+}
+.sesh-magazine-section-label {
+  font-size: 0.75em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--vscode-foreground) 55%, transparent);
+  margin-bottom: var(--sesh-space-2);
+  text-transform: uppercase;
+}
+.sesh-magazine-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 2fr) auto;
+  gap: var(--sesh-space-3);
+  align-items: center;
+  padding: var(--sesh-space-1) 0;
+}
+.sesh-magazine-row-label {
+  font-size: 0.95em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sesh-magazine-bar {
+  height: 6px;
+  background: var(--sesh-fill-subtle);
+  border-radius: var(--sesh-radius-pill);
+  overflow: hidden;
+}
+.sesh-magazine-bar-fill {
+  height: 100%;
+  background: color-mix(in srgb, var(--vscode-charts-blue, #4d8df6) 35%, transparent);
+}
+.sesh-magazine-row-value {
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--vscode-foreground) 80%, transparent);
+}
+
+/* ─── Mode switcher (segmented control) ─────────── */
+.sesh-insights-modes {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--sesh-fill-subtle);
+  border-radius: var(--sesh-radius-pill);
+  margin-bottom: var(--sesh-space-3);
+  width: fit-content;
+}
+.sesh-insights-mode {
+  padding: var(--sesh-space-1) var(--sesh-space-3);
+  border: none;
+  background: transparent;
+  color: color-mix(in srgb, var(--vscode-foreground) 70%, transparent);
+  cursor: pointer;
+  border-radius: var(--sesh-radius-pill);
+  font: inherit;
+  font-size: 0.9em;
+}
+.sesh-insights-mode.is-active {
+  background: var(--vscode-editor-background);
+  color: var(--vscode-foreground);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+.sesh-insights-mode-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--sesh-space-3);
+}
+
+/* ─── Standup narrative + copy ─────────── */
+.sesh-standup-prose {
+  font-size: 1.05em;
+  line-height: 1.6;
+  max-width: 65ch;
+  color: var(--vscode-foreground);
+  margin-bottom: var(--sesh-space-4);
+}
+.sesh-standup-copy {
+  background: var(--sesh-fill-subtle);
+  border: 1px solid var(--sesh-border-subtle);
+  border-radius: var(--sesh-radius-md);
+  padding: var(--sesh-space-1) var(--sesh-space-3);
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9em;
+}
+.sesh-standup-copy:hover {
+  background: color-mix(in srgb, var(--vscode-foreground) 8%, var(--sesh-fill-subtle));
+}
+.sesh-standup-copied {
+  color: var(--vscode-charts-green, #4caf50);
+}
+
+/* ─── Polished tables ─────────── */
+.sesh-insights-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.sesh-insights-table th {
+  padding: var(--sesh-space-2) var(--sesh-space-2);
+  text-align: left;
+  border-bottom: 1px solid var(--sesh-border-subtle);
+  color: color-mix(in srgb, var(--vscode-foreground) 55%, transparent);
+  font-weight: 500;
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.sesh-insights-table td {
+  padding: var(--sesh-space-2) var(--sesh-space-2);
+  border-bottom: 1px solid var(--sesh-border-subtle);
+}
+.sesh-insights-table tr:nth-child(even) td {
+  background: var(--sesh-fill-subtle);
+}
+.sesh-insights-table tr:last-child td {
+  border-bottom: none;
+}
+.sesh-insights-table th.numeric,
+.sesh-insights-table td.numeric {
+  text-align: right;
+  white-space: nowrap;
+}
+.sesh-insights-table-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--sesh-space-2);
+}
+.sesh-insights-table-title-label {
+  font-size: 1.1em;
+  font-weight: 500;
+}
+.sesh-insights-table-title-total {
+  color: color-mix(in srgb, var(--vscode-foreground) 62%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Records list ─────────── */
+.sesh-records-list { list-style: none; padding: 0; margin: 0; }
+.sesh-records-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: var(--sesh-space-2) 0;
+  border-bottom: 1px solid var(--sesh-border-subtle);
+}
+.sesh-records-row:last-child { border-bottom: none; }
+.sesh-records-label {
+  color: color-mix(in srgb, var(--vscode-foreground) 70%, transparent);
+}
+.sesh-records-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
