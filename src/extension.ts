@@ -6,9 +6,16 @@ import { TurnRepository } from "./db/turns";
 import { ToolCallRepository } from "./db/toolCalls";
 import { TurnsIndexer, runFullReindex } from "./scanner/turnsIndexer";
 import { inferOutcomes } from "./scanner/outcomeInferer";
+import { ChunkRepository } from "./db/chunks";
+import { EmbeddingRepository } from "./db/embeddings";
+import { createEmbedder } from "./embed/factory";
+import type { Embedder, EmbedderConfig } from "./embed/types";
+import { EmbeddingIndexer } from "./scanner/embeddingIndexer";
 
 let host: SeshHost | null = null;
 let turnsIndexer: TurnsIndexer | null = null;
+let embeddingIndexer: EmbeddingIndexer | null = null;
+let embedder: Embedder | null = null;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const output = vscode.window.createOutputChannel("Sesh");
@@ -85,6 +92,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await runFullReindex(host.rawDb!, turnsIndexer, windowDays);
       vscode.window.showInformationMessage("Sesh: analytics reindexed.");
     }),
+    vscode.commands.registerCommand("sesh.reindexEmbeddings", async () => {
+      if (!embeddingIndexer) {
+        vscode.window.showInformationMessage("Embeddings are disabled.");
+        return;
+      }
+      await embeddingIndexer.run();
+      vscode.window.showInformationMessage("Sesh: embeddings reindexed.");
+    }),
   );
 
   try {
@@ -95,6 +110,42 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     turnsIndexer = new TurnsIndexer(host.rawDb!, host.sessions!, turnRepo, toolCallRepo);
     host.setTurnsIndexer(turnsIndexer);
     const cfg = vscode.workspace.getConfiguration("sesh");
+
+    const embeddingsEnabled = cfg.get<boolean>("sesh.embeddingsEnabled", true);
+    if (embeddingsEnabled) {
+      const cfgKind = cfg.get<string>("sesh.embedder", "local");
+      const model = cfg.get<string>("sesh.embedderModel", "");
+      const apiKey = cfg.get<string>("sesh.embedderApiKey", "");
+      const apiUrl = cfg.get<string>("sesh.embedderApiUrl", "");
+      let embedderCfg: EmbedderConfig;
+      if (cfgKind === "ollama") {
+        embedderCfg = { kind: "ollama", url: apiUrl || undefined, model: model || undefined };
+      } else if (cfgKind === "cloud") {
+        embedderCfg = { kind: "cloud", url: apiUrl || undefined, apiKey, model: model || undefined };
+      } else {
+        embedderCfg = { kind: "local", model: model || undefined };
+      }
+      embedder = createEmbedder(embedderCfg);
+
+      const chunkRepo = new ChunkRepository(host.rawDb!);
+      const embeddingRepo = new EmbeddingRepository(host.rawDb!);
+      embeddingIndexer = new EmbeddingIndexer(
+        host.rawDb!,
+        host.sessions!,
+        turnRepo,
+        chunkRepo,
+        embeddingRepo,
+        embedder,
+      );
+      host.setEmbeddingIndexer(embeddingIndexer);
+      host.setEmbedder(embedder);
+
+      // Eager index in background
+      void embeddingIndexer.run().catch((err) => {
+        console.warn("[sesh] embedding indexer eager run failed", err);
+      });
+    }
+
     const shouldOpenFromMarker = consumePendingOpenMarker(context, output);
     if (shouldOpenFromMarker || cfg.get<boolean>("openOnActivation", false)) {
       SeshPanel.openOrFocus(context, host, turnsIndexer);
@@ -167,7 +218,10 @@ function consumePendingOpenMarker(
 }
 
 export async function deactivate(): Promise<void> {
+  embeddingIndexer?.cancel();
   await host?.stop();
   host = null;
   turnsIndexer = null;
+  embeddingIndexer = null;
+  embedder = null;
 }

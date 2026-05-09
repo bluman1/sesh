@@ -15,6 +15,8 @@ import { extractMetadata } from "../scanner/extract";
 import { ContentIndexer } from "../scanner/contentIndexer";
 import { ProjectsWatcher } from "../scanner/watcher";
 import type { TurnsIndexer } from "../scanner/turnsIndexer";
+import type { EmbeddingIndexer } from "../scanner/embeddingIndexer";
+import type { Embedder } from "../embed/types";
 import { TranscriptArchive } from "./transcriptArchive";
 
 const DEFAULT_DB_DIR = path.join(os.homedir(), ".sesh");
@@ -32,6 +34,8 @@ export class SeshHost {
   public archive: TranscriptArchive;
   private watcher: ProjectsWatcher | null = null;
   private turnsIndexer: TurnsIndexer | null = null;
+  private embeddingIndexer: EmbeddingIndexer | null = null;
+  private embedder: Embedder | null = null;
   public indexProgress: { indexed: number; total: number } = { indexed: 0, total: 0 };
   public onIndexProgress?: () => void;
   public onSessionChanged?: (id: string) => void;
@@ -48,6 +52,22 @@ export class SeshHost {
     if (this.watcher) {
       this.watcher.setTurnsIndexer(indexer);
     }
+  }
+
+  setEmbeddingIndexer(indexer: EmbeddingIndexer): void {
+    this.embeddingIndexer = indexer;
+  }
+
+  setEmbedder(e: Embedder): void {
+    this.embedder = e;
+  }
+
+  get currentEmbeddingIndexer(): EmbeddingIndexer | null {
+    return this.embeddingIndexer;
+  }
+
+  get currentEmbedder(): Embedder | null {
+    return this.embedder;
   }
 
   private archiveEnabled(): boolean {
