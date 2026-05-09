@@ -1,0 +1,6 @@
+{"parentUuid":null,"cwd":"/tmp/proj","type":"user","message":{"role":"user","content":"first prompt"},"uuid":"u1","timestamp":"2026-04-21T08:48:00.000Z"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"reply"}],"model":"claude-opus-4-7","usage":{"input_tokens":50,"output_tokens":20}},"uuid":"a1","timestamp":"2026-04-21T08:48:05.000Z"}
+{"type":"user","message":{"role":"user","content":"no problem, continue"},"uuid":"u2","timestamp":"2026-04-21T08:48:10.000Z"}
+{"type":"user","message":{"role":"user","content":"no thanks"},"uuid":"u3","timestamp":"2026-04-21T08:48:15.000Z"}
+{"type":"user","message":{"role":"user","content":"no, do it differently"},"uuid":"u4","timestamp":"2026-04-21T08:48:20.000Z"}
+{"type":"user","message":{"role":"user","content":"wait, what?"},"uuid":"u5","timestamp":"2026-04-21T08:48:25.000Z"}
