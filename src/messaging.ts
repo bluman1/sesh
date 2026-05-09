@@ -91,7 +91,11 @@ export type ToHost =
   | { kind: "addRemap"; fromPath: string; toPath: string }
   | { kind: "listRemaps" }
   | { kind: "generateTitle"; id: string }
-  | { kind: "openFolderInNewWindow"; path: string };
+  | { kind: "openFolderInNewWindow"; path: string }
+  | { kind: "getInsights"; tab: "standup" | "cost" | "leaderboard" | "records"; sinceDays: number }
+  | { kind: "setOutcome"; sessionId: string; state: "open" | "shipped" | "shipped-partial" | "reverted" | "abandoned"; notes?: string | null }
+  | { kind: "triggerReindexAnalytics" }
+  | { kind: "getCommitments"; sinceDays: number };
 
 export type ToWebview =
   | { kind: "workspace"; currentPath: string | null }
@@ -120,7 +124,10 @@ export type ToWebview =
       state: "running" | "done" | "error";
       message?: string;
     }
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string }
+  | { kind: "insights"; tab: "standup" | "cost" | "leaderboard" | "records"; payload: unknown }
+  | { kind: "commitments"; commitments: { session_id: string; ts: number; excerpt: string }[] }
+  | { kind: "analyticsProgress"; indexed: number; total: number };
 
 export function rowToListItem(
   row: SessionRow,
