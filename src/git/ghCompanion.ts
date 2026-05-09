@@ -69,7 +69,7 @@ export async function listOpenPRsWithCommits(repoPath: string): Promise<PRWithCo
   const { stdout: listOut } = await withTimeout(
     execFileAsync(
       "gh",
-      ["pr", "list", "--state", "open", "--json", "number,title,headRefName,url"],
+      ["pr", "list", "--state", "open", "--limit", "100", "--json", "number,title,headRefName,url"],
       { cwd: repoPath, maxBuffer: 5 * 1024 * 1024 },
     ),
     8000,

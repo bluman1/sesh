@@ -198,26 +198,14 @@
   color: color-mix(in srgb, var(--vscode-foreground) 30%, transparent);
 }
 
-/* Load more button (shared by Branch + Sessions sub-views) */
-.sesh-reviewer-load-more {
-  display: block;
-  width: 100%;
+/* Infinite-scroll sentinel (shared by all sub-views) */
+.sesh-reviewer-sentinel {
+  min-height: 32px;
   margin-top: var(--sesh-space-3);
   padding: var(--sesh-space-2) var(--sesh-space-3);
-  background: transparent;
-  border: 1px solid var(--sesh-border-subtle);
-  border-radius: var(--sesh-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--sesh-fg-muted);
-  cursor: pointer;
-  font: inherit;
-  text-align: center;
-  transition: background-color 0.12s ease, color 0.12s ease;
-}
-.sesh-reviewer-load-more:hover:not(:disabled) {
-  background: var(--sesh-fill-subtle);
-  color: var(--vscode-foreground);
-}
-.sesh-reviewer-load-more:disabled {
-  cursor: progress;
-  opacity: 0.7;
+  font-size: var(--sesh-text-xs);
 }

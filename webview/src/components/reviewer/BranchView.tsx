@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { onHostMessage, postToHost, type ToWebview } from "../../messaging";
 import { Dropdown, type DropdownItem } from "../Dropdown";
+import { useInfiniteScrollSentinel } from "../../hooks/useInfiniteScrollSentinel";
 
 type BranchPayload = Extract<ToWebview, { kind: "reviewerBranch" }>;
 type CommitItem = BranchPayload["commits"][number];
@@ -41,11 +42,6 @@ export function BranchView({ onNavigateToSession }: Props): JSX.Element {
     }
   }, [selectedBranch]);
 
-  if (!payload) return <div className="sesh-reviewer-loading">Loading…</div>;
-  if (!payload.repoPath) {
-    return <div className="sesh-reviewer-empty">No git repo detected for the current workspace.</div>;
-  }
-
   function handleLoadMore() {
     if (!payload) return;
     setLoadingMore(true);
@@ -54,6 +50,16 @@ export function BranchView({ onNavigateToSession }: Props): JSX.Element {
       branch: payload.branch ?? undefined,
       offset: commits.length,
     });
+  }
+
+  const sentinelRef = useInfiniteScrollSentinel(
+    handleLoadMore,
+    !!payload && payload.repoPath !== null && hasMore && !loadingMore,
+  );
+
+  if (!payload) return <div className="sesh-reviewer-loading">Loading…</div>;
+  if (!payload.repoPath) {
+    return <div className="sesh-reviewer-empty">No git repo detected for the current workspace.</div>;
   }
 
   return (
@@ -120,14 +126,9 @@ export function BranchView({ onNavigateToSession }: Props): JSX.Element {
             })}
           </ul>
           {hasMore && (
-            <button
-              type="button"
-              className="sesh-reviewer-load-more"
-              disabled={loadingMore}
-              onClick={handleLoadMore}
-            >
-              {loadingMore ? "Loading…" : "Load more"}
-            </button>
+            <div ref={sentinelRef} className="sesh-reviewer-sentinel">
+              {loadingMore && <span className="sesh-reviewer-loading">Loading more…</span>}
+            </div>
           )}
         </>
       )}

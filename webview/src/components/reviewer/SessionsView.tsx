@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { onHostMessage, postToHost, type ToWebview } from "../../messaging";
 import { Icon } from "../Icon";
+import { useInfiniteScrollSentinel } from "../../hooks/useInfiniteScrollSentinel";
 
 type SessionsPayload = Extract<ToWebview, { kind: "reviewerSessions" }>;
 type SessionItem = SessionsPayload["sessions"][number];
@@ -45,15 +46,20 @@ export function SessionsView({ onNavigateToSession }: Props): JSX.Element {
     return off;
   }, []);
 
+  function handleLoadMore() {
+    setLoadingMore(true);
+    postToHost({ kind: "getReviewerSessions", offset: sessions.length });
+  }
+
+  const sentinelRef = useInfiniteScrollSentinel(
+    handleLoadMore,
+    !!payload && payload.repoPath !== null && hasMore && !loadingMore,
+  );
+
   if (!payload) return <div className="sesh-reviewer-loading">Loading…</div>;
   if (!payload.repoPath) return <div className="sesh-reviewer-empty">No git repo detected for the current workspace.</div>;
   if (sessions.length === 0) {
     return <div className="sesh-reviewer-empty">No sessions linked to commits in this repo yet.</div>;
-  }
-
-  function handleLoadMore() {
-    setLoadingMore(true);
-    postToHost({ kind: "getReviewerSessions", offset: sessions.length });
   }
 
   return (
@@ -94,14 +100,9 @@ export function SessionsView({ onNavigateToSession }: Props): JSX.Element {
         })}
       </ul>
       {hasMore && (
-        <button
-          type="button"
-          className="sesh-reviewer-load-more"
-          disabled={loadingMore}
-          onClick={handleLoadMore}
-        >
-          {loadingMore ? "Loading…" : "Load more"}
-        </button>
+        <div ref={sentinelRef} className="sesh-reviewer-sentinel">
+          {loadingMore && <span className="sesh-reviewer-loading">Loading more…</span>}
+        </div>
       )}
     </div>
   );

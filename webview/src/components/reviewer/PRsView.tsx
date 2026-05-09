@@ -1,8 +1,22 @@
+import { useState } from "react";
 import { useReviewerPRs } from "../../hooks/useReviewer";
+import { useInfiniteScrollSentinel } from "../../hooks/useInfiniteScrollSentinel";
+
+const PAGE_SIZE = 15;
 
 export function PRsView(): JSX.Element {
   const { payload } = useReviewerPRs();
-  if (!payload) return <div>Loading…</div>;
+  const [visible, setVisible] = useState(PAGE_SIZE);
+
+  const total = payload?.prs.length ?? 0;
+  const hasMore = total > visible;
+
+  const sentinelRef = useInfiniteScrollSentinel(
+    () => setVisible((n) => Math.min(n + PAGE_SIZE, total)),
+    !!payload && payload.ghAvailable && hasMore,
+  );
+
+  if (!payload) return <div className="sesh-reviewer-loading">Loading…</div>;
   if (!payload.ghAvailable) {
     return (
       <div className="sesh-reviewer-empty">
@@ -19,12 +33,15 @@ export function PRsView(): JSX.Element {
     );
   }
   if (payload.prs.length === 0) {
-    return <div>No open PRs in this repo.</div>;
+    return <div className="sesh-reviewer-empty">No open PRs in this repo.</div>;
   }
+
+  const shown = payload.prs.slice(0, visible);
+
   return (
     <div>
       <ul className="sesh-reviewer-list">
-        {payload.prs.map((pr) => {
+        {shown.map((pr) => {
           const sessionCount = new Set(
             pr.commits.flatMap((c) => c.sessions),
           ).size;
@@ -61,6 +78,11 @@ export function PRsView(): JSX.Element {
           );
         })}
       </ul>
+      {hasMore && (
+        <div ref={sentinelRef} className="sesh-reviewer-sentinel">
+          <span className="sesh-reviewer-loading">Loading more…</span>
+        </div>
+      )}
     </div>
   );
 }
