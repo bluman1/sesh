@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useInsights } from "../../hooks/useInsights";
+import { type InsightsRange, RANGE_TITLE } from "./range";
+import { fmtUsd, fmtCount, pluralize } from "./format";
 
 interface StandupPayload {
   totalSessions: number;
@@ -9,10 +11,6 @@ interface StandupPayload {
 }
 
 type Mode = "magazine" | "standup";
-
-function pluralize(n: number, singular: string, plural = singular + "s"): string {
-  return n === 1 ? singular : plural;
-}
 
 function projectLabel(projectPath: string): string {
   if (!projectPath || projectPath === "/" || projectPath.trim() === "") {
@@ -24,16 +22,18 @@ function projectLabel(projectPath: string): string {
   return last.length > 40 ? last.slice(0, 39) + "…" : last;
 }
 
-function fmtUsd(usd: number): string {
-  return `$${usd.toFixed(2)}`;
-}
-
-function buildStandupProse(data: StandupPayload): string {
+function buildStandupProse(data: StandupPayload, range: InsightsRange): string {
   const projectCount = data.perProject.length;
   const sorted = [...data.perProject].sort((a, b) => b.usd - a.usd);
   const lines: string[] = [];
+  const period =
+    range === "today" ? "Today" :
+    range === "7d" ? "In the last 7 days" :
+    range === "30d" ? "In the last 30 days" :
+    range === "1y" ? "In the last year" :
+    "All time";
   lines.push(
-    `Today, ${data.totalSessions} ${pluralize(data.totalSessions, "session")} across ${projectCount} ${pluralize(projectCount, "project")} ran ${data.totalTurns.toLocaleString()} turns and spent ${fmtUsd(data.totalUsd)}.`,
+    `${period}, ${data.totalSessions} ${pluralize(data.totalSessions, "session")} across ${projectCount} ${pluralize(projectCount, "project")} ran ${fmtCount(data.totalTurns)} turns and spent ${fmtUsd(data.totalUsd)}.`,
   );
   if (sorted.length > 0) {
     const top = sorted[0];
@@ -50,8 +50,10 @@ function buildStandupProse(data: StandupPayload): string {
   return lines.join(" ");
 }
 
-export function StandupView(): JSX.Element {
-  const { payload } = useInsights("standup", 1);
+interface Props { range: InsightsRange; }
+
+export function StandupView({ range }: Props): JSX.Element {
+  const { payload } = useInsights("standup", range);
   const [mode, setMode] = useState<Mode>("magazine");
   const [copied, setCopied] = useState(false);
 
@@ -60,7 +62,7 @@ export function StandupView(): JSX.Element {
   const sorted = [...data.perProject].sort((a, b) => b.usd - a.usd);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(buildStandupProse(data));
+    await navigator.clipboard.writeText(buildStandupProse(data, range));
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
@@ -68,7 +70,7 @@ export function StandupView(): JSX.Element {
   return (
     <div>
       <div className="sesh-insights-mode-row">
-        <h2 style={{ margin: 0 }}>Today's standup</h2>
+        <h2 style={{ margin: 0 }}>{RANGE_TITLE[range]}</h2>
         <div className="sesh-insights-modes" role="tablist">
           <button
             className={`sesh-insights-mode${mode === "magazine" ? " is-active" : ""}`}
@@ -93,31 +95,34 @@ export function StandupView(): JSX.Element {
         <>
           <div className="sesh-magazine-headline">{fmtUsd(data.totalUsd)}</div>
           <div className="sesh-magazine-subtitle">
-            {data.totalSessions} {pluralize(data.totalSessions, "session")} ·{" "}
-            {data.totalTurns.toLocaleString()} turns
+            {fmtCount(data.totalSessions)} {pluralize(data.totalSessions, "session")} ·{" "}
+            {fmtCount(data.totalTurns)} turns
           </div>
 
           <div className="sesh-magazine-section-label">Projects</div>
-          {sorted.map((p) => {
-            const share = data.totalUsd > 0 ? p.usd / data.totalUsd : 0;
-            return (
-              <div className="sesh-magazine-row" key={p.project_path}>
+          <div className="sesh-magazine-rows">
+            {sorted.flatMap((p) => {
+              const share = data.totalUsd > 0 ? p.usd / data.totalUsd : 0;
+              return [
                 <div
+                  key={`${p.project_path}-label`}
                   className="sesh-magazine-row-label"
                   title={p.project_path}
                 >
                   {projectLabel(p.project_path)}
-                </div>
-                <div className="sesh-magazine-bar">
+                </div>,
+                <div key={`${p.project_path}-bar`} className="sesh-magazine-bar">
                   <div
                     className="sesh-magazine-bar-fill"
                     style={{ width: `${(share * 100).toFixed(1)}%` }}
                   />
-                </div>
-                <div className="sesh-magazine-row-value">{fmtUsd(p.usd)}</div>
-              </div>
-            );
-          })}
+                </div>,
+                <div key={`${p.project_path}-value`} className="sesh-magazine-row-value">
+                  {fmtUsd(p.usd)}
+                </div>,
+              ];
+            })}
+          </div>
         </>
       )}
 
@@ -132,7 +137,7 @@ export function StandupView(): JSX.Element {
               )}
             </button>
           </div>
-          <div className="sesh-standup-prose">{buildStandupProse(data)}</div>
+          <div className="sesh-standup-prose">{buildStandupProse(data, range)}</div>
           <table className="sesh-insights-table">
             <thead>
               <tr>
@@ -145,7 +150,7 @@ export function StandupView(): JSX.Element {
               {sorted.map((p) => (
                 <tr key={p.project_path}>
                   <td title={p.project_path}>{projectLabel(p.project_path)}</td>
-                  <td className="numeric">{p.sessions}</td>
+                  <td className="numeric">{fmtCount(p.sessions)}</td>
                   <td className="numeric">{fmtUsd(p.usd)}</td>
                 </tr>
               ))}

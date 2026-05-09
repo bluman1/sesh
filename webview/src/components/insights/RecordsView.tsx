@@ -1,4 +1,5 @@
 import { useInsights } from "../../hooks/useInsights";
+import { fmtUsd, fmtCount, pluralize } from "./format";
 
 interface Payload {
   longestSessionTurns: { session_id: string; turns: number };
@@ -9,12 +10,9 @@ interface Payload {
   totalUsd: number;
 }
 
-function pluralize(n: number, singular: string, plural = singular + "s"): string {
-  return n === 1 ? singular : plural;
-}
-
 export function RecordsView(): JSX.Element {
-  const { payload } = useInsights("records", 0);
+  const { payload } = useInsights("records", "all");
+
   if (!payload) return <div>Loading…</div>;
   const r = payload as Payload;
   return (
@@ -24,38 +22,38 @@ export function RecordsView(): JSX.Element {
         <li className="sesh-records-row">
           <span className="sesh-records-label">Longest session</span>
           <span className="sesh-records-value">
-            {r.longestSessionTurns.turns.toLocaleString()} turns
+            {fmtCount(r.longestSessionTurns.turns)} turns
           </span>
         </li>
         <li className="sesh-records-row">
           <span className="sesh-records-label">Fewest tokens to ship</span>
           <span className="sesh-records-value">
             {r.fewestTokensShipped
-              ? r.fewestTokensShipped.tokens.toLocaleString() + " tokens"
+              ? fmtCount(r.fewestTokensShipped.tokens) + " tokens"
               : "—"}
           </span>
         </li>
         <li className="sesh-records-row">
           <span className="sesh-records-label">Current streak</span>
           <span className="sesh-records-value">
-            {r.currentStreak.days} {pluralize(r.currentStreak.days, "day")}
+            {fmtCount(r.currentStreak.days)} {pluralize(r.currentStreak.days, "day")}
           </span>
         </li>
         <li className="sesh-records-row">
           <span className="sesh-records-label">Total sessions</span>
           <span className="sesh-records-value">
-            {r.totalSessions.toLocaleString()}
+            {fmtCount(r.totalSessions)}
           </span>
         </li>
         <li className="sesh-records-row">
           <span className="sesh-records-label">Total turns</span>
           <span className="sesh-records-value">
-            {r.totalTurns.toLocaleString()}
+            {fmtCount(r.totalTurns)}
           </span>
         </li>
         <li className="sesh-records-row">
           <span className="sesh-records-label">Total spent</span>
-          <span className="sesh-records-value">${r.totalUsd.toFixed(2)}</span>
+          <span className="sesh-records-value">{fmtUsd(r.totalUsd)}</span>
         </li>
       </ul>
     </div>
