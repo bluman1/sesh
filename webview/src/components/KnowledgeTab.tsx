@@ -91,7 +91,7 @@ export function KnowledgeTab({ onNavigateToSession }: Props): JSX.Element {
             <div className="sesh-knowledge-loading">Computing topics…</div>
           ) : filteredTopics.length === 0 ? (
             <div className="sesh-knowledge-empty">
-              No topics yet. Embeddings are off by default — turn on <strong>Settings → Indexing → Build embeddings</strong>, reload the window, then run <strong>Sesh: Reindex embeddings</strong> from the command palette.
+              No topics yet. Embeddings are off by default — turn on <strong>Settings → Indexing → Build embeddings</strong>. Indexing starts immediately; watch the bottom-left status bar.
             </div>
           ) : (
             <ul className="sesh-knowledge-topics">

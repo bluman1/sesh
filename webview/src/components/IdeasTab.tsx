@@ -22,7 +22,7 @@ export function IdeasTab({ onNavigateToSession }: Props): JSX.Element {
   if (payload.clusters.length === 0) {
     return (
       <div className="sesh-ideas-empty">
-        No ideas mined yet. Idea mining is off by default — turn on <strong>Settings → Indexing → Mine ideas from user messages</strong> and reload the window. Once on, intent-bearing messages ("I should refactor X", "TODO: handle Y") surface here grouped by similarity.
+        No ideas mined yet. Idea mining is off by default — turn on <strong>Settings → Indexing → Mine ideas from user messages</strong> (and <strong>Build embeddings</strong> if not already on). Once enabled, intent-bearing messages ("I should refactor X", "TODO: handle Y") surface here grouped by similarity.
       </div>
     );
   }

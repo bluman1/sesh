@@ -87,7 +87,7 @@ export class SeshHost {
     return this.gitIndexer;
   }
 
-  setEmbeddingIndexer(indexer: EmbeddingIndexer): void {
+  setEmbeddingIndexer(indexer: EmbeddingIndexer | null): void {
     this.embeddingIndexer = indexer;
   }
 
@@ -95,7 +95,7 @@ export class SeshHost {
     return this.embeddingIndexer;
   }
 
-  setIdeaIndexer(indexer: IdeaIndexer): void {
+  setIdeaIndexer(indexer: IdeaIndexer | null): void {
     this.ideaIndexer = indexer;
   }
 
@@ -103,7 +103,7 @@ export class SeshHost {
     return this.ideaIndexer;
   }
 
-  setCorrectionMiner(miner: CorrectionMiner): void {
+  setCorrectionMiner(miner: CorrectionMiner | null): void {
     this.correctionMiner = miner;
   }
 
@@ -111,7 +111,7 @@ export class SeshHost {
     return this.correctionMiner;
   }
 
-  setPromptLinter(linter: PromptLinter): void {
+  setPromptLinter(linter: PromptLinter | null): void {
     this.promptLinter = linter;
   }
 
@@ -119,7 +119,7 @@ export class SeshHost {
     return this.promptLinter;
   }
 
-  setEmbedder(e: Embedder): void {
+  setEmbedder(e: Embedder | null): void {
     this.embedder = e;
   }
 
