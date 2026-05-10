@@ -113,7 +113,8 @@ export type ToHost =
   | { kind: "getNextSessionSuggestions" }
   | { kind: "dismissNextSessionSuggestion"; key: string }
   | { kind: "getTopics"; limit?: number }
-  | { kind: "getGlossary"; limit?: number };
+  | { kind: "getGlossary"; limit?: number }
+  | { kind: "setSetting"; key: string; value: unknown };
 
 export type ToWebview =
   | { kind: "workspace"; currentPath: string | null }
@@ -123,6 +124,20 @@ export type ToWebview =
         tabs: { sessions: boolean; knowledge: boolean; ideas: boolean; insights: boolean; reviewer: boolean };
         pickUpBanner: boolean;
         pickUpScope: "global" | "workspace";
+        statusBarShowCost: boolean;
+        archiveTranscripts: boolean;
+        outcomeInferenceDays: number;
+        indexBackfillMode: "eager" | "lazy";
+        transcriptLimit: number;
+        gitIndexerEnabled: boolean;
+        embeddingsEnabled: boolean;
+        embeddingsAutoStart: boolean;
+        ideaMining: boolean;
+        ideaMiningSinceDays: number;
+        embedder: "local" | "ollama" | "cloud";
+        embedderModel: string;
+        embedderApiKey: string;
+        embedderApiUrl: string;
       };
     }
   | {

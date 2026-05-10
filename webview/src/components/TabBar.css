@@ -21,3 +21,9 @@
   color: var(--vscode-foreground);
   border-bottom-color: var(--vscode-focusBorder);
 }
+.sesh-tabbar-settings {
+  margin-left: auto;
+}
+.sesh-tabbar-settings .codicon {
+  font-size: 16px;
+}

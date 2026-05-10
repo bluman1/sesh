@@ -1,8 +1,9 @@
 import "./TabBar.css";
+import { Icon } from "./Icon";
 
-export type SeshTab = "sessions" | "knowledge" | "insights" | "ideas" | "reviewer";
+export type SeshTab = "sessions" | "knowledge" | "insights" | "ideas" | "reviewer" | "settings";
 
-const TABS: { id: SeshTab; label: string }[] = [
+const TABS: { id: Exclude<SeshTab, "settings">; label: string }[] = [
   { id: "sessions", label: "Sessions" },
   { id: "knowledge", label: "Knowledge" },
   { id: "insights", label: "Insights" },
@@ -31,6 +32,15 @@ export function TabBar({ active, onChange, visibleTabs }: Props): JSX.Element {
           {t.label}
         </button>
       ))}
+      <button
+        role="tab"
+        aria-selected={active === "settings"}
+        className={`sesh-tab sesh-tabbar-settings${active === "settings" ? " is-active" : ""}`}
+        onClick={() => onChange("settings")}
+        title="Settings"
+      >
+        <Icon name="gear" />
+      </button>
     </div>
   );
 }

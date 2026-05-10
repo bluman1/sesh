@@ -116,11 +116,7 @@ export class SeshPanel {
       this.refreshList();
     };
     const settingsListener = vscode.workspace.onDidChangeConfiguration((e) => {
-      if (
-        e.affectsConfiguration("sesh.tabs") ||
-        e.affectsConfiguration("sesh.pickUpBanner") ||
-        e.affectsConfiguration("sesh.pickUpScope")
-      ) {
+      if (e.affectsConfiguration("sesh")) {
         this.send({ kind: "appSettings", settings: readAppSettings() });
       }
     });
@@ -648,6 +644,15 @@ export class SeshPanel {
         case "getGlossary": {
           const g = computeGlossary(this.host.rawDb!, { limit: msg.limit });
           this.send({ kind: "glossary", entries: g });
+          break;
+        }
+        case "setSetting": {
+          void vscode.workspace
+            .getConfiguration("sesh")
+            .update(msg.key, msg.value, vscode.ConfigurationTarget.Global)
+            .then(undefined, (err) => {
+              console.warn(`[sesh] failed to set sesh.${msg.key}`, err);
+            });
           break;
         }
         case "getReviewerBranch": {

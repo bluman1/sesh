@@ -5,6 +5,7 @@ import { InsightsTab } from "./components/InsightsTab";
 import { KnowledgeTab } from "./components/KnowledgeTab";
 import { IdeasTab } from "./components/IdeasTab";
 import { ReviewerTab } from "./components/ReviewerTab";
+import { SettingsTab } from "./components/SettingsTab";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { onHostMessage } from "./messaging";
 
@@ -12,12 +13,40 @@ interface AppSettings {
   tabs: { sessions: boolean; knowledge: boolean; ideas: boolean; insights: boolean; reviewer: boolean };
   pickUpBanner: boolean;
   pickUpScope: "global" | "workspace";
+  statusBarShowCost: boolean;
+  archiveTranscripts: boolean;
+  outcomeInferenceDays: number;
+  indexBackfillMode: "eager" | "lazy";
+  transcriptLimit: number;
+  gitIndexerEnabled: boolean;
+  embeddingsEnabled: boolean;
+  embeddingsAutoStart: boolean;
+  ideaMining: boolean;
+  ideaMiningSinceDays: number;
+  embedder: "local" | "ollama" | "cloud";
+  embedderModel: string;
+  embedderApiKey: string;
+  embedderApiUrl: string;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
   tabs: { sessions: true, knowledge: true, ideas: true, insights: true, reviewer: true },
   pickUpBanner: true,
   pickUpScope: "global",
+  statusBarShowCost: true,
+  archiveTranscripts: false,
+  outcomeInferenceDays: 30,
+  indexBackfillMode: "eager",
+  transcriptLimit: 10000,
+  gitIndexerEnabled: true,
+  embeddingsEnabled: true,
+  embeddingsAutoStart: false,
+  ideaMining: true,
+  ideaMiningSinceDays: 30,
+  embedder: "local",
+  embedderModel: "",
+  embedderApiKey: "",
+  embedderApiUrl: "",
 };
 
 export function App(): JSX.Element {
@@ -36,7 +65,7 @@ export function App(): JSX.Element {
 
   // If the active tab gets disabled, fall back to "sessions".
   useEffect(() => {
-    if (tab !== "sessions" && !appSettings.tabs[tab]) {
+    if (tab !== "sessions" && tab !== "settings" && !appSettings.tabs[tab]) {
       setTab("sessions");
     }
   }, [appSettings, tab]);
@@ -46,8 +75,9 @@ export function App(): JSX.Element {
     setTab("sessions");
   }, []);
 
+  type MainTab = keyof typeof appSettings.tabs;
   const visibleTabs = new Set<SeshTab>(
-    (Object.keys(appSettings.tabs) as SeshTab[]).filter((t) => appSettings.tabs[t]),
+    (Object.keys(appSettings.tabs) as MainTab[]).filter((t) => appSettings.tabs[t]),
   );
 
   return (
@@ -65,6 +95,7 @@ export function App(): JSX.Element {
         {tab === "insights" && appSettings.tabs.insights && <InsightsTab />}
         {tab === "ideas" && appSettings.tabs.ideas && <IdeasTab onNavigateToSession={navigateToSession} />}
         {tab === "reviewer" && appSettings.tabs.reviewer && <ReviewerTab onNavigateToSession={navigateToSession} />}
+        {tab === "settings" && <SettingsTab />}
       </ErrorBoundary>
     </div>
   );
@@ -82,5 +113,7 @@ function tabSurfaceName(tab: SeshTab): string {
       return "Ideas";
     case "reviewer":
       return "Reviewer";
+    case "settings":
+      return "Settings";
   }
 }
