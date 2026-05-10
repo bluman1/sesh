@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { ensureNativePrebuild } from "./native-prebuild";
 import { SeshHost } from "./host/seshHost";
 import { SeshPanel } from "./host/seshPanel";
 import { SeshStatusBar } from "./host/statusBar";
@@ -27,12 +28,21 @@ let turnsIndexer: TurnsIndexer | null = null;
 let gitIndexer: GitIndexer | null = null;
 let embeddingIndexer: EmbeddingIndexer | null = null;
 let embedder: Embedder | null = null;
+let embedStatusItem: vscode.StatusBarItem | null = null;
+// Serialize live setup/teardown so a fast double-toggle can't race.
+let embeddingTransitions: Promise<void> = Promise.resolve();
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  const output = vscode.window.createOutputChannel("Sesh");
-  context.subscriptions.push(output);
+  ensureNativePrebuild(context.extensionPath);
 
-  host = new SeshHost(output);
+  const isDev = context.extensionMode === vscode.ExtensionMode.Development;
+  const output = vscode.window.createOutputChannel(isDev ? "Sesh (dev)" : "Sesh");
+  context.subscriptions.push(output);
+  if (isDev) {
+    output.appendLine("[sesh] running in extension-development mode — using ~/.sesh/dev/ for DB");
+  }
+
+  host = new SeshHost(output, { dev: isDev });
 
   // Empty tree-data providers so the activity-bar view and secondary-sidebar
   // view both render their viewsWelcome content (a clickable 'Open Sesh
@@ -108,7 +118,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         vscode.window.showInformationMessage("Embeddings are disabled.");
         return;
       }
-      await embeddingIndexer.run();
+      const runner = (embeddingIndexer as unknown as { runFullChain?: () => Promise<void> }).runFullChain;
+      if (runner) {
+        await runner();
+      } else {
+        await embeddingIndexer.run();
+      }
       vscode.window.showInformationMessage("Sesh: embeddings reindexed.");
     }),
   );
@@ -162,74 +177,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     host.setGitIndexer(gitIndexer);
     const cfg = vscode.workspace.getConfiguration("sesh");
 
-    const embeddingsEnabled = cfg.get<boolean>("embeddingsEnabled", true);
-    if (embeddingsEnabled) {
-      const cfgKind = cfg.get<string>("embedder", "local");
-      const model = cfg.get<string>("embedderModel", "");
-      const apiKey = cfg.get<string>("embedderApiKey", "");
-      const apiUrl = cfg.get<string>("embedderApiUrl", "");
-      let embedderCfg: EmbedderConfig;
-      if (cfgKind === "ollama") {
-        embedderCfg = { kind: "ollama", url: apiUrl || undefined, model: model || undefined };
-      } else if (cfgKind === "cloud") {
-        embedderCfg = { kind: "cloud", url: apiUrl || undefined, apiKey, model: model || undefined };
-      } else {
-        embedderCfg = { kind: "local", model: model || undefined };
-      }
-      embedder = createEmbedder(embedderCfg);
-
-      const chunkRepo = new ChunkRepository(host.rawDb!);
-      const embeddingRepo = new EmbeddingRepository(host.rawDb!);
-      embeddingIndexer = new EmbeddingIndexer(
-        host.rawDb!,
-        host.sessions!,
-        turnRepo,
-        chunkRepo,
-        embeddingRepo,
-        embedder,
-      );
-      host.setEmbeddingIndexer(embeddingIndexer);
-      host.setEmbedder(embedder);
-
-      const ideasEnabled = cfg.get<boolean>("ideaMining", true);
-      let ideaIndexer: IdeaIndexer | null = null;
-      if (ideasEnabled) {
-        const ideaRepo = new IdeaRepository(host.rawDb!);
-        ideaIndexer = new IdeaIndexer(
-          ideaRepo,
-          chunkRepo,
-          embedder,
-          cfg.get<number>("ideaMiningSinceDays", 30),
-        );
-        host.setIdeaIndexer(ideaIndexer);
-      }
-
-      const claudeMdRepo = new ClaudeMdSuggestionRepository(host.rawDb!);
-      const correctionMiner = new CorrectionMiner(host.rawDb!, chunkRepo, claudeMdRepo, embedder);
-      host.setCorrectionMiner(correctionMiner);
-
-      const lintRepo = new PromptLintRepository(host.rawDb!);
-      const promptLinter = new PromptLinter(host.rawDb!, chunkRepo, embeddingRepo, lintRepo, embedder);
-      host.setPromptLinter(promptLinter);
-
-      // Eager index in background — chain idea indexer after embedding indexer
-      // so ideas always run against freshly-built chunks. Local embedder
-      // downloads its model on first use; surface that as a notification so
-      // the user isn't staring at a frozen-looking panel.
-      const localEmbedder = embedder;
-      void (async () => {
-        try {
-          if (cfgKind === "local" && localEmbedder) {
-            await preloadLocalEmbedderWithProgress(localEmbedder);
-          }
-          await embeddingIndexer.run();
-          if (ideaIndexer) await ideaIndexer.run();
-          await correctionMiner.run();
-          await promptLinter.run();
-        } catch (err) {
-          console.warn("[sesh] eager indexing failed", err);
-        }
-      })();
+    setupEmbeddingChain(host, turnRepo, context);
+    // Respect `embeddingsAutoStart` at activation only. Live toggles
+    // (below) always run the chain — the user just opted in.
+    if (cfg.get<boolean>("embeddingsAutoStart", false)) {
+      void runEmbeddingChainIfPossible().catch((err) => {
+        console.warn("[sesh] eager indexing failed", err);
+      });
     }
 
     const shouldOpenFromMarker = consumePendingOpenMarker(context, output);
@@ -251,18 +205,38 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         });
     }
 
-    const gitEnabled = cfg.get<boolean>("gitIndexerEnabled", true);
-    if (gitEnabled && gitIndexer) {
-      // Fire and forget. Errors fall through to lazy/manual.
-      void runFullGitReindex({
-        db: host.rawDb!,
-        sessions: host.sessions!,
-        gitIndexer,
-        windowDays: cfg.get<number>("outcomeInferenceDays", 30),
-      }).catch((err) => {
-        console.warn("[sesh] eager git index failed; will run on demand", err);
-      });
-    }
+    triggerGitReindexIfEnabled();
+
+    // Live config-change handlers. Toggling embeddings, embedder config,
+    // idea mining, or git indexing now applies immediately — no window
+    // reload required. Setup/teardown is serialized through embeddingTransitions
+    // so a fast double-toggle can't race two parallel chains.
+    context.subscriptions.push(
+      vscode.workspace.onDidChangeConfiguration((e) => {
+        if (!e.affectsConfiguration("sesh")) return;
+        const embeddingsTouched =
+          e.affectsConfiguration("sesh.embeddingsEnabled") ||
+          e.affectsConfiguration("sesh.embedder") ||
+          e.affectsConfiguration("sesh.embedderModel") ||
+          e.affectsConfiguration("sesh.embedderApiKey") ||
+          e.affectsConfiguration("sesh.embedderApiUrl") ||
+          e.affectsConfiguration("sesh.ideaMining");
+        if (embeddingsTouched && host) {
+          embeddingTransitions = embeddingTransitions
+            .then(async () => {
+              teardownEmbeddingChain(host!);
+              setupEmbeddingChain(host!, turnRepo, context);
+              await runEmbeddingChainIfPossible();
+            })
+            .catch((err) => {
+              console.warn("[sesh] live embedding setup failed", err);
+            });
+        }
+        if (e.affectsConfiguration("sesh.gitIndexerEnabled")) {
+          triggerGitReindexIfEnabled();
+        }
+      }),
+    );
 
     // Run outcome inference daily so long-lived VSCode sessions age sessions
     // out to 'abandoned' without requiring a restart or manual reindex.
@@ -324,6 +298,143 @@ export async function deactivate(): Promise<void> {
   gitIndexer = null;
   embeddingIndexer = null;
   embedder = null;
+  embedStatusItem?.dispose();
+  embedStatusItem = null;
+}
+
+/**
+ * Construct + register the embedder, EmbeddingIndexer, IdeaIndexer (if
+ * enabled), CorrectionMiner, and PromptLinter on the host. No-op when
+ * `sesh.embeddingsEnabled` is false. Idempotent: callers should
+ * teardownEmbeddingChain() first if anything may already be registered.
+ */
+function setupEmbeddingChain(
+  h: SeshHost,
+  turnRepo: TurnRepository,
+  context: vscode.ExtensionContext,
+): void {
+  const cfg = vscode.workspace.getConfiguration("sesh");
+  if (!cfg.get<boolean>("embeddingsEnabled", false)) return;
+
+  const cfgKind = cfg.get<string>("embedder", "local");
+  const model = cfg.get<string>("embedderModel", "");
+  const apiKey = cfg.get<string>("embedderApiKey", "");
+  const apiUrl = cfg.get<string>("embedderApiUrl", "");
+  let embedderCfg: EmbedderConfig;
+  if (cfgKind === "ollama") {
+    embedderCfg = { kind: "ollama", url: apiUrl || undefined, model: model || undefined };
+  } else if (cfgKind === "cloud") {
+    embedderCfg = { kind: "cloud", url: apiUrl || undefined, apiKey, model: model || undefined };
+  } else {
+    embedderCfg = { kind: "local", model: model || undefined };
+  }
+  embedder = createEmbedder(embedderCfg);
+
+  const chunkRepo = new ChunkRepository(h.rawDb!);
+  const embeddingRepo = new EmbeddingRepository(h.rawDb!);
+  embeddingIndexer = new EmbeddingIndexer(
+    h.rawDb!,
+    h.sessions!,
+    turnRepo,
+    chunkRepo,
+    embeddingRepo,
+    embedder,
+  );
+  h.setEmbeddingIndexer(embeddingIndexer);
+  h.setEmbedder(embedder);
+
+  // Reuse the existing status-bar item across re-setups so we don't leak
+  // one per toggle.
+  if (!embedStatusItem) {
+    embedStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
+    embedStatusItem.name = "Sesh: embeddings";
+    context.subscriptions.push(embedStatusItem);
+  }
+  const status = embedStatusItem;
+  embeddingIndexer.setProgressHandler((indexed, total) => {
+    if (total === 0) { status.hide(); return; }
+    if (indexed >= total) {
+      status.text = `$(check) Sesh: embeddings up to date`;
+      status.show();
+      setTimeout(() => status.hide(), 4000);
+      return;
+    }
+    status.text = `$(sync~spin) Sesh: indexing ${indexed}/${total}`;
+    status.tooltip = "Sesh is embedding your sessions. The Knowledge and Style views will fill in once this finishes.";
+    status.show();
+  });
+
+  if (cfg.get<boolean>("ideaMining", false)) {
+    const ideaRepo = new IdeaRepository(h.rawDb!);
+    const ideaIndexer = new IdeaIndexer(
+      ideaRepo,
+      chunkRepo,
+      embedder,
+      cfg.get<number>("ideaMiningSinceDays", 30),
+    );
+    h.setIdeaIndexer(ideaIndexer);
+  }
+
+  const claudeMdRepo = new ClaudeMdSuggestionRepository(h.rawDb!);
+  const correctionMiner = new CorrectionMiner(h.rawDb!, chunkRepo, claudeMdRepo, embedder);
+  h.setCorrectionMiner(correctionMiner);
+
+  const lintRepo = new PromptLintRepository(h.rawDb!);
+  const promptLinter = new PromptLinter(h.rawDb!, chunkRepo, embeddingRepo, lintRepo, embedder);
+  h.setPromptLinter(promptLinter);
+
+  // Stash the full-chain runner on the embedding indexer so the reindex
+  // command and live config-change handler can call the FULL pipeline,
+  // not just embedding.
+  const localEmbedder = embedder;
+  const localEmbeddingIndexer = embeddingIndexer;
+  const ideaRef = h.currentIdeaIndexer;
+  const runEmbeddingChain = async () => {
+    if (cfgKind === "local" && localEmbedder) {
+      await preloadLocalEmbedderWithProgress(localEmbedder);
+    }
+    await localEmbeddingIndexer.run();
+    if (ideaRef) await ideaRef.run();
+    await correctionMiner.run();
+    await promptLinter.run();
+  };
+  (localEmbeddingIndexer as unknown as { runFullChain: () => Promise<void> }).runFullChain = runEmbeddingChain;
+}
+
+/** Cancel any in-flight embedding work and drop references on the host. */
+function teardownEmbeddingChain(h: SeshHost): void {
+  embeddingIndexer?.cancel();
+  embeddingIndexer = null;
+  embedder = null;
+  h.setEmbeddingIndexer(null);
+  h.setIdeaIndexer(null);
+  h.setCorrectionMiner(null);
+  h.setPromptLinter(null);
+  h.setEmbedder(null);
+  embedStatusItem?.hide();
+}
+
+/** Run the full chain if embeddings are enabled and a runner exists. */
+async function runEmbeddingChainIfPossible(): Promise<void> {
+  const idx = embeddingIndexer;
+  if (!idx) return;
+  const runner = (idx as unknown as { runFullChain?: () => Promise<void> }).runFullChain;
+  if (runner) await runner();
+}
+
+/** Trigger a full git reindex if `gitIndexerEnabled` is on. Cheap when off. */
+function triggerGitReindexIfEnabled(): void {
+  if (!host || !gitIndexer) return;
+  const cfg = vscode.workspace.getConfiguration("sesh");
+  if (!cfg.get<boolean>("gitIndexerEnabled", false)) return;
+  void runFullGitReindex({
+    db: host.rawDb!,
+    sessions: host.sessions!,
+    gitIndexer,
+    windowDays: cfg.get<number>("outcomeInferenceDays", 30),
+  }).catch((err) => {
+    console.warn("[sesh] git reindex failed", err);
+  });
 }
 
 /**

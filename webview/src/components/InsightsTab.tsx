@@ -16,7 +16,9 @@ const SUBS: { id: SubTab; label: string }[] = [
   { id: "style", label: "Style" },
 ];
 
-export function InsightsTab(): JSX.Element {
+type Props = { onNavigateToSession?: (id: string) => void };
+
+export function InsightsTab({ onNavigateToSession }: Props = {}): JSX.Element {
   const [sub, setSub] = useState<SubTab>("standup");
   const [range, setRange] = useState<InsightsRange>("today");
 
@@ -50,7 +52,7 @@ export function InsightsTab(): JSX.Element {
       </nav>
       <div className="sesh-insights-body">
         {sub === "standup" && <StandupView range={range} />}
-        {sub === "cost" && <CostView range={range} />}
+        {sub === "cost" && <CostView range={range} onNavigateToSession={onNavigateToSession} />}
         {sub === "leaderboard" && <LeaderboardView range={range} />}
         {sub === "records" && <RecordsView />}
         {sub === "style" && <StyleView />}

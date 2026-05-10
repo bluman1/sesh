@@ -2,6 +2,15 @@ import * as fs from "node:fs";
 import type { Db } from "../db/connection";
 import { ChunkRepository } from "../db/chunks";
 
+export interface StyleByOutcome {
+  outcome: "shipped" | "shipped-partial" | "reverted" | "abandoned" | "open";
+  session_count: number;
+  avg_user_chars_per_turn: number;
+  avg_words_per_sentence: number;
+  question_rate_pct: number;
+  hedging_per_1000_words: number;
+}
+
 export interface StyleFingerprint {
   generated_at: number;
   source_session_count: number;
@@ -13,6 +22,12 @@ export interface StyleFingerprint {
   exclamation_per_1000_chars: number;
   capital_letter_rate: number;
   top_tokens: { token: string; tfidf: number }[];
+  question_rate_pct: number;
+  code_block_rate_pct: number;
+  politeness_per_1000_words: number;
+  vocab_richness: number;
+  top_openings: { phrase: string; count: number }[];
+  by_outcome: StyleByOutcome[];
 }
 
 const HEDGES = [
@@ -48,8 +63,18 @@ export function computeStyleFingerprint(db: Db, opts?: { sinceDays?: number }): 
       exclamation_per_1000_chars: 0,
       capital_letter_rate: 0,
       top_tokens: [],
+      question_rate_pct: 0,
+      code_block_rate_pct: 0,
+      politeness_per_1000_words: 0,
+      vocab_richness: 0,
+      top_openings: [],
+      by_outcome: [],
     };
   }
+
+  const QUESTION_START_RE = /^(what|how|why|when|where|who|can|could|should|would|will|do|does|is|are)\b/i;
+  const CODE_BLOCK_RE = /```[\s\S]*?```/;
+  const POLITENESS_RE = /\b(please|thanks|thank you|thx|thank you so much)\b/gi;
 
   const sessionIds = new Set(chunks.map((c) => c.session_id));
   let totalChars = 0;
@@ -59,10 +84,15 @@ export function computeStyleFingerprint(db: Db, opts?: { sinceDays?: number }): 
   let totalExclamations = 0;
   let totalAlpha = 0;
   let totalCaps = 0;
+  let totalQuestions = 0;
+  let totalCodeBlocks = 0;
+  let totalPoliteness = 0;
 
   // Token frequencies per chunk for tf-idf.
   const docFreq = new Map<string, number>();
   const docTokens: Map<string, number>[] = [];
+  const openingCounts = new Map<string, number>();
+
   for (const c of chunks) {
     const text = c.text;
     totalChars += text.length;
@@ -80,6 +110,24 @@ export function computeStyleFingerprint(db: Db, opts?: { sinceDays?: number }): 
         if (ch >= "A" && ch <= "Z") totalCaps++;
       }
     }
+    // Question rate
+    const trimmed = text.trim();
+    if (trimmed.endsWith("?") || QUESTION_START_RE.test(trimmed)) {
+      totalQuestions++;
+    }
+    // Code block rate
+    if (CODE_BLOCK_RE.test(text)) {
+      totalCodeBlocks++;
+    }
+    // Politeness
+    const polMatches = text.match(POLITENESS_RE);
+    if (polMatches) totalPoliteness += polMatches.length;
+    // Top openings: first 3 words
+    const openWords = text.trim().toLowerCase().replace(/[^\w\s]/g, " ").split(/\s+/).filter(Boolean).slice(0, 3);
+    if (openWords.length === 3) {
+      const phrase = openWords.join(" ");
+      openingCounts.set(phrase, (openingCounts.get(phrase) ?? 0) + 1);
+    }
     const tokenCount = new Map<string, number>();
     for (const w of words) {
       if (STOPWORDS.has(w) || w.length < 3) continue;
@@ -93,8 +141,10 @@ export function computeStyleFingerprint(db: Db, opts?: { sinceDays?: number }): 
 
   const N = docTokens.length;
   const tfidfTotals = new Map<string, number>();
+  let totalNonStopTokens = 0;
   for (const tokens of docTokens) {
     const docLen = [...tokens.values()].reduce((s, n) => s + n, 0) || 1;
+    totalNonStopTokens += docLen;
     for (const [token, count] of tokens) {
       const tf = count / docLen;
       const df = docFreq.get(token) ?? 1;
@@ -107,6 +157,79 @@ export function computeStyleFingerprint(db: Db, opts?: { sinceDays?: number }): 
     .slice(0, 50)
     .map(([token, tfidf]) => ({ token, tfidf }));
 
+  // Vocab richness: unique non-stopword tokens / total non-stopword tokens
+  const vocabRichness = totalNonStopTokens === 0 ? 0 :
+    Math.round((docFreq.size / totalNonStopTokens) * 1000) / 1000;
+
+  // Top openings: phrases appearing >= 2 times, sorted by count desc, top 10
+  const topOpenings = [...openingCounts.entries()]
+    .filter(([, count]) => count >= 2)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([phrase, count]) => ({ phrase, count }));
+
+  // ── Outcome-bucketed metrics ──────────────────────────────────────────
+  const outcomeBySession = new Map<string, string>();
+  const outcomeRows = db
+    .prepare("SELECT session_id, state FROM session_outcomes")
+    .all() as { session_id: string; state: string }[];
+  for (const r of outcomeRows) outcomeBySession.set(r.session_id, r.state);
+
+  type OutcomeBucket = {
+    chunkCount: number;
+    sessionIds: Set<string>;
+    totalChars: number;
+    totalWords: number;
+    totalSentences: number;
+    totalHedges: number;
+    totalQuestions: number;
+  };
+  const buckets = new Map<string, OutcomeBucket>();
+
+  for (const c of chunks) {
+    const outcome = outcomeBySession.get(c.session_id) ?? "open";
+    let b = buckets.get(outcome);
+    if (!b) {
+      b = {
+        chunkCount: 0,
+        sessionIds: new Set(),
+        totalChars: 0,
+        totalWords: 0,
+        totalSentences: 0,
+        totalHedges: 0,
+        totalQuestions: 0,
+      };
+      buckets.set(outcome, b);
+    }
+    b.chunkCount++;
+    b.sessionIds.add(c.session_id);
+    b.totalChars += c.text.length;
+    const text = c.text;
+    b.totalSentences += Math.max(1, (text.match(/[.!?]+/g) || []).length);
+    const words = text.toLowerCase().match(/[a-z][a-z'-]*/g) ?? [];
+    b.totalWords += words.length;
+    for (const h of HEDGES) {
+      const re = new RegExp(`\\b${h.replace(/ /g, "\\s+")}\\b`, "gi");
+      b.totalHedges += (text.match(re) || []).length;
+    }
+    const trimmed = text.trim();
+    if (trimmed.endsWith("?") || QUESTION_START_RE.test(trimmed)) {
+      b.totalQuestions++;
+    }
+  }
+
+  const by_outcome: StyleByOutcome[] = [...buckets.entries()]
+    .filter(([, b]) => b.sessionIds.size >= 3)
+    .map(([outcome, b]) => ({
+      outcome: outcome as StyleByOutcome["outcome"],
+      session_count: b.sessionIds.size,
+      avg_user_chars_per_turn: Math.round(b.totalChars / Math.max(1, b.chunkCount)),
+      avg_words_per_sentence: Math.round((b.totalWords / Math.max(1, b.totalSentences)) * 10) / 10,
+      question_rate_pct: Math.round((b.totalQuestions * 1000 / Math.max(1, b.chunkCount)) / 10),
+      hedging_per_1000_words: Math.round((b.totalHedges * 1000 / Math.max(1, b.totalWords)) * 10) / 10,
+    }))
+    .sort((a, b) => b.session_count - a.session_count);
+
   return {
     generated_at: Date.now(),
     source_session_count: sessionIds.size,
@@ -118,6 +241,12 @@ export function computeStyleFingerprint(db: Db, opts?: { sinceDays?: number }): 
     exclamation_per_1000_chars: Math.round((totalExclamations * 1000 / Math.max(1, totalChars)) * 10) / 10,
     capital_letter_rate: totalAlpha === 0 ? 0 : Math.round((totalCaps / totalAlpha) * 1000) / 1000,
     top_tokens: top,
+    question_rate_pct: Math.round((totalQuestions / chunks.length) * 1000) / 10,
+    code_block_rate_pct: Math.round((totalCodeBlocks / chunks.length) * 1000) / 10,
+    politeness_per_1000_words: Math.round((totalPoliteness * 1000 / Math.max(1, totalWords)) * 10) / 10,
+    vocab_richness: vocabRichness,
+    top_openings: topOpenings,
+    by_outcome,
   };
 }
 

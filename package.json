@@ -166,15 +166,51 @@
           "default": true,
           "description": "Show today's spend in the status bar."
         },
-        "sesh.gitIndexerEnabled": {
+        "sesh.tabs.knowledge": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show the Knowledge tab in the Sesh panel. Off by default — enable in Sesh's Settings tab once you've turned on embeddings."
+        },
+        "sesh.tabs.ideas": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show the Ideas tab in the Sesh panel. Off by default — enable in Sesh's Settings tab once you've turned on idea mining."
+        },
+        "sesh.tabs.insights": {
           "type": "boolean",
           "default": true,
-          "description": "Index commits and link sessions to commits at activation. Powers the Reviewer tab and auto-shipped/auto-reverted outcome inference. Disable if git indexing is causing slowdowns on huge monorepos."
+          "description": "Show the Insights tab in the Sesh panel."
+        },
+        "sesh.tabs.reviewer": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the Reviewer tab in the Sesh panel."
+        },
+        "sesh.pickUpBanner": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the 'Pick up where you left off' banner above the session list."
+        },
+        "sesh.pickUpScope": {
+          "type": "string",
+          "enum": ["global", "workspace"],
+          "default": "workspace",
+          "description": "Which sessions feed the 'Pick up where you left off' banner. 'workspace' (default) restricts to sessions inside the current workspace's git repo; 'global' uses every session you've had."
+        },
+        "sesh.gitIndexerEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Index commits and link sessions to commits at activation. Powers the Reviewer tab and auto-shipped/auto-reverted outcome inference. Off by default — enable when you want the Reviewer tab populated. Reload window after enabling."
         },
         "sesh.embeddingsEnabled": {
           "type": "boolean",
-          "default": true,
-          "description": "Enable local semantic indexing of session transcripts. Powers the Knowledge tab."
+          "default": false,
+          "description": "Enable local semantic indexing of session transcripts. Powers the Knowledge tab. Off by default — enabling triggers a ~30 MB model download on first use. Reload window after enabling."
+        },
+        "sesh.embeddingsAutoStart": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically index embeddings at activation. Default off because the local @huggingface/transformers runtime can crash the extension host on some Electron builds. When off, run the 'Sesh: Reindex embeddings' command manually to index."
         },
         "sesh.embedder": {
           "type": "string",
@@ -199,8 +235,8 @@
         },
         "sesh.ideaMining": {
           "type": "boolean",
-          "default": true,
-          "description": "Mine intent-bearing user messages into the Ideas tab graveyard."
+          "default": false,
+          "description": "Mine intent-bearing user messages into the Ideas tab graveyard. Off by default — enable to populate the Ideas tab. Reload window after enabling."
         },
         "sesh.ideaMiningSinceDays": {
           "type": "number",
@@ -219,7 +255,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "rebuild-native": "electron-rebuild -f -w better-sqlite3",
-    "vscode:prepublish": "npm run build"
+    "prebuilds:fetch": "node scripts/fetch-prebuilds.js",
+    "vscode:prepublish": "npm run prebuilds:fetch && npm run build"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",

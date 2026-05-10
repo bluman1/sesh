@@ -30,5 +30,10 @@ package-lock.json
 # Build artefacts not consumed by the extension
 out/migrations/**.ts
 
+# Native binaries — the runtime loader swaps in the right ABI-matched prebuild
+# from the bundled prebuilds/ directory; the dev-time binary built for one
+# specific ABI should not be included.
+node_modules/better-sqlite3/build/**
+
 # OS
 .DS_Store

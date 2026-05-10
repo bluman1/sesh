@@ -1,0 +1,148 @@
+.sesh-settings {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.sesh-settings-body {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--sesh-space-4) var(--sesh-space-3) var(--sesh-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sesh-space-5);
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.sesh-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sesh-space-2);
+}
+.sesh-settings-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: var(--sesh-space-1);
+  border-bottom: 1px solid var(--sesh-border-subtle);
+}
+.sesh-settings-section-title {
+  font-size: var(--sesh-text-base);
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+.sesh-settings-section-subtitle {
+  color: var(--sesh-fg-muted);
+  font-size: var(--sesh-text-xs);
+}
+
+.sesh-settings-rows {
+  display: flex;
+  flex-direction: column;
+}
+.sesh-settings-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sesh-space-3);
+  padding: var(--sesh-space-2) 0;
+  border-bottom: 1px solid var(--sesh-border-subtle);
+}
+.sesh-settings-row:last-child { border-bottom: none; }
+.sesh-settings-row-clickable {
+  cursor: pointer;
+  user-select: none;
+}
+.sesh-settings-row-clickable:hover .sesh-settings-row-label {
+  color: var(--vscode-foreground);
+}
+.sesh-settings-row-text {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.sesh-settings-row-label {
+  color: var(--vscode-foreground);
+  font-size: var(--sesh-text-sm);
+}
+.sesh-settings-row-description {
+  color: var(--sesh-fg-muted);
+  font-size: var(--sesh-text-xs);
+  line-height: 1.4;
+}
+
+/* ─── Switch ───────────────────────────────────────── */
+
+.sesh-switch {
+  flex: 0 0 auto;
+  position: relative;
+  width: 32px;
+  height: 18px;
+  border-radius: var(--sesh-radius-pill);
+  border: 1px solid var(--sesh-border);
+  background: color-mix(in srgb, var(--vscode-foreground) 12%, transparent);
+  padding: 0;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.sesh-switch:hover {
+  border-color: color-mix(in srgb, var(--sesh-accent) 35%, var(--sesh-border));
+}
+.sesh-switch:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder, var(--sesh-accent));
+  outline-offset: 1px;
+}
+.sesh-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--vscode-foreground);
+  opacity: 0.85;
+  transition: left 140ms ease, background 140ms ease;
+}
+.sesh-switch.is-on {
+  background: color-mix(in srgb, var(--sesh-accent) 70%, transparent);
+  border-color: color-mix(in srgb, var(--sesh-accent) 80%, transparent);
+}
+.sesh-switch.is-on .sesh-switch-knob {
+  left: 16px;
+  background: #ffffff;
+  opacity: 1;
+}
+
+/* ─── Inputs / select ──────────────────────────────── */
+
+.sesh-settings-number,
+.sesh-settings-text {
+  flex: 0 0 auto;
+  background: var(--sesh-bg-elevated);
+  color: var(--vscode-foreground);
+  border: 1px solid var(--sesh-border);
+  border-radius: var(--sesh-radius-sm);
+  padding: 4px var(--sesh-space-2);
+  font: inherit;
+  font-size: var(--sesh-text-sm);
+}
+.sesh-settings-text { min-width: 280px; }
+.sesh-settings-number { min-width: 100px; }
+.sesh-settings-number:focus,
+.sesh-settings-text:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--sesh-accent) 55%, transparent);
+}
+
+.sesh-settings-dropdown {
+  flex: 0 0 auto;
+  min-width: 280px;
+}
+.sesh-settings-dropdown .sesh-dropdown-trigger {
+  width: 100%;
+  justify-content: space-between;
+}

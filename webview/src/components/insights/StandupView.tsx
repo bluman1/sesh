@@ -74,13 +74,45 @@ function fmtDelta(current: number, prior: number): { text: string; direction: "u
   };
 }
 
-function ComparisonDelta(props: {
+function Card({ title, right, children }: { title: string; right?: React.ReactNode; children: React.ReactNode }): JSX.Element {
+  return (
+    <section className="sesh-mag-card">
+      <header className="sesh-mag-card-head">
+        <h3 className="sesh-mag-card-title">{title}</h3>
+        {right}
+      </header>
+      {children}
+    </section>
+  );
+}
+
+function Kpi({ label, value, tone }: { label: string; value: string; tone?: "good" | "warn" | "bad" | "neutral" }): JSX.Element {
+  return (
+    <div className={`sesh-mag-kpi sesh-mag-kpi-${tone ?? "neutral"}`}>
+      <div className="sesh-mag-kpi-label">{label}</div>
+      <div className="sesh-mag-kpi-value">{value}</div>
+    </div>
+  );
+}
+
+function OutcomePill({ count, label, tone }: { count: number; label: string; tone: "good" | "warn" | "bad" | "muted" | "info" }): JSX.Element {
+  return (
+    <span className={`sesh-mag-outcome sesh-mag-outcome-${tone}${count === 0 ? " is-zero" : ""}`}>
+      <span className={`sesh-mag-outcome-dot sesh-mag-outcome-dot-${tone}`} />
+      <span className="sesh-mag-outcome-count">{count}</span>
+      <span className="sesh-mag-outcome-label">{label}</span>
+    </span>
+  );
+}
+
+function DeltaRow(props: {
+  label: string;
   current: number;
   prior: number;
   format: (n: number) => string;
   positiveIsGood: boolean;
 }): JSX.Element {
-  const { current, prior, format, positiveIsGood } = props;
+  const { label, current, prior, format, positiveIsGood } = props;
   const delta = fmtDelta(current, prior);
   const semantic =
     delta.direction === "flat" ? "flat" :
@@ -89,12 +121,15 @@ function ComparisonDelta(props: {
   const arrow =
     delta.direction === "up" ? "↑" : delta.direction === "down" ? "↓" : "·";
   return (
-    <span className={`sesh-comparison sesh-comparison-${semantic}`}>
-      <span className="sesh-vital-emphasis">{format(current)}</span>{" "}
-      <span className="sesh-comparison-arrow">{arrow}</span>{" "}
-      <span className="sesh-comparison-delta">{delta.text}</span>{" "}
-      <span className="sesh-comparison-prior">(was {format(prior)})</span>
-    </span>
+    <div className="sesh-mag-delta">
+      <span className="sesh-mag-delta-label">{label}</span>
+      <span className="sesh-mag-delta-current">{format(current)}</span>
+      <span className={`sesh-mag-delta-trend sesh-mag-delta-${semantic}`}>
+        <span className="sesh-mag-delta-arrow">{arrow}</span>
+        <span>{delta.text}</span>
+      </span>
+      <span className="sesh-mag-delta-prior">was {format(prior)}</span>
+    </div>
   );
 }
 
@@ -212,160 +247,150 @@ export function StandupView({ range }: Props): JSX.Element {
       </div>
 
       {mode === "magazine" && (
-        <>
-          <div className="sesh-magazine-headline">{fmtUsd(data.totalUsd)}</div>
-          <div className="sesh-magazine-subtitle">
-            {data.totalSessions} {pluralize(data.totalSessions, "session")} ·{" "}
-            {fmtCount(data.totalTurns)} turns
-            {data.activeHours && (
-              <> · {fmtTime(data.activeHours.firstTs)} – {fmtTime(data.activeHours.lastTs)}</>
-            )}
-          </div>
-
-          <div className="sesh-magazine-section-label">Projects</div>
-          <div className="sesh-magazine-rows">
-            {sorted.flatMap((p) => {
-              const share = data.totalUsd > 0 ? p.usd / data.totalUsd : 0;
-              return [
-                <div
-                  key={`${p.project_path}-label`}
-                  className="sesh-magazine-row-label"
-                  title={p.project_path}
-                >
-                  {projectLabel(p.project_path)}
-                </div>,
-                <div key={`${p.project_path}-bar`} className="sesh-magazine-bar">
-                  <div
-                    className="sesh-magazine-bar-fill"
-                    style={{ width: `${(share * 100).toFixed(1)}%` }}
-                  />
-                </div>,
-                <div key={`${p.project_path}-value`} className="sesh-magazine-row-value">
-                  {fmtUsd(p.usd)}
-                </div>,
-              ];
-            })}
-          </div>
-
-          <div className="sesh-magazine-section-label">Shape of the day</div>
-          <div className="sesh-vital-signs">
-            {data.modelBreakdown.length > 0 && (
-              <div className="sesh-vital-line">
-                {data.modelBreakdown.map((m, i) => (
-                  <span key={m.model}>
-                    {i > 0 && " · "}
-                    <span className="sesh-vital-emphasis">{fmtPct(m.share)}</span>{" "}
-                    {shortModel(m.model)}
-                  </span>
-                ))}
-              </div>
-            )}
-            <div className="sesh-vital-line">
-              <span>
-                <span className="sesh-vital-emphasis">{data.outcomes.shipped}</span> shipped
-              </span>
-              {" · "}
-              <span>
-                <span className="sesh-vital-emphasis">{data.outcomes.shipped_partial}</span> partial
-              </span>
-              {" · "}
-              <span>
-                <span className="sesh-vital-emphasis">{data.outcomes.reverted}</span> reverted
-              </span>
-              {" · "}
-              <span>
-                <span className="sesh-vital-emphasis">{data.outcomes.abandoned}</span> abandoned
-              </span>
-              {" · "}
-              <span>
-                <span className="sesh-vital-emphasis">{data.outcomes.open}</span> open
-              </span>
-            </div>
-            <div className="sesh-vital-line">
-              <span>
-                <span className="sesh-vital-emphasis">{fmtPct(data.cacheHitRate)}</span>{" "}
-                cache hit
-              </span>
-              {" · "}
-              <span>
-                <span className="sesh-vital-emphasis">{data.corrections}</span>{" "}
-                {pluralize(data.corrections, "correction")}
-              </span>
-              {" · "}
-              <span>
-                <span className="sesh-vital-emphasis">{fmtUsd(data.costPerTurn)}</span> per turn
-              </span>
-              {data.costPerShipped !== null && (
+        <div className="sesh-mag">
+          {/* Hero */}
+          <div className="sesh-mag-hero">
+            <div className="sesh-mag-hero-num">{fmtUsd(data.totalUsd)}</div>
+            <div className="sesh-mag-hero-sub">
+              <span>{data.totalSessions} {pluralize(data.totalSessions, "session")}</span>
+              <span className="sesh-mag-hero-dot">·</span>
+              <span>{fmtCount(data.totalTurns)} turns</span>
+              {data.activeHours && (
                 <>
-                  {" · "}
-                  <span>
-                    <span className="sesh-vital-emphasis">{fmtUsd(data.costPerShipped)}</span>{" "}
-                    per shipped
-                  </span>
+                  <span className="sesh-mag-hero-dot">·</span>
+                  <span>{fmtTime(data.activeHours.firstTs)} – {fmtTime(data.activeHours.lastTs)}</span>
                 </>
               )}
             </div>
           </div>
 
+          {/* KPI tiles */}
+          <div className="sesh-mag-kpis">
+            <Kpi label="Cache hit" value={fmtPct(data.cacheHitRate)} tone={data.cacheHitRate >= 0.5 ? "good" : "neutral"} />
+            <Kpi label="Per turn" value={fmtUsd(data.costPerTurn)} />
+            <Kpi label="Corrections" value={fmtCount(data.corrections)} tone={data.corrections === 0 ? "good" : "neutral"} />
+            {data.costPerShipped !== null && (
+              <Kpi label="Per shipped" value={fmtUsd(data.costPerShipped)} />
+            )}
+          </div>
+
+          {/* Outcomes pill row */}
+          {(() => {
+            const o = data.outcomes;
+            const total = o.shipped + o.shipped_partial + o.reverted + o.abandoned + o.open;
+            if (total === 0) return null;
+            return (
+              <div className="sesh-mag-outcomes">
+                <OutcomePill count={o.shipped} label="shipped" tone="good" />
+                <OutcomePill count={o.shipped_partial} label="partial" tone="warn" />
+                <OutcomePill count={o.reverted} label="reverted" tone="bad" />
+                <OutcomePill count={o.abandoned} label="abandoned" tone="muted" />
+                <OutcomePill count={o.open} label="open" tone="info" />
+              </div>
+            );
+          })()}
+
+          {/* Projects card */}
+          {sorted.length > 0 && (
+            <Card title="Projects" right={<span className="sesh-mag-card-meta">{sorted.length} {pluralize(sorted.length, "project")}</span>}>
+              <div className="sesh-mag-rows">
+                {sorted.flatMap((p) => {
+                  const share = data.totalUsd > 0 ? p.usd / data.totalUsd : 0;
+                  return [
+                    <div
+                      key={`${p.project_path}-label`}
+                      className="sesh-mag-row-label"
+                      title={p.project_path}
+                    >
+                      {projectLabel(p.project_path)}
+                    </div>,
+                    <div key={`${p.project_path}-bar`} className="sesh-mag-bar">
+                      <div
+                        className="sesh-mag-bar-fill"
+                        style={{ width: `${(share * 100).toFixed(1)}%` }}
+                      />
+                    </div>,
+                    <div key={`${p.project_path}-value`} className="sesh-mag-row-value">
+                      {fmtUsd(p.usd)}
+                      <span className="sesh-mag-row-share">{(share * 100).toFixed(0)}%</span>
+                    </div>,
+                  ];
+                })}
+              </div>
+            </Card>
+          )}
+
+          {/* Models + tools side-by-side */}
+          <div className="sesh-mag-cards-row">
+            {data.modelBreakdown.length > 0 && (
+              <Card title="Models">
+                <div className="sesh-mag-chips">
+                  {data.modelBreakdown.map((m) => (
+                    <span key={m.model} className="sesh-mag-chip">
+                      <span className="sesh-mag-chip-strong">{shortModel(m.model)}</span>
+                      <span className="sesh-mag-chip-weak">{fmtPct(m.share)}</span>
+                    </span>
+                  ))}
+                </div>
+              </Card>
+            )}
+            {data.topTools.length > 0 && (
+              <Card title="Top tools">
+                <div className="sesh-mag-chips">
+                  {data.topTools.map((t) => (
+                    <span key={t.name} className="sesh-mag-chip">
+                      <span className="sesh-mag-chip-strong">{t.name}</span>
+                      <span className="sesh-mag-chip-weak">{fmtCount(t.count)}</span>
+                    </span>
+                  ))}
+                </div>
+              </Card>
+            )}
+          </div>
+
+          {/* Top file */}
           {data.topFile && (
-            <>
-              <div className="sesh-magazine-section-label">Top file</div>
-              <div className="sesh-vital-line" title={data.topFile.path}>
-                <span className="sesh-vital-emphasis">{shortFilePath(data.topFile.path)}</span>{" "}
-                — {fmtUsd(data.topFile.usd)} across{" "}
-                {data.topFile.sessions} {pluralize(data.topFile.sessions, "session")}
+            <Card title="Top file">
+              <div className="sesh-mag-topfile">
+                <span className="sesh-mag-topfile-path" title={data.topFile.path}>
+                  {shortFilePath(data.topFile.path)}
+                </span>
+                <span className="sesh-mag-topfile-meta">
+                  {fmtUsd(data.topFile.usd)} · {data.topFile.sessions} {pluralize(data.topFile.sessions, "session")}
+                </span>
               </div>
-            </>
+            </Card>
           )}
 
-          {data.topTools.length > 0 && (
-            <>
-              <div className="sesh-magazine-section-label">Top tools</div>
-              <div className="sesh-vital-line">
-                {data.topTools.map((t, i) => (
-                  <span key={t.name}>
-                    {i > 0 && " · "}
-                    {t.name}{" "}
-                    <span className="sesh-vital-emphasis">({fmtCount(t.count)})</span>
-                  </span>
-                ))}
-              </div>
-            </>
-          )}
-
+          {/* vs prior */}
           {data.comparison && (
-            <>
-              <div className="sesh-magazine-section-label">
-                vs {data.comparison.rangeLabel}
-              </div>
-              <div className="sesh-vital-line">
-                Spend:{" "}
-                <ComparisonDelta
+            <Card title={`vs ${data.comparison.rangeLabel}`}>
+              <div className="sesh-mag-deltas">
+                <DeltaRow
+                  label="Spend"
                   current={data.totalUsd}
                   prior={data.comparison.totalUsd}
                   format={(n) => fmtUsd(n)}
                   positiveIsGood={false}
                 />
-                {" · "}
-                Sessions:{" "}
-                <ComparisonDelta
+                <DeltaRow
+                  label="Sessions"
                   current={data.totalSessions}
                   prior={data.comparison.totalSessions}
                   format={(n) => fmtCount(n)}
                   positiveIsGood={true}
                 />
-                {" · "}
-                Shipped:{" "}
-                <ComparisonDelta
+                <DeltaRow
+                  label="Shipped"
                   current={data.outcomes.shipped}
                   prior={data.comparison.outcomesShipped}
                   format={(n) => fmtCount(n)}
                   positiveIsGood={true}
                 />
               </div>
-            </>
+            </Card>
           )}
-        </>
+        </div>
       )}
 
       {mode === "standup" && (

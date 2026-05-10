@@ -2,6 +2,47 @@
 
 Internal reference for Claude sessions and engineers picking up the project. Written to be read alongside the code, not instead of it.
 
+> **Note (2026-05-10):** This document is historical — it describes the substrate-by-substrate construction. PR #8 added a Settings tab, flipped heavyweight features (embeddings, git indexing, idea mining) to default `false`, wired live `onDidChangeConfiguration` so most toggles apply without a reload, and refactored the embedding-chain setup into `setupEmbeddingChain` / `teardownEmbeddingChain` helpers in `src/extension.ts`. The defaults tables below have been spot-corrected; the activation flow narrative is left as-was for historical context. **For current behavior trust the code and the README, not this file.**
+
+---
+
+## Multi-ABI native binding distribution
+
+`better-sqlite3` is a native module whose `.node` binary must match the Electron ABI of the VSCode host. A single binary baked at `npm install` time only works on the specific Electron version the developer happened to build against; marketplace users on other VSCode versions get a NODE_MODULE_VERSION mismatch error at extension activation.
+
+### Solution
+
+Prebuilt binaries for several Electron ABIs are bundled inside the `.vsix`. At activation (before `better-sqlite3` is first `require`d), `src/native-prebuild.ts:ensureNativePrebuild` reads `process.versions.modules`, finds the matching binary under `prebuilds/<platform>-<arch>-electron-abi-<ABI>/better_sqlite3.node`, and copies it into `node_modules/better-sqlite3/build/Release/` if the file there doesn't already match.
+
+### Covered ABIs
+
+| ABI | Electron | Approx VSCode range |
+|-----|----------|---------------------|
+| 128 | 32.x | 1.96–1.98 |
+| 130 | 33.x | 1.99–1.101 |
+| 133 | 34.x | 1.102–1.105 |
+| 140 | 39.x | 1.119+ |
+
+ABIs 137 (Electron 36) and 138 (Electron 38) are included in the matrix but had no upstream prebuilds for `better-sqlite3@12.9.0` at the time of writing. The fetch script warns and skips them; they can be added when upstream publishes them.
+
+### Key files
+
+| File | Purpose |
+|------|---------|
+| `scripts/fetch-prebuilds.js` | Downloads prebuilds from GitHub releases into `prebuilds/`. Idempotent — skips already-fetched binaries. |
+| `src/native-prebuild.ts` | `ensureNativePrebuild(extensionPath)` — swaps the right `.node` into `node_modules` at activation. Uses a size+partial-hash check to avoid unnecessary copies. |
+
+### Workflow
+
+- **vscode:prepublish** runs `prebuilds:fetch` before `build`, so the `.vsix` always ships with fresh prebuilds.
+- **Dev (F5)**: run `npm run rebuild-native` (or `npx @electron/rebuild -f -w better-sqlite3 -v <electron-version>`) to bake the Electron-targeted binary. The runtime loader detects it matches and does nothing.
+- **Test runner**: run `npm rebuild better-sqlite3` to bake the Node.js-targeted binary. Tests don't go through `ensureNativePrebuild`.
+- `prebuilds/` is in `.gitignore` — the ~20MB of binaries are not committed. They are fetched at publish time by the CI/`vscode:prepublish` hook.
+
+### Why static imports are safe
+
+`better-sqlite3/lib/database.js` lazy-loads the native binding: `require('bindings')('better_sqlite3.node')` runs only on `new Database(...)`, not at `require` time. `ensureNativePrebuild` therefore only needs to run before `host.start()` — no dynamic-import restructuring of `extension.ts` was necessary.
+
 ---
 
 ## Substrate 2 — Semantic (embeddings · Knowledge · Ideas · CLAUDE.md improver · prompt linter · style fingerprint · next-session suggester)
@@ -92,12 +133,12 @@ All three new commands registered:
 
 | Key | Default | Effect |
 |---|---|---|
-| `sesh.embeddingsEnabled` | `true` | Enable/disable the entire semantic layer. |
+| `sesh.embeddingsEnabled` | `false` (was `true` pre-PR-#8) | Enable/disable the entire semantic layer. |
 | `sesh.embedder` | `"local"` | `local` (XenovaEmbedder, on-device WASM), `ollama` (local Ollama), `cloud` (OpenAI-compatible). |
 | `sesh.embedderModel` | `""` | Override model; blank uses embedder default. |
 | `sesh.embedderApiKey` | `""` | API key for cloud embedder (stored in VSCode settings plaintext). |
 | `sesh.embedderApiUrl` | `""` | Override endpoint URL; blank uses embedder default. |
-| `sesh.ideaMining` | `true` | Enable/disable idea graveyard population. |
+| `sesh.ideaMining` | `false` (was `true` pre-PR-#8) | Enable/disable idea graveyard population. |
 | `sesh.ideaMiningSinceDays` | `30` | Only mine ideas from sessions active within this many days. |
 
 ### New commands
@@ -180,7 +221,7 @@ Data flows via new messaging pairs:
 
 | Key | Default | Effect |
 |---|---|---|
-| `sesh.gitIndexerEnabled` | `true` | Disable git indexing for huge monorepos where walking git log is too slow. |
+| `sesh.gitIndexerEnabled` | `false` (was `true` pre-PR-#8) | Disable git indexing for huge monorepos where walking git log is too slow. |
 
 ### Known limitations / deferred
 
@@ -386,7 +427,7 @@ Load-bearing — don't remove without thinking hard:
 npm install
 npm run typecheck
 npm rebuild better-sqlite3 && npm test
-npx @electron/rebuild -f -w better-sqlite3 -v 39.8.8
+npx @electron/rebuild -f -w better-sqlite3 -v 39.0.0
 npm run build
 # then F5 in VSCode to launch the Extension Development Host
 ```

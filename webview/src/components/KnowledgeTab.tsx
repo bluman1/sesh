@@ -1,89 +1,68 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { onHostMessage, postToHost, type ToWebview } from "../messaging";
 import "./KnowledgeTab.css";
 
-type SearchResults = Extract<ToWebview, { kind: "searchResults" }>;
-type SearchResultItem = SearchResults["results"][number];
+type TopicsPayload = Extract<ToWebview, { kind: "topics" }>;
+type GlossaryPayload = Extract<ToWebview, { kind: "glossary" }>;
+type ClaudeMdPayload = Extract<ToWebview, { kind: "claudeMdSuggestions" }>;
 
 type Props = { onNavigateToSession: (id: string) => void };
 
 export function KnowledgeTab({ onNavigateToSession }: Props): JSX.Element {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResultItem[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [submittedQuery, setSubmittedQuery] = useState("");
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const [showTips, setShowTips] = useState(false);
-  const [tips, setTips] = useState<Extract<ToWebview, { kind: "claudeMdSuggestions" }>["suggestions"]>([]);
+  const [filter, setFilter] = useState("");
+  const [topics, setTopics] = useState<TopicsPayload["topics"]>([]);
+  const [glossary, setGlossary] = useState<GlossaryPayload["entries"]>([]);
+  const [tips, setTips] = useState<ClaudeMdPayload["suggestions"]>([]);
+  const [topicsLoading, setTopicsLoading] = useState(true);
+  const [expandedTopicId, setExpandedTopicId] = useState<string | null>(null);
 
   useEffect(() => {
     const off = onHostMessage((msg) => {
-      if (msg.kind === "searchResults") {
-        setResults(msg.results);
-        setSearching(false);
-        setSubmittedQuery(msg.query);
+      if (msg.kind === "topics") {
+        setTopics(msg.topics);
+        setTopicsLoading(false);
       }
-    });
-    return off;
-  }, []);
-
-  useEffect(() => {
-    const off = onHostMessage((msg) => {
+      if (msg.kind === "glossary") setGlossary(msg.entries);
       if (msg.kind === "claudeMdSuggestions") setTips(msg.suggestions);
     });
+    postToHost({ kind: "getTopics", limit: 30 });
+    postToHost({ kind: "getGlossary", limit: 50 });
     postToHost({ kind: "getClaudeMdSuggestions" });
     return off;
   }, []);
 
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    const trimmed = query.trim();
-    if (!trimmed) {
-      setResults([]);
-      setSubmittedQuery("");
-      setSearching(false);
-      return;
-    }
-    debounceRef.current = setTimeout(() => {
-      setSearching(true);
-      postToHost({ kind: "semanticSearch", query: trimmed });
-    }, 300);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [query]);
-
-  const tipsCount = tips.length;
+  const f = filter.trim().toLowerCase();
+  const filteredTopics = useMemo(
+    () => f ? topics.filter((t) => t.label.toLowerCase().includes(f) || t.representative.toLowerCase().includes(f)) : topics,
+    [topics, f],
+  );
+  const filteredGlossary = useMemo(
+    () => f ? glossary.filter((g) => g.term.toLowerCase().includes(f)) : glossary,
+    [glossary, f],
+  );
+  const filteredTips = useMemo(
+    () => f ? tips.filter((t) => t.body.toLowerCase().includes(f)) : tips,
+    [tips, f],
+  );
 
   return (
     <div className="sesh-knowledge">
       <div className="sesh-knowledge-toolbar">
         <input
           type="text"
-          className="sesh-knowledge-input"
-          placeholder="Search across all your sessions semantically…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          className="sesh-knowledge-filter"
+          placeholder="Filter topics, lessons, glossary…"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
         />
-        <button
-          type="button"
-          className="sesh-knowledge-tips-button"
-          onClick={() => setShowTips((s) => !s)}
-          title="View CLAUDE.md improvement suggestions"
-        >
-          Tips ({tipsCount})
-        </button>
       </div>
-      {showTips && (
-        <div className="sesh-knowledge-tips">
-          {tips.length === 0 ? (
-            <div className="sesh-knowledge-tips-empty">
-              No CLAUDE.md suggestions yet. They appear when you've corrected the assistant on the same kind of thing 3+ times.
-            </div>
+      <div className="sesh-knowledge-body">
+        <Section title="Lessons" subtitle="Patterns where you've corrected the assistant — distill into CLAUDE.md">
+          {filteredTips.length === 0 ? (
+            <div className="sesh-knowledge-empty">No lessons yet. They surface after you've corrected the assistant on the same kind of thing 3+ times.</div>
           ) : (
             <ul className="sesh-knowledge-tips-list">
-              {tips.map((t) => (
+              {filteredTips.map((t) => (
                 <li key={t.id} className="sesh-knowledge-tip">
                   <pre className="sesh-knowledge-tip-body">{t.body}</pre>
                   <div className="sesh-knowledge-tip-actions">
@@ -105,44 +84,87 @@ export function KnowledgeTab({ onNavigateToSession }: Props): JSX.Element {
               ))}
             </ul>
           )}
-        </div>
-      )}
-      <div className="sesh-knowledge-body">
-        {!query.trim() && (
-          <div className="sesh-knowledge-empty">
-            Type to search. Knowledge searches every assistant response and user message you've had — no exact phrase match needed.
-          </div>
-        )}
-        {query.trim() && searching && (
-          <div className="sesh-knowledge-loading">Searching…</div>
-        )}
-        {submittedQuery && !searching && results.length === 0 && (
-          <div className="sesh-knowledge-empty">
-            No matches for "{submittedQuery}". Try fewer or more general words.
-          </div>
-        )}
-        {results.length > 0 && (
-          <ul className="sesh-knowledge-results">
-            {results.map((r) => (
-              <li key={r.chunk_id} className="sesh-knowledge-result">
+        </Section>
+
+        <Section title="Topics" subtitle={`${filteredTopics.length} clusters across your sessions`}>
+          {topicsLoading ? (
+            <div className="sesh-knowledge-loading">Computing topics…</div>
+          ) : filteredTopics.length === 0 ? (
+            <div className="sesh-knowledge-empty">
+              No topics yet. Embeddings are off by default — turn on <strong>Settings → Indexing → Build embeddings</strong>. Indexing starts immediately; watch the bottom-left status bar.
+            </div>
+          ) : (
+            <ul className="sesh-knowledge-topics">
+              {filteredTopics.map((t) => {
+                const isExpanded = expandedTopicId === t.id;
+                return (
+                  <li key={t.id} className={`sesh-knowledge-topic${isExpanded ? " is-expanded" : ""}`}>
+                    <button
+                      type="button"
+                      className="sesh-knowledge-topic-button"
+                      onClick={() => setExpandedTopicId(isExpanded ? null : t.id)}
+                    >
+                      <div className="sesh-knowledge-topic-head">
+                        <span className="sesh-knowledge-topic-label">{t.label}</span>
+                        <span className="sesh-knowledge-topic-size">{t.size} mention{t.size === 1 ? "" : "s"} · {t.session_count} session{t.session_count === 1 ? "" : "s"}</span>
+                      </div>
+                      <div className="sesh-knowledge-topic-rep">{t.representative}</div>
+                    </button>
+                    {isExpanded && t.examples.length > 0 && (
+                      <ul className="sesh-knowledge-topic-examples">
+                        {t.examples.map((ex) => (
+                          <li key={ex.session_id} className="sesh-knowledge-topic-example">
+                            <button
+                              type="button"
+                              className="sesh-knowledge-topic-example-button"
+                              onClick={() => onNavigateToSession(ex.session_id)}
+                            >
+                              {ex.title}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Section>
+
+        <Section title="Glossary" subtitle="Recurring names, project terms, and file paths">
+          {filteredGlossary.length === 0 ? (
+            <div className="sesh-knowledge-empty">Glossary builds up as you use Sesh.</div>
+          ) : (
+            <div className="sesh-knowledge-glossary">
+              {filteredGlossary.map((g) => (
                 <button
+                  key={g.term}
                   type="button"
-                  className="sesh-knowledge-result-button"
-                  onClick={() => onNavigateToSession(r.session_id)}
+                  className="sesh-knowledge-glossary-item"
+                  onClick={() => setFilter(g.term)}
+                  title={`${g.count} mention${g.count === 1 ? "" : "s"} across ${g.session_count} session${g.session_count === 1 ? "" : "s"} — click to filter`}
                 >
-                  <div className="sesh-knowledge-result-line-1">
-                    <span className="sesh-knowledge-result-title">{r.session_title}</span>
-                    <span className="sesh-knowledge-result-score">
-                      {Math.round(r.score * 100)}%
-                    </span>
-                  </div>
-                  <div className="sesh-knowledge-result-snippet">{r.snippet}</div>
+                  <span className="sesh-knowledge-glossary-term">{g.term}</span>
+                  <span className="sesh-knowledge-glossary-count">{g.count}</span>
                 </button>
-              </li>
-            ))}
-          </ul>
-        )}
+              ))}
+            </div>
+          )}
+        </Section>
       </div>
     </div>
+  );
+}
+
+function Section({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }): JSX.Element {
+  return (
+    <section className="sesh-knowledge-section">
+      <div className="sesh-knowledge-section-head">
+        <span className="sesh-knowledge-section-title">{title}</span>
+        <span className="sesh-knowledge-section-subtitle">{subtitle}</span>
+      </div>
+      {children}
+    </section>
   );
 }

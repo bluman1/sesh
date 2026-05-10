@@ -26,6 +26,9 @@ import { TranscriptArchive } from "./transcriptArchive";
 const DEFAULT_DB_DIR = path.join(os.homedir(), ".sesh");
 const DEFAULT_DB_FILE = path.join(DEFAULT_DB_DIR, "db.sqlite");
 const DEFAULT_ARCHIVE_DIR = path.join(DEFAULT_DB_DIR, "transcripts");
+const DEV_DB_DIR = path.join(os.homedir(), ".sesh", "dev");
+const DEV_DB_FILE = path.join(DEV_DB_DIR, "db.sqlite");
+const DEV_ARCHIVE_DIR = path.join(DEV_DB_DIR, "transcripts");
 const CLAUDE_PROJECTS_DIR = path.join(os.homedir(), ".claude", "projects");
 const CODEX_SESSIONS_DIR = path.join(os.homedir(), ".codex", "sessions");
 
@@ -49,8 +52,22 @@ export class SeshHost {
   public onSessionChanged?: (id: string) => void;
   private scanPromise: Promise<void> | null = null;
 
-  constructor(public readonly output: vscode.OutputChannel) {
-    this.archive = new TranscriptArchive(DEFAULT_ARCHIVE_DIR);
+  private readonly dbDir: string;
+  private readonly dbFile: string;
+
+  constructor(
+    public readonly output: vscode.OutputChannel,
+    opts?: { dev?: boolean },
+  ) {
+    if (opts?.dev) {
+      this.dbDir = DEV_DB_DIR;
+      this.dbFile = DEV_DB_FILE;
+      this.archive = new TranscriptArchive(DEV_ARCHIVE_DIR);
+    } else {
+      this.dbDir = DEFAULT_DB_DIR;
+      this.dbFile = DEFAULT_DB_FILE;
+      this.archive = new TranscriptArchive(DEFAULT_ARCHIVE_DIR);
+    }
   }
 
   setTurnsIndexer(indexer: TurnsIndexer): void {
@@ -70,7 +87,7 @@ export class SeshHost {
     return this.gitIndexer;
   }
 
-  setEmbeddingIndexer(indexer: EmbeddingIndexer): void {
+  setEmbeddingIndexer(indexer: EmbeddingIndexer | null): void {
     this.embeddingIndexer = indexer;
   }
 
@@ -78,7 +95,7 @@ export class SeshHost {
     return this.embeddingIndexer;
   }
 
-  setIdeaIndexer(indexer: IdeaIndexer): void {
+  setIdeaIndexer(indexer: IdeaIndexer | null): void {
     this.ideaIndexer = indexer;
   }
 
@@ -86,7 +103,7 @@ export class SeshHost {
     return this.ideaIndexer;
   }
 
-  setCorrectionMiner(miner: CorrectionMiner): void {
+  setCorrectionMiner(miner: CorrectionMiner | null): void {
     this.correctionMiner = miner;
   }
 
@@ -94,7 +111,7 @@ export class SeshHost {
     return this.correctionMiner;
   }
 
-  setPromptLinter(linter: PromptLinter): void {
+  setPromptLinter(linter: PromptLinter | null): void {
     this.promptLinter = linter;
   }
 
@@ -102,7 +119,7 @@ export class SeshHost {
     return this.promptLinter;
   }
 
-  setEmbedder(e: Embedder): void {
+  setEmbedder(e: Embedder | null): void {
     this.embedder = e;
   }
 
@@ -121,8 +138,8 @@ export class SeshHost {
   }
 
   async start(): Promise<void> {
-    fs.mkdirSync(DEFAULT_DB_DIR, { recursive: true });
-    this.db = openDb(DEFAULT_DB_FILE);
+    fs.mkdirSync(this.dbDir, { recursive: true });
+    this.db = openDb(this.dbFile);
     try {
       runMigrations(this.db);
     } catch (err) {
@@ -132,7 +149,7 @@ export class SeshHost {
         `[sesh] If this is a stale DB from an older Sesh build, the safe recovery is:`,
       );
       this.output.appendLine(`[sesh]   1. Close VSCode`);
-      this.output.appendLine(`[sesh]   2. mv ${DEFAULT_DB_FILE} ${DEFAULT_DB_FILE}.bak`);
+      this.output.appendLine(`[sesh]   2. mv ${this.dbFile} ${this.dbFile}.bak`);
       this.output.appendLine(
         `[sesh]   3. Reopen VSCode — Sesh will rebuild the index from your source JSONLs.`,
       );
@@ -144,7 +161,7 @@ export class SeshHost {
     this.sessions = new SessionRepository(this.db);
     this.tags = new TagRepository(this.db);
     this.categories = new CategoryRepository(this.db);
-    this.output.appendLine(`[sesh] db open: ${DEFAULT_DB_FILE}`);
+    this.output.appendLine(`[sesh] db open: ${this.dbFile}`);
 
     this.scanPromise = this.runScan();
     await this.scanPromise;

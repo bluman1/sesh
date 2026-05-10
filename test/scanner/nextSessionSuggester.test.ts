@@ -172,4 +172,50 @@ describe("suggestNextSessionTopics", () => {
     expect(ideaSuggestion).toBeDefined();
     expect(ideaSuggestion!.source_session_ids.length).toBeGreaterThanOrEqual(1);
   });
+
+  it("enriches suggestions with session_title (custom > auto) and project_label", () => {
+    // Insert a fresh session with a custom title + repo_path. Note:
+    // SessionRepository.upsert intentionally does not overwrite
+    // custom_title/repo_path on conflict, so we use a new id rather
+    // than re-upserting one of s1/s2/s3 from beforeEach.
+    sessionRepo.upsert({
+      ...makeSession("s-titled"),
+      custom_title: "Auth module refactor",
+      auto_title: "auto-generated",
+      repo_path: "/Users/me/work/sesh",
+    });
+
+    const now = Date.now();
+    ideaRepo.upsertMany([
+      makeIdea("i1", "cl1", "Refactor the auth module", "s-titled", now),
+      makeIdea("i2", "cl1", "Refactor the auth module again", "s-titled", now),
+    ]);
+
+    const suggestions = suggestNextSessionTopics(db);
+    const idea = suggestions.find((s) => s.kind === "idea");
+    expect(idea).toBeDefined();
+    expect(idea!.session_title).toBe("Auth module refactor");
+    expect(idea!.project_label).toBe("sesh");
+  });
+
+  it("falls back to project_path basename when repo_path is null", () => {
+    sessionRepo.upsert({
+      ...makeSession("s-bare"),
+      custom_title: null,
+      auto_title: null,
+      repo_path: null,
+      project_path: "/var/work/other-project",
+    });
+    const now = Date.now();
+    ideaRepo.upsertMany([
+      makeIdea("i1", "cl1", "Some idea", "s-bare", now),
+      makeIdea("i2", "cl1", "Some idea twin", "s-bare", now),
+    ]);
+
+    const suggestions = suggestNextSessionTopics(db);
+    const idea = suggestions.find((s) => s.kind === "idea");
+    expect(idea).toBeDefined();
+    expect(idea!.session_title).toBeNull();
+    expect(idea!.project_label).toBe("other-project");
+  });
 });
