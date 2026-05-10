@@ -206,18 +206,15 @@ function Select<T extends string>({ label, value, options, onChange }: { label: 
       <div className="sesh-settings-row-text">
         <span className="sesh-settings-row-label">{label}</span>
       </div>
-      <div className="sesh-settings-select-wrap">
-        <select
-          className="sesh-settings-select"
-          value={value}
-          onChange={(e) => onChange(e.target.value as T)}
-        >
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-        <span className="codicon codicon-chevron-down sesh-settings-select-chevron" aria-hidden />
-      </div>
+      <select
+        className="sesh-settings-select"
+        value={value}
+        onChange={(e) => onChange(e.target.value as T)}
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
     </label>
   );
 }
