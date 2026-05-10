@@ -250,18 +250,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       // can flip `sesh.embeddingsAutoStart` on to revert to eager.
       const autoStart = cfg.get<boolean>("embeddingsAutoStart", false);
       const localEmbedder = embedder;
+      const localEmbeddingIndexer = embeddingIndexer;
+      const localCorrectionMiner = correctionMiner;
+      const localPromptLinter = promptLinter;
       const runEmbeddingChain = async () => {
         if (cfgKind === "local" && localEmbedder) {
           await preloadLocalEmbedderWithProgress(localEmbedder);
         }
-        await embeddingIndexer.run();
+        await localEmbeddingIndexer.run();
         if (ideaIndexer) await ideaIndexer.run();
-        await correctionMiner.run();
-        await promptLinter.run();
+        await localCorrectionMiner.run();
+        await localPromptLinter.run();
       };
       // Stash the runner on the embedding indexer so the reindex command
       // can call the FULL pipeline, not just embedding.
-      (embeddingIndexer as unknown as { runFullChain: () => Promise<void> }).runFullChain = runEmbeddingChain;
+      (localEmbeddingIndexer as unknown as { runFullChain: () => Promise<void> }).runFullChain = runEmbeddingChain;
       if (autoStart) {
         void runEmbeddingChain().catch((err) => {
           console.warn("[sesh] eager indexing failed", err);
