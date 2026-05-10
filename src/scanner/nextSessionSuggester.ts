@@ -1,6 +1,7 @@
 import type { Db } from "../db/connection";
 import { IdeaRepository } from "../db/ideas";
 import { recentCommitments } from "../db/analyticsQueries";
+import { basename } from "../util/path";
 
 export interface SessionSuggestion {
   kind: "idea" | "commitment";
@@ -19,14 +20,6 @@ interface SessionMeta {
   auto_title: string | null;
   repo_path: string | null;
   project_path: string | null;
-}
-
-function basename(p: string | null): string | null {
-  if (!p) return null;
-  const trimmed = p.replace(/\/+$/, "");
-  const idx = trimmed.lastIndexOf("/");
-  const tail = idx >= 0 ? trimmed.slice(idx + 1) : trimmed;
-  return tail.length > 0 ? tail : null;
 }
 
 function loadSessionMeta(db: Db, ids: string[]): Map<string, SessionMeta> {

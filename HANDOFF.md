@@ -2,6 +2,8 @@
 
 Internal reference for Claude sessions and engineers picking up the project. Written to be read alongside the code, not instead of it.
 
+> **Note (2026-05-10):** This document is historical — it describes the substrate-by-substrate construction. PR #8 added a Settings tab, flipped heavyweight features (embeddings, git indexing, idea mining) to default `false`, wired live `onDidChangeConfiguration` so most toggles apply without a reload, and refactored the embedding-chain setup into `setupEmbeddingChain` / `teardownEmbeddingChain` helpers in `src/extension.ts`. The defaults tables below have been spot-corrected; the activation flow narrative is left as-was for historical context. **For current behavior trust the code and the README, not this file.**
+
 ---
 
 ## Multi-ABI native binding distribution
@@ -131,12 +133,12 @@ All three new commands registered:
 
 | Key | Default | Effect |
 |---|---|---|
-| `sesh.embeddingsEnabled` | `true` | Enable/disable the entire semantic layer. |
+| `sesh.embeddingsEnabled` | `false` (was `true` pre-PR-#8) | Enable/disable the entire semantic layer. |
 | `sesh.embedder` | `"local"` | `local` (XenovaEmbedder, on-device WASM), `ollama` (local Ollama), `cloud` (OpenAI-compatible). |
 | `sesh.embedderModel` | `""` | Override model; blank uses embedder default. |
 | `sesh.embedderApiKey` | `""` | API key for cloud embedder (stored in VSCode settings plaintext). |
 | `sesh.embedderApiUrl` | `""` | Override endpoint URL; blank uses embedder default. |
-| `sesh.ideaMining` | `true` | Enable/disable idea graveyard population. |
+| `sesh.ideaMining` | `false` (was `true` pre-PR-#8) | Enable/disable idea graveyard population. |
 | `sesh.ideaMiningSinceDays` | `30` | Only mine ideas from sessions active within this many days. |
 
 ### New commands
@@ -219,7 +221,7 @@ Data flows via new messaging pairs:
 
 | Key | Default | Effect |
 |---|---|---|
-| `sesh.gitIndexerEnabled` | `true` | Disable git indexing for huge monorepos where walking git log is too slow. |
+| `sesh.gitIndexerEnabled` | `false` (was `true` pre-PR-#8) | Disable git indexing for huge monorepos where walking git log is too slow. |
 
 ### Known limitations / deferred
 
@@ -425,7 +427,7 @@ Load-bearing — don't remove without thinking hard:
 npm install
 npm run typecheck
 npm rebuild better-sqlite3 && npm test
-npx @electron/rebuild -f -w better-sqlite3 -v 39.8.8
+npx @electron/rebuild -f -w better-sqlite3 -v 39.0.0
 npm run build
 # then F5 in VSCode to launch the Extension Development Host
 ```

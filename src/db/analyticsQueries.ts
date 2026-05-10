@@ -1,5 +1,6 @@
 import type { Db } from "./connection";
 import type { SessionAnalyticsChip } from "../messaging";
+import { basename } from "../util/path";
 
 // Pricing table (USD per 1M tokens) — rough Claude prices as of 2026-05.
 // Update when model lineup changes; not load-bearing for correctness.
@@ -182,13 +183,6 @@ export function sessionsForFile(opts: { db: Db; path: string; since: number }): 
     };
   });
   return out.sort((a, b) => b.usd - a.usd);
-}
-
-function basename(p: string): string | null {
-  const trimmed = p.replace(/\/+$/, "");
-  const idx = trimmed.lastIndexOf("/");
-  const tail = idx >= 0 ? trimmed.slice(idx + 1) : trimmed;
-  return tail.length > 0 ? tail : null;
 }
 
 export interface ModelBoardRow {
