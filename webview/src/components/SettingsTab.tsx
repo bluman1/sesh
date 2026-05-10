@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { onHostMessage, postToHost, type ToWebview } from "../messaging";
 import "./SettingsTab.css";
 
@@ -25,8 +25,12 @@ const NULL_SETTINGS: Settings = {
   embedderApiUrl: "",
 };
 
-function update(key: string, value: unknown): void {
-  postToHost({ kind: "setSetting", key, value });
+function applyKey(prev: Settings, key: string, value: unknown): Settings {
+  if (key.startsWith("tabs.")) {
+    const sub = key.slice(5) as keyof Settings["tabs"];
+    return { ...prev, tabs: { ...prev.tabs, [sub]: value as boolean } };
+  }
+  return { ...prev, [key as keyof Settings]: value as never };
 }
 
 export function SettingsTab(): JSX.Element {
@@ -39,19 +43,24 @@ export function SettingsTab(): JSX.Element {
     return off;
   }, []);
 
+  const update = useCallback((key: string, value: unknown) => {
+    setS((prev) => applyKey(prev, key, value));
+    postToHost({ kind: "setSetting", key, value });
+  }, []);
+
   return (
     <div className="sesh-settings">
       <div className="sesh-settings-body">
 
         <Section title="Tabs" subtitle="Hide tabs you don't use; the Sessions tab can't be hidden.">
-          <Toggle label="Knowledge" checked={s.tabs.knowledge} onChange={(v) => update("tabs.knowledge", v)} />
-          <Toggle label="Ideas" checked={s.tabs.ideas} onChange={(v) => update("tabs.ideas", v)} />
-          <Toggle label="Insights" checked={s.tabs.insights} onChange={(v) => update("tabs.insights", v)} />
-          <Toggle label="Reviewer" checked={s.tabs.reviewer} onChange={(v) => update("tabs.reviewer", v)} />
+          <Switch label="Knowledge" checked={s.tabs.knowledge} onChange={(v) => update("tabs.knowledge", v)} />
+          <Switch label="Ideas" checked={s.tabs.ideas} onChange={(v) => update("tabs.ideas", v)} />
+          <Switch label="Insights" checked={s.tabs.insights} onChange={(v) => update("tabs.insights", v)} />
+          <Switch label="Reviewer" checked={s.tabs.reviewer} onChange={(v) => update("tabs.reviewer", v)} />
         </Section>
 
         <Section title="Pick up where you left off" subtitle="The banner above the session list with idea + commitment suggestions.">
-          <Toggle label="Show banner" checked={s.pickUpBanner} onChange={(v) => update("pickUpBanner", v)} />
+          <Switch label="Show banner" checked={s.pickUpBanner} onChange={(v) => update("pickUpBanner", v)} />
           <Select
             label="Suggestion scope"
             value={s.pickUpScope}
@@ -73,15 +82,15 @@ export function SettingsTab(): JSX.Element {
             ]}
             onChange={(v) => update("indexBackfillMode", v)}
           />
-          <Toggle label="Index git history (Reviewer tab)" checked={s.gitIndexerEnabled} onChange={(v) => update("gitIndexerEnabled", v)} />
-          <Toggle label="Build embeddings (Knowledge tab)" checked={s.embeddingsEnabled} onChange={(v) => update("embeddingsEnabled", v)} />
-          <Toggle
+          <Switch label="Index git history (Reviewer tab)" checked={s.gitIndexerEnabled} onChange={(v) => update("gitIndexerEnabled", v)} />
+          <Switch label="Build embeddings (Knowledge tab)" checked={s.embeddingsEnabled} onChange={(v) => update("embeddingsEnabled", v)} />
+          <Switch
             label="Auto-start embedding indexing at activation"
             description="Default off because the local model load can crash the host on some Electron builds. When off, run 'Sesh: Reindex embeddings' from the command palette."
             checked={s.embeddingsAutoStart}
             onChange={(v) => update("embeddingsAutoStart", v)}
           />
-          <Toggle label="Mine ideas from user messages" checked={s.ideaMining} onChange={(v) => update("ideaMining", v)} />
+          <Switch label="Mine ideas from user messages" checked={s.ideaMining} onChange={(v) => update("ideaMining", v)} />
           <NumberField
             label="Idea mining lookback (days)"
             value={s.ideaMiningSinceDays}
@@ -132,8 +141,8 @@ export function SettingsTab(): JSX.Element {
         </Section>
 
         <Section title="Misc">
-          <Toggle label="Show today's spend in status bar" checked={s.statusBarShowCost} onChange={(v) => update("statusBarShowCost", v)} />
-          <Toggle
+          <Switch label="Show today's spend in status bar" checked={s.statusBarShowCost} onChange={(v) => update("statusBarShowCost", v)} />
+          <Switch
             label="Archive transcripts (gzip to ~/.sesh/transcripts/)"
             description="Pruned source JSONLs stay readable from Sesh."
             checked={s.archiveTranscripts}
@@ -164,20 +173,30 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: stri
   );
 }
 
-function Toggle({ label, description, checked, onChange }: { label: string; description?: string; checked: boolean; onChange: (v: boolean) => void }): JSX.Element {
+function Switch({ label, description, checked, onChange }: { label: string; description?: string; checked: boolean; onChange: (v: boolean) => void }): JSX.Element {
   return (
-    <label className="sesh-settings-row">
+    <div
+      className="sesh-settings-row sesh-settings-row-clickable"
+      onClick={() => onChange(!checked)}
+    >
       <div className="sesh-settings-row-text">
         <span className="sesh-settings-row-label">{label}</span>
         {description && <span className="sesh-settings-row-description">{description}</span>}
       </div>
-      <input
-        type="checkbox"
-        className="sesh-settings-toggle"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-      />
-    </label>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        className={`sesh-switch${checked ? " is-on" : ""}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onChange(!checked);
+        }}
+      >
+        <span className="sesh-switch-knob" />
+      </button>
+    </div>
   );
 }
 
@@ -187,15 +206,18 @@ function Select<T extends string>({ label, value, options, onChange }: { label: 
       <div className="sesh-settings-row-text">
         <span className="sesh-settings-row-label">{label}</span>
       </div>
-      <select
-        className="sesh-settings-select"
-        value={value}
-        onChange={(e) => onChange(e.target.value as T)}
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
+      <div className="sesh-settings-select-wrap">
+        <select
+          className="sesh-settings-select"
+          value={value}
+          onChange={(e) => onChange(e.target.value as T)}
+        >
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+        <span className="codicon codicon-chevron-down sesh-settings-select-chevron" aria-hidden />
+      </div>
     </label>
   );
 }
