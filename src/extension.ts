@@ -174,7 +174,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     host.setGitIndexer(gitIndexer);
     const cfg = vscode.workspace.getConfiguration("sesh");
 
-    const embeddingsEnabled = cfg.get<boolean>("embeddingsEnabled", true);
+    const embeddingsEnabled = cfg.get<boolean>("embeddingsEnabled", false);
     if (embeddingsEnabled) {
       const cfgKind = cfg.get<string>("embedder", "local");
       const model = cfg.get<string>("embedderModel", "");
@@ -221,7 +221,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         embedStatus.show();
       });
 
-      const ideasEnabled = cfg.get<boolean>("ideaMining", true);
+      const ideasEnabled = cfg.get<boolean>("ideaMining", false);
       let ideaIndexer: IdeaIndexer | null = null;
       if (ideasEnabled) {
         const ideaRepo = new IdeaRepository(host.rawDb!);
@@ -291,7 +291,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         });
     }
 
-    const gitEnabled = cfg.get<boolean>("gitIndexerEnabled", true);
+    const gitEnabled = cfg.get<boolean>("gitIndexerEnabled", false);
     if (gitEnabled && gitIndexer) {
       // Fire and forget. Errors fall through to lazy/manual.
       void runFullGitReindex({

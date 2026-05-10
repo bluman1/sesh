@@ -80,7 +80,7 @@ export function BranchView({ onNavigateToSession }: Props): JSX.Element {
       {commits.length === 0 ? (
         <div className="sesh-reviewer-empty">
           No commits indexed yet on <strong>{payload.branch ?? "this branch"}</strong>.
-          Run <strong>Sesh: Reindex git</strong>.
+          Git indexing is off by default — turn on <strong>Settings → Indexing → Index git history</strong>, reload the window, then run <strong>Sesh: Reindex git</strong>.
         </div>
       ) : (
         <>

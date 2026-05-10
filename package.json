@@ -199,13 +199,13 @@
         },
         "sesh.gitIndexerEnabled": {
           "type": "boolean",
-          "default": true,
-          "description": "Index commits and link sessions to commits at activation. Powers the Reviewer tab and auto-shipped/auto-reverted outcome inference. Disable if git indexing is causing slowdowns on huge monorepos."
+          "default": false,
+          "description": "Index commits and link sessions to commits at activation. Powers the Reviewer tab and auto-shipped/auto-reverted outcome inference. Off by default — enable when you want the Reviewer tab populated. Reload window after enabling."
         },
         "sesh.embeddingsEnabled": {
           "type": "boolean",
-          "default": true,
-          "description": "Enable local semantic indexing of session transcripts. Powers the Knowledge tab."
+          "default": false,
+          "description": "Enable local semantic indexing of session transcripts. Powers the Knowledge tab. Off by default — enabling triggers a ~30 MB model download on first use. Reload window after enabling."
         },
         "sesh.embeddingsAutoStart": {
           "type": "boolean",
@@ -235,8 +235,8 @@
         },
         "sesh.ideaMining": {
           "type": "boolean",
-          "default": true,
-          "description": "Mine intent-bearing user messages into the Ideas tab graveyard."
+          "default": false,
+          "description": "Mine intent-bearing user messages into the Ideas tab graveyard. Off by default — enable to populate the Ideas tab. Reload window after enabling."
         },
         "sesh.ideaMiningSinceDays": {
           "type": "number",

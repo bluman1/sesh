@@ -42,15 +42,30 @@ export function SettingsTab({ settings: s, onUpdate: update }: Props): JSX.Eleme
             ]}
             onChange={(v) => update("indexBackfillMode", v)}
           />
-          <Switch label="Index git history (Reviewer tab)" checked={s.gitIndexerEnabled} onChange={(v) => update("gitIndexerEnabled", v)} />
-          <Switch label="Build embeddings (Knowledge tab)" checked={s.embeddingsEnabled} onChange={(v) => update("embeddingsEnabled", v)} />
+          <Switch
+            label="Index git history (Reviewer tab)"
+            description="Walks `git log` for every discovered repo. Off by default. Reload window after enabling."
+            checked={s.gitIndexerEnabled}
+            onChange={(v) => update("gitIndexerEnabled", v)}
+          />
+          <Switch
+            label="Build embeddings (Knowledge tab)"
+            description="Enabling triggers a one-time ~30 MB model download on first use, then ~50 ms/chunk to index your sessions. Off by default. Reload window after enabling."
+            checked={s.embeddingsEnabled}
+            onChange={(v) => update("embeddingsEnabled", v)}
+          />
           <Switch
             label="Auto-start embedding indexing at activation"
-            description="Default off because the local model load can crash the host on some Electron builds. When off, run 'Sesh: Reindex embeddings' from the command palette."
+            description="When on, Sesh runs the full embedding pipeline at startup. Off by default — the local @huggingface/transformers runtime can crash the extension host on some Electron builds. When off, run 'Sesh: Reindex embeddings' from the command palette."
             checked={s.embeddingsAutoStart}
             onChange={(v) => update("embeddingsAutoStart", v)}
           />
-          <Switch label="Mine ideas from user messages" checked={s.ideaMining} onChange={(v) => update("ideaMining", v)} />
+          <Switch
+            label="Mine ideas from user messages"
+            description="Scans intent-bearing messages into the Ideas tab graveyard. Off by default. Reload window after enabling."
+            checked={s.ideaMining}
+            onChange={(v) => update("ideaMining", v)}
+          />
           <NumberField
             label="Idea mining lookback (days)"
             value={s.ideaMiningSinceDays}
