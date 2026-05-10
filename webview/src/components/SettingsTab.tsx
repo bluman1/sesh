@@ -1,53 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
-import { onHostMessage, postToHost, type ToWebview } from "../messaging";
+import { Dropdown } from "./Dropdown";
 import "./SettingsTab.css";
+import type { AppSettings } from "../App";
 
-type AppSettingsPayload = Extract<ToWebview, { kind: "appSettings" }>;
-type Settings = AppSettingsPayload["settings"];
-
-const NULL_SETTINGS: Settings = {
-  tabs: { sessions: true, knowledge: true, ideas: true, insights: true, reviewer: true },
-  pickUpBanner: true,
-  pickUpScope: "global",
-  statusBarShowCost: true,
-  archiveTranscripts: false,
-  outcomeInferenceDays: 30,
-  indexBackfillMode: "eager",
-  transcriptLimit: 10000,
-  gitIndexerEnabled: true,
-  embeddingsEnabled: true,
-  embeddingsAutoStart: false,
-  ideaMining: true,
-  ideaMiningSinceDays: 30,
-  embedder: "local",
-  embedderModel: "",
-  embedderApiKey: "",
-  embedderApiUrl: "",
+type Props = {
+  settings: AppSettings;
+  onUpdate: (key: string, value: unknown) => void;
 };
 
-function applyKey(prev: Settings, key: string, value: unknown): Settings {
-  if (key.startsWith("tabs.")) {
-    const sub = key.slice(5) as keyof Settings["tabs"];
-    return { ...prev, tabs: { ...prev.tabs, [sub]: value as boolean } };
-  }
-  return { ...prev, [key as keyof Settings]: value as never };
-}
-
-export function SettingsTab(): JSX.Element {
-  const [s, setS] = useState<Settings>(NULL_SETTINGS);
-
-  useEffect(() => {
-    const off = onHostMessage((msg) => {
-      if (msg.kind === "appSettings") setS(msg.settings);
-    });
-    return off;
-  }, []);
-
-  const update = useCallback((key: string, value: unknown) => {
-    setS((prev) => applyKey(prev, key, value));
-    postToHost({ kind: "setSetting", key, value });
-  }, []);
-
+export function SettingsTab({ settings: s, onUpdate: update }: Props): JSX.Element {
   return (
     <div className="sesh-settings">
       <div className="sesh-settings-body">
@@ -61,7 +21,7 @@ export function SettingsTab(): JSX.Element {
 
         <Section title="Pick up where you left off" subtitle="The banner above the session list with idea + commitment suggestions.">
           <Switch label="Show banner" checked={s.pickUpBanner} onChange={(v) => update("pickUpBanner", v)} />
-          <Select
+          <SettingDropdown
             label="Suggestion scope"
             value={s.pickUpScope}
             options={[
@@ -73,7 +33,7 @@ export function SettingsTab(): JSX.Element {
         </Section>
 
         <Section title="Indexing" subtitle="Background work Sesh runs to keep its data fresh.">
-          <Select
+          <SettingDropdown
             label="Session indexing mode"
             value={s.indexBackfillMode}
             options={[
@@ -100,7 +60,7 @@ export function SettingsTab(): JSX.Element {
         </Section>
 
         <Section title="Embedder" subtitle="Which embedder powers semantic search and the Knowledge tab.">
-          <Select
+          <SettingDropdown
             label="Embedder"
             value={s.embedder}
             options={[
@@ -200,22 +160,20 @@ function Switch({ label, description, checked, onChange }: { label: string; desc
   );
 }
 
-function Select<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }): JSX.Element {
+function SettingDropdown<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }): JSX.Element {
   return (
-    <label className="sesh-settings-row">
+    <div className="sesh-settings-row">
       <div className="sesh-settings-row-text">
         <span className="sesh-settings-row-label">{label}</span>
       </div>
-      <select
-        className="sesh-settings-select"
+      <Dropdown
+        className="sesh-settings-dropdown"
+        align="right"
         value={value}
-        onChange={(e) => onChange(e.target.value as T)}
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-    </label>
+        items={options.map((o) => ({ value: o.value, label: o.label }))}
+        onChange={(v) => onChange(v as T)}
+      />
+    </div>
   );
 }
 

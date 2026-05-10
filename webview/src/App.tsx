@@ -7,9 +7,9 @@ import { IdeasTab } from "./components/IdeasTab";
 import { ReviewerTab } from "./components/ReviewerTab";
 import { SettingsTab } from "./components/SettingsTab";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { onHostMessage } from "./messaging";
+import { onHostMessage, postToHost } from "./messaging";
 
-interface AppSettings {
+export interface AppSettings {
   tabs: { sessions: boolean; knowledge: boolean; ideas: boolean; insights: boolean; reviewer: boolean };
   pickUpBanner: boolean;
   pickUpScope: "global" | "workspace";
@@ -49,6 +49,14 @@ const DEFAULT_SETTINGS: AppSettings = {
   embedderApiUrl: "",
 };
 
+function applyKey(prev: AppSettings, key: string, value: unknown): AppSettings {
+  if (key.startsWith("tabs.")) {
+    const sub = key.slice(5) as keyof AppSettings["tabs"];
+    return { ...prev, tabs: { ...prev.tabs, [sub]: value as boolean } };
+  }
+  return { ...prev, [key as keyof AppSettings]: value as never };
+}
+
 export function App(): JSX.Element {
   const [tab, setTab] = useState<SeshTab>("sessions");
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -75,6 +83,11 @@ export function App(): JSX.Element {
     setTab("sessions");
   }, []);
 
+  const updateSetting = useCallback((key: string, value: unknown) => {
+    setAppSettings((prev) => applyKey(prev, key, value));
+    postToHost({ kind: "setSetting", key, value });
+  }, []);
+
   type MainTab = keyof typeof appSettings.tabs;
   const visibleTabs = new Set<SeshTab>(
     (Object.keys(appSettings.tabs) as MainTab[]).filter((t) => appSettings.tabs[t]),
@@ -95,7 +108,7 @@ export function App(): JSX.Element {
         {tab === "insights" && appSettings.tabs.insights && <InsightsTab />}
         {tab === "ideas" && appSettings.tabs.ideas && <IdeasTab onNavigateToSession={navigateToSession} />}
         {tab === "reviewer" && appSettings.tabs.reviewer && <ReviewerTab onNavigateToSession={navigateToSession} />}
-        {tab === "settings" && <SettingsTab />}
+        {tab === "settings" && <SettingsTab settings={appSettings} onUpdate={updateSetting} />}
       </ErrorBoundary>
     </div>
   );
