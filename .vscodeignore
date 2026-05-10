@@ -35,5 +35,42 @@ out/migrations/**.ts
 # specific ABI should not be included.
 node_modules/better-sqlite3/build/**
 
+# @huggingface/transformers leaves a 90 MB .cache dir after any local
+# embedding run — that's just the downloaded ONNX model, which Xenova
+# will re-download on first use. Don't ship it.
+node_modules/@huggingface/transformers/.cache/**
+
+# Source / tests / fixtures inside dep packages we don't need at runtime.
+node_modules/@huggingface/transformers/docs/**
+node_modules/@huggingface/transformers/examples/**
+node_modules/@huggingface/transformers/scripts/**
+node_modules/@huggingface/transformers/tests/**
+node_modules/@huggingface/transformers/src/**
+node_modules/@huggingface/transformers/.github/**
+
+# Source maps from bundled deps add up; runtime doesn't need them.
+node_modules/**/*.js.map
+node_modules/**/*.d.ts.map
+node_modules/**/*.map
+
+# TypeScript declaration / source files in transitive deps — not loaded at runtime.
+node_modules/**/*.ts
+node_modules/typescript/**
+
+# Dev artifacts inside transitive packages.
+node_modules/**/test/**
+node_modules/**/tests/**
+node_modules/**/.github/**
+node_modules/**/example/**
+node_modules/**/examples/**
+node_modules/**/docs/**
+node_modules/**/CHANGELOG*
+
+# Internal docs / packaging scripts — not shipped to end users.
+HANDOFF.md
+scripts/**
+.vscodeignore.base
+*.vsix.tmp
+
 # OS
 .DS_Store
