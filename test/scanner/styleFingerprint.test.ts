@@ -63,6 +63,7 @@ describe("computeStyleFingerprint", () => {
     expect(fp.exclamation_per_1000_chars).toBe(0);
     expect(fp.capital_letter_rate).toBe(0);
     expect(fp.top_tokens).toHaveLength(0);
+    expect(fp.by_outcome).toEqual([]);
   });
 
   it("detects hedging when chunk contains 'maybe'", () => {
@@ -303,6 +304,50 @@ describe("computeStyleFingerprint", () => {
     expect(fp.top_openings.some((o) => o.phrase === "can you please")).toBe(true);
     const opening = fp.top_openings.find((o) => o.phrase === "can you please");
     expect(opening?.count).toBe(2);
+  });
+
+  it("populates by_outcome when session_outcomes has enough sessions per state", () => {
+    const now = Date.now();
+    // Create 3 sessions per state: shipped and open
+    for (let i = 0; i < 3; i++) {
+      const sid = `shipped_${i}`;
+      sessionRepo.upsert({ ...makeSession(sid) });
+      db.prepare(
+        `INSERT INTO session_outcomes (session_id, state, state_inferred_at, user_marked) VALUES (?, 'shipped', ?, 0)`,
+      ).run(sid, now);
+      chunkRepo.upsertMany([{
+        id: `chunk_shipped_${i}`,
+        source_kind: "user_msg",
+        source_id: `t_shipped_${i}`,
+        session_id: sid,
+        position: 0,
+        text: "Let us ship this feature right away.",
+        char_count: 37,
+        created_at: now,
+      }]);
+    }
+    for (let i = 0; i < 3; i++) {
+      const sid = `open_${i}`;
+      sessionRepo.upsert({ ...makeSession(sid) });
+      chunkRepo.upsertMany([{
+        id: `chunk_open_${i}`,
+        source_kind: "user_msg",
+        source_id: `t_open_${i}`,
+        session_id: sid,
+        position: 0,
+        text: "Maybe we should try a different approach here.",
+        char_count: 46,
+        created_at: now,
+      }]);
+    }
+    const fp = computeStyleFingerprint(db);
+    expect(fp.by_outcome.length).toBeGreaterThanOrEqual(2);
+    const shipped = fp.by_outcome.find((b) => b.outcome === "shipped");
+    expect(shipped).toBeDefined();
+    expect(shipped!.session_count).toBe(3);
+    const open = fp.by_outcome.find((b) => b.outcome === "open");
+    expect(open).toBeDefined();
+    expect(open!.session_count).toBe(3);
   });
 });
 

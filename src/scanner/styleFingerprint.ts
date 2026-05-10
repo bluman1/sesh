@@ -2,6 +2,15 @@ import * as fs from "node:fs";
 import type { Db } from "../db/connection";
 import { ChunkRepository } from "../db/chunks";
 
+export interface StyleByOutcome {
+  outcome: "shipped" | "shipped-partial" | "reverted" | "abandoned" | "open";
+  session_count: number;
+  avg_user_chars_per_turn: number;
+  avg_words_per_sentence: number;
+  question_rate_pct: number;
+  hedging_per_1000_words: number;
+}
+
 export interface StyleFingerprint {
   generated_at: number;
   source_session_count: number;
@@ -18,6 +27,7 @@ export interface StyleFingerprint {
   politeness_per_1000_words: number;
   vocab_richness: number;
   top_openings: { phrase: string; count: number }[];
+  by_outcome: StyleByOutcome[];
 }
 
 const HEDGES = [
@@ -58,6 +68,7 @@ export function computeStyleFingerprint(db: Db, opts?: { sinceDays?: number }): 
       politeness_per_1000_words: 0,
       vocab_richness: 0,
       top_openings: [],
+      by_outcome: [],
     };
   }
 
@@ -157,6 +168,68 @@ export function computeStyleFingerprint(db: Db, opts?: { sinceDays?: number }): 
     .slice(0, 10)
     .map(([phrase, count]) => ({ phrase, count }));
 
+  // ── Outcome-bucketed metrics ──────────────────────────────────────────
+  const outcomeBySession = new Map<string, string>();
+  const outcomeRows = db
+    .prepare("SELECT session_id, state FROM session_outcomes")
+    .all() as { session_id: string; state: string }[];
+  for (const r of outcomeRows) outcomeBySession.set(r.session_id, r.state);
+
+  type OutcomeBucket = {
+    chunkCount: number;
+    sessionIds: Set<string>;
+    totalChars: number;
+    totalWords: number;
+    totalSentences: number;
+    totalHedges: number;
+    totalQuestions: number;
+  };
+  const buckets = new Map<string, OutcomeBucket>();
+
+  for (const c of chunks) {
+    const outcome = outcomeBySession.get(c.session_id) ?? "open";
+    let b = buckets.get(outcome);
+    if (!b) {
+      b = {
+        chunkCount: 0,
+        sessionIds: new Set(),
+        totalChars: 0,
+        totalWords: 0,
+        totalSentences: 0,
+        totalHedges: 0,
+        totalQuestions: 0,
+      };
+      buckets.set(outcome, b);
+    }
+    b.chunkCount++;
+    b.sessionIds.add(c.session_id);
+    b.totalChars += c.text.length;
+    const text = c.text;
+    b.totalSentences += Math.max(1, (text.match(/[.!?]+/g) || []).length);
+    const words = text.toLowerCase().match(/[a-z][a-z'-]*/g) ?? [];
+    b.totalWords += words.length;
+    for (const h of HEDGES) {
+      const re = new RegExp(`\\b${h.replace(/ /g, "\\s+")}\\b`, "gi");
+      b.totalHedges += (text.match(re) || []).length;
+    }
+    const trimmed = text.trim();
+    if (trimmed.endsWith("?") || QUESTION_START_RE.test(trimmed)) {
+      b.totalQuestions++;
+    }
+  }
+
+  const by_outcome: StyleByOutcome[] = [...buckets.entries()]
+    .filter(([, b]) => b.sessionIds.size >= 3)
+    .map(([outcome, b]) => ({
+      outcome: outcome as StyleByOutcome["outcome"],
+      session_count: b.sessionIds.size,
+      avg_user_chars_per_turn: Math.round(b.totalChars / Math.max(1, b.chunkCount)),
+      avg_words_per_sentence: Math.round((b.totalWords / Math.max(1, b.totalSentences)) * 10) / 10,
+      question_rate_pct: Math.round((b.totalQuestions * 1000 / Math.max(1, b.chunkCount)) / 10),
+      hedging_per_1000_words: Math.round((b.totalHedges * 1000 / Math.max(1, b.totalWords)) * 10) / 10,
+    }))
+    .sort((a, b) => b.session_count - a.session_count);
+
   return {
     generated_at: Date.now(),
     source_session_count: sessionIds.size,
@@ -173,6 +246,7 @@ export function computeStyleFingerprint(db: Db, opts?: { sinceDays?: number }): 
     politeness_per_1000_words: Math.round((totalPoliteness * 1000 / Math.max(1, totalWords)) * 10) / 10,
     vocab_richness: vocabRichness,
     top_openings: topOpenings,
+    by_outcome,
   };
 }
 

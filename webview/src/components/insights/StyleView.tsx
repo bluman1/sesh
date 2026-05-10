@@ -76,6 +76,37 @@ export function StyleView(): JSX.Element {
         </div>
       </section>
 
+      {fp.by_outcome && fp.by_outcome.length >= 2 && (
+        <section className="sesh-style-section">
+          <div className="sesh-style-section-title">By outcome</div>
+          <div className="sesh-style-section-subtitle">How your writing differs across session outcomes</div>
+          <table className="sesh-style-outcome-table">
+            <thead>
+              <tr>
+                <th>Outcome</th>
+                <th>Sessions</th>
+                <th>Avg chars / msg</th>
+                <th>Words / sentence</th>
+                <th>Question %</th>
+                <th>Hedges / 1k</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fp.by_outcome.map((b) => (
+                <tr key={b.outcome}>
+                  <td><OutcomeTag state={b.outcome} /></td>
+                  <td className="sesh-style-num">{b.session_count}</td>
+                  <td className="sesh-style-num">{b.avg_user_chars_per_turn.toLocaleString()}</td>
+                  <td className="sesh-style-num">{b.avg_words_per_sentence}</td>
+                  <td className="sesh-style-num">{b.question_rate_pct.toFixed(1)}%</td>
+                  <td className="sesh-style-num">{b.hedging_per_1000_words}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
       {fp.top_openings.length > 0 && (
         <section className="sesh-style-section">
           <div className="sesh-style-section-title">How you start messages</div>
@@ -100,4 +131,9 @@ function Metric({ label, value }: { label: string; value: string }): JSX.Element
       <div className="sesh-style-metric-label">{label}</div>
     </div>
   );
+}
+
+function OutcomeTag({ state }: { state: string }): JSX.Element {
+  const cls = `sesh-style-outcome-tag is-${state}`;
+  return <span className={cls}>{state}</span>;
 }
