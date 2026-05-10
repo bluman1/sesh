@@ -168,13 +168,13 @@
         },
         "sesh.tabs.knowledge": {
           "type": "boolean",
-          "default": true,
-          "description": "Show the Knowledge tab in the Sesh panel."
+          "default": false,
+          "description": "Show the Knowledge tab in the Sesh panel. Off by default — enable in Sesh's Settings tab once you've turned on embeddings."
         },
         "sesh.tabs.ideas": {
           "type": "boolean",
-          "default": true,
-          "description": "Show the Ideas tab in the Sesh panel."
+          "default": false,
+          "description": "Show the Ideas tab in the Sesh panel. Off by default — enable in Sesh's Settings tab once you've turned on idea mining."
         },
         "sesh.tabs.insights": {
           "type": "boolean",
@@ -194,8 +194,8 @@
         "sesh.pickUpScope": {
           "type": "string",
           "enum": ["global", "workspace"],
-          "default": "global",
-          "description": "Which sessions feed the 'Pick up where you left off' banner. 'global' uses every session you've had; 'workspace' restricts to sessions inside the current workspace's git repo."
+          "default": "workspace",
+          "description": "Which sessions feed the 'Pick up where you left off' banner. 'workspace' (default) restricts to sessions inside the current workspace's git repo; 'global' uses every session you've had."
         },
         "sesh.gitIndexerEnabled": {
           "type": "boolean",

@@ -13,8 +13,18 @@ export function SettingsTab({ settings: s, onUpdate: update }: Props): JSX.Eleme
       <div className="sesh-settings-body">
 
         <Section title="Tabs" subtitle="Hide tabs you don't use; the Sessions tab can't be hidden.">
-          <Switch label="Knowledge" checked={s.tabs.knowledge} onChange={(v) => update("tabs.knowledge", v)} />
-          <Switch label="Ideas" checked={s.tabs.ideas} onChange={(v) => update("tabs.ideas", v)} />
+          <Switch
+            label="Knowledge"
+            description="Off by default. Needs 'Build embeddings' below to populate."
+            checked={s.tabs.knowledge}
+            onChange={(v) => update("tabs.knowledge", v)}
+          />
+          <Switch
+            label="Ideas"
+            description="Off by default. Needs 'Mine ideas from user messages' below to populate."
+            checked={s.tabs.ideas}
+            onChange={(v) => update("tabs.ideas", v)}
+          />
           <Switch label="Insights" checked={s.tabs.insights} onChange={(v) => update("tabs.insights", v)} />
           <Switch label="Reviewer" checked={s.tabs.reviewer} onChange={(v) => update("tabs.reviewer", v)} />
         </Section>

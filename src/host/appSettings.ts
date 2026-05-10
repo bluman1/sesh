@@ -25,13 +25,13 @@ export function readAppSettings(): AppSettings {
   return {
     tabs: {
       sessions: true,
-      knowledge: cfg.get<boolean>("tabs.knowledge", true),
-      ideas: cfg.get<boolean>("tabs.ideas", true),
+      knowledge: cfg.get<boolean>("tabs.knowledge", false),
+      ideas: cfg.get<boolean>("tabs.ideas", false),
       insights: cfg.get<boolean>("tabs.insights", true),
       reviewer: cfg.get<boolean>("tabs.reviewer", true),
     },
     pickUpBanner: cfg.get<boolean>("pickUpBanner", true),
-    pickUpScope: cfg.get<"global" | "workspace">("pickUpScope", "global"),
+    pickUpScope: cfg.get<"global" | "workspace">("pickUpScope", "workspace"),
     statusBarShowCost: cfg.get<boolean>("statusBarShowCost", true),
     archiveTranscripts: cfg.get<boolean>("archiveTranscripts", false),
     outcomeInferenceDays: cfg.get<number>("outcomeInferenceDays", 30),

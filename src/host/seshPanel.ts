@@ -615,7 +615,7 @@ export class SeshPanel {
         case "getNextSessionSuggestions": {
           const pickUpScope = vscode.workspace
             .getConfiguration("sesh")
-            .get<"global" | "workspace">("pickUpScope", "global");
+            .get<"global" | "workspace">("pickUpScope", "workspace");
           let repoPath: string | undefined;
           if (pickUpScope === "workspace") {
             const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;

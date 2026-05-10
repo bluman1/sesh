@@ -30,9 +30,9 @@ export interface AppSettings {
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  tabs: { sessions: true, knowledge: true, ideas: true, insights: true, reviewer: true },
+  tabs: { sessions: true, knowledge: false, ideas: false, insights: true, reviewer: true },
   pickUpBanner: true,
-  pickUpScope: "global",
+  pickUpScope: "workspace",
   statusBarShowCost: true,
   archiveTranscripts: false,
   outcomeInferenceDays: 30,
