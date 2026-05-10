@@ -60,7 +60,9 @@ export function KnowledgeTab({ onNavigateToSession }: Props): JSX.Element {
           {topicsLoading ? (
             <div className="sesh-knowledge-loading">Computing topics…</div>
           ) : filteredTopics.length === 0 ? (
-            <div className="sesh-knowledge-empty">No topics yet. Topics appear once embeddings finish indexing.</div>
+            <div className="sesh-knowledge-empty">
+              No topics yet. Run <strong>Sesh: Reindex embeddings</strong> from the command palette to index your sessions; progress shows in the status bar at the bottom-left.
+            </div>
           ) : (
             <ul className="sesh-knowledge-topics">
               {filteredTopics.map((t) => (

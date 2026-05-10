@@ -115,7 +115,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         vscode.window.showInformationMessage("Embeddings are disabled.");
         return;
       }
-      await embeddingIndexer.run();
+      const runner = (embeddingIndexer as unknown as { runFullChain?: () => Promise<void> }).runFullChain;
+      if (runner) {
+        await runner();
+      } else {
+        await embeddingIndexer.run();
+      }
       vscode.window.showInformationMessage("Sesh: embeddings reindexed.");
     }),
   );
@@ -237,24 +242,31 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const promptLinter = new PromptLinter(host.rawDb!, chunkRepo, embeddingRepo, lintRepo, embedder);
       host.setPromptLinter(promptLinter);
 
-      // Eager index in background — chain idea indexer after embedding indexer
-      // so ideas always run against freshly-built chunks. Local embedder
-      // downloads its model on first use; surface that as a notification so
-      // the user isn't staring at a frozen-looking panel.
+      // Embedding indexing is OPT-IN at activation. Loading the local
+      // @huggingface/transformers ONNX runtime can SIGSEGV the extension
+      // host on some Electron builds, and there's no safe way to recover
+      // from a native crash mid-activation. Default: only run when the
+      // user invokes `Sesh: Reindex embeddings` explicitly. Power users
+      // can flip `sesh.embeddingsAutoStart` on to revert to eager.
+      const autoStart = cfg.get<boolean>("embeddingsAutoStart", false);
       const localEmbedder = embedder;
-      void (async () => {
-        try {
-          if (cfgKind === "local" && localEmbedder) {
-            await preloadLocalEmbedderWithProgress(localEmbedder);
-          }
-          await embeddingIndexer.run();
-          if (ideaIndexer) await ideaIndexer.run();
-          await correctionMiner.run();
-          await promptLinter.run();
-        } catch (err) {
-          console.warn("[sesh] eager indexing failed", err);
+      const runEmbeddingChain = async () => {
+        if (cfgKind === "local" && localEmbedder) {
+          await preloadLocalEmbedderWithProgress(localEmbedder);
         }
-      })();
+        await embeddingIndexer.run();
+        if (ideaIndexer) await ideaIndexer.run();
+        await correctionMiner.run();
+        await promptLinter.run();
+      };
+      // Stash the runner on the embedding indexer so the reindex command
+      // can call the FULL pipeline, not just embedding.
+      (embeddingIndexer as unknown as { runFullChain: () => Promise<void> }).runFullChain = runEmbeddingChain;
+      if (autoStart) {
+        void runEmbeddingChain().catch((err) => {
+          console.warn("[sesh] eager indexing failed", err);
+        });
+      }
     }
 
     const shouldOpenFromMarker = consumePendingOpenMarker(context, output);

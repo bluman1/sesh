@@ -176,6 +176,11 @@
           "default": true,
           "description": "Enable local semantic indexing of session transcripts. Powers the Knowledge tab."
         },
+        "sesh.embeddingsAutoStart": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically index embeddings at activation. Default off because the local @huggingface/transformers runtime can crash the extension host on some Electron builds. When off, run the 'Sesh: Reindex embeddings' command manually to index."
+        },
         "sesh.embedder": {
           "type": "string",
           "enum": ["local", "ollama", "cloud"],
