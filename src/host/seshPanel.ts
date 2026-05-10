@@ -48,6 +48,7 @@ import { ClaudeMdSuggestionRepository } from "../db/claudeMd";
 import { PromptLintRepository } from "../db/promptLints";
 import { computeStyleFingerprint, exportFingerprintToFile } from "../scanner/styleFingerprint";
 import { suggestNextSessionTopics } from "../scanner/nextSessionSuggester";
+import { readAppSettings } from "./appSettings";
 
 export class SeshPanel {
   private static instance: SeshPanel | null = null;
@@ -114,6 +115,16 @@ export class SeshPanel {
     host.onSessionChanged = () => {
       this.refreshList();
     };
+    const settingsListener = vscode.workspace.onDidChangeConfiguration((e) => {
+      if (
+        e.affectsConfiguration("sesh.tabs") ||
+        e.affectsConfiguration("sesh.pickUpBanner") ||
+        e.affectsConfiguration("sesh.pickUpScope")
+      ) {
+        this.send({ kind: "appSettings", settings: readAppSettings() });
+      }
+    });
+    context.subscriptions.push(settingsListener);
     this.panel.onDidDispose(() => {
       this.disposed = true;
       SeshPanel.instance = null;
@@ -163,6 +174,7 @@ export class SeshPanel {
         const currentPath =
           folders && folders.length > 0 ? folders[0].uri.fsPath : null;
         this.send({ kind: "workspace", currentPath });
+        this.send({ kind: "appSettings", settings: readAppSettings() });
         return;
       }
       if (!this.host.sessions || !this.host.tags || !this.host.categories) {
@@ -605,7 +617,17 @@ export class SeshPanel {
           break;
         }
         case "getNextSessionSuggestions": {
-          const items = suggestNextSessionTopics(this.host.rawDb!, { limit: 5 });
+          const pickUpScope = vscode.workspace
+            .getConfiguration("sesh")
+            .get<"global" | "workspace">("pickUpScope", "global");
+          let repoPath: string | undefined;
+          if (pickUpScope === "workspace") {
+            const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+            if (folder) {
+              repoPath = findRepoRoot(folder) ?? undefined;
+            }
+          }
+          const items = suggestNextSessionTopics(this.host.rawDb!, { limit: 5, repoPath });
           this.send({ kind: "nextSessionSuggestions", suggestions: items });
           break;
         }

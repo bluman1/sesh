@@ -17,9 +17,10 @@ type SearchResultItem = Extract<ToWebview, { kind: "searchResults" }>["results"]
 type Props = {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  pickUpBannerEnabled?: boolean;
 };
 
-export function SessionsTab({ selectedId, onSelect }: Props): JSX.Element {
+export function SessionsTab({ selectedId, onSelect, pickUpBannerEnabled = true }: Props): JSX.Element {
   const sessionsApi = useSessions();
   const detail = useSessionDetail(selectedId);
   const { categories } = useCategories();
@@ -69,7 +70,7 @@ export function SessionsTab({ selectedId, onSelect }: Props): JSX.Element {
         projects={projects}
       />
       <RemapBanner />
-      <NextSessionBanner onNavigateToSession={onSelect} />
+      {pickUpBannerEnabled && <NextSessionBanner onNavigateToSession={onSelect} />}
       {sessionsApi.error && <div className="sesh-error">{sessionsApi.error}</div>}
       {sessionsApi.indexProgress.total > 0 &&
         sessionsApi.indexProgress.indexed < sessionsApi.indexProgress.total && (

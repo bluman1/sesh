@@ -13,12 +13,14 @@ const TABS: { id: SeshTab; label: string }[] = [
 interface Props {
   active: SeshTab;
   onChange: (tab: SeshTab) => void;
+  visibleTabs: Set<SeshTab>;
 }
 
-export function TabBar({ active, onChange }: Props): JSX.Element {
+export function TabBar({ active, onChange, visibleTabs }: Props): JSX.Element {
+  const tabs = TABS.filter((t) => visibleTabs.has(t.id));
   return (
     <div className="sesh-tabbar" role="tablist">
-      {TABS.map((t) => (
+      {tabs.map((t) => (
         <button
           key={t.id}
           role="tab"

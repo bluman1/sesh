@@ -116,6 +116,14 @@ export type ToHost =
 export type ToWebview =
   | { kind: "workspace"; currentPath: string | null }
   | {
+      kind: "appSettings";
+      settings: {
+        tabs: { sessions: boolean; knowledge: boolean; ideas: boolean; insights: boolean; reviewer: boolean };
+        pickUpBanner: boolean;
+        pickUpScope: "global" | "workspace";
+      };
+    }
+  | {
       kind: "sessionList";
       scope: Scope;
       currentPath: string | null;

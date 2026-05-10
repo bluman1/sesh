@@ -166,6 +166,37 @@
           "default": true,
           "description": "Show today's spend in the status bar."
         },
+        "sesh.tabs.knowledge": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the Knowledge tab in the Sesh panel."
+        },
+        "sesh.tabs.ideas": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the Ideas tab in the Sesh panel."
+        },
+        "sesh.tabs.insights": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the Insights tab in the Sesh panel."
+        },
+        "sesh.tabs.reviewer": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the Reviewer tab in the Sesh panel."
+        },
+        "sesh.pickUpBanner": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the 'Pick up where you left off' banner above the session list."
+        },
+        "sesh.pickUpScope": {
+          "type": "string",
+          "enum": ["global", "workspace"],
+          "default": "global",
+          "description": "Which sessions feed the 'Pick up where you left off' banner. 'global' uses every session you've had; 'workspace' restricts to sessions inside the current workspace's git repo."
+        },
         "sesh.gitIndexerEnabled": {
           "type": "boolean",
           "default": true,
