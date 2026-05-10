@@ -303,6 +303,160 @@
 .sesh-mag-delta-bad  { color: var(--vscode-charts-red, #e57373); }
 .sesh-mag-delta-flat { color: color-mix(in srgb, var(--vscode-foreground) 50%, transparent); }
 
+/* KPI sub-label (used by CostView) */
+.sesh-mag-kpi-sub {
+  font-size: 0.8em;
+  color: color-mix(in srgb, var(--vscode-foreground) 50%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sesh-mag-kpi-warn .sesh-mag-kpi-value {
+  color: var(--vscode-charts-yellow, #f5a623);
+}
+
+/* ─── Cost (By File) view ─────────── */
+.sesh-cost-actions {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sesh-space-2);
+}
+.sesh-cost-actions li {
+  font-size: 0.95em;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--vscode-foreground) 80%, transparent);
+  padding-left: var(--sesh-space-3);
+  border-left: 2px solid color-mix(in srgb, var(--sesh-accent) 40%, transparent);
+}
+.sesh-cost-actions li code {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.92em;
+  background: color-mix(in srgb, var(--vscode-foreground) 6%, transparent);
+  padding: 1px 6px;
+  border-radius: var(--sesh-radius-sm);
+}
+.sesh-cost-action-emphasis {
+  color: var(--vscode-foreground);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.sesh-cost-action-meta {
+  color: color-mix(in srgb, var(--vscode-foreground) 50%, transparent);
+  font-size: 0.9em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Sort pills */
+.sesh-cost-sort {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: color-mix(in srgb, var(--vscode-foreground) 5%, transparent);
+  border-radius: var(--sesh-radius-pill);
+}
+.sesh-cost-sort-btn {
+  border: none;
+  background: transparent;
+  color: color-mix(in srgb, var(--vscode-foreground) 60%, transparent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8em;
+  padding: 2px var(--sesh-space-2);
+  border-radius: var(--sesh-radius-pill);
+}
+.sesh-cost-sort-btn:hover {
+  color: var(--vscode-foreground);
+}
+.sesh-cost-sort-btn.is-active {
+  background: var(--sesh-bg-elevated);
+  color: var(--vscode-foreground);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Table */
+.sesh-cost-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.sesh-cost-table th {
+  padding: var(--sesh-space-1) var(--sesh-space-2);
+  text-align: left;
+  color: color-mix(in srgb, var(--vscode-foreground) 50%, transparent);
+  font-weight: 500;
+  font-size: 0.75em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--sesh-border-subtle);
+}
+.sesh-cost-table th.numeric { text-align: right; }
+.sesh-cost-table td {
+  padding: var(--sesh-space-2) var(--sesh-space-2);
+  border-bottom: 1px solid color-mix(in srgb, var(--sesh-border-subtle) 60%, transparent);
+}
+.sesh-cost-table td.numeric { text-align: right; white-space: nowrap; }
+.sesh-cost-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--vscode-foreground) 4%, transparent);
+}
+.sesh-cost-table tbody tr:last-child td { border-bottom: none; }
+
+/* File kind dot */
+.sesh-cost-kind {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: var(--sesh-space-2);
+  vertical-align: middle;
+}
+.sesh-cost-kind-code   { background: var(--vscode-charts-blue, #4daafc); }
+.sesh-cost-kind-test   { background: var(--vscode-charts-purple, #b389d9); }
+.sesh-cost-kind-config { background: var(--vscode-charts-yellow, #f5a623); }
+.sesh-cost-kind-doc    { background: color-mix(in srgb, var(--vscode-foreground) 35%, transparent); }
+.sesh-cost-path {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.92em;
+}
+
+/* Cost cell with embedded share bar */
+.sesh-cost-cost-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  min-width: 140px;
+}
+.sesh-cost-share-bar {
+  width: 100%;
+  height: 3px;
+  background: color-mix(in srgb, var(--vscode-foreground) 6%, transparent);
+  border-radius: var(--sesh-radius-pill);
+  overflow: hidden;
+  order: 2;
+}
+.sesh-cost-share-bar-fill {
+  height: 100%;
+  background: color-mix(in srgb, var(--vscode-charts-blue, #4d8df6) 50%, transparent);
+}
+.sesh-cost-cost-amount {
+  color: var(--vscode-foreground);
+  font-weight: 500;
+}
+.sesh-cost-cost-share {
+  display: none;
+}
+
+.sesh-cost-table-more {
+  text-align: center;
+  padding: var(--sesh-space-2) 0;
+  color: color-mix(in srgb, var(--vscode-foreground) 50%, transparent);
+  font-size: 0.85em;
+}
+
 /* ─── Mode switcher (segmented control) ─────────── */
 .sesh-insights-modes {
   display: flex;
