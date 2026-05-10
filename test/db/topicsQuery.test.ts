@@ -113,8 +113,8 @@ describe("computeTopics", () => {
     expect(topics.length).toBe(1);
     expect(topics[0].size).toBe(2);
     expect(topics[0].session_count).toBe(2);
-    expect(topics[0].example_session_ids).toContain("s1");
-    expect(topics[0].example_session_ids).toContain("s2");
+    expect(topics[0].examples.map((e) => e.session_id)).toContain("s1");
+    expect(topics[0].examples.map((e) => e.session_id)).toContain("s2");
   });
 
   it("respects the limit option", () => {

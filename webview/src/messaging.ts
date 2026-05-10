@@ -250,6 +250,14 @@ export type ToWebview =
         politeness_per_1000_words: number;
         vocab_richness: number;
         top_openings: { phrase: string; count: number }[];
+        by_outcome: {
+          outcome: "shipped" | "shipped-partial" | "reverted" | "abandoned" | "open";
+          session_count: number;
+          avg_user_chars_per_turn: number;
+          avg_words_per_sentence: number;
+          question_rate_pct: number;
+          hedging_per_1000_words: number;
+        }[];
       };
     }
   | {
@@ -269,7 +277,7 @@ export type ToWebview =
         representative: string;
         size: number;
         session_count: number;
-        example_session_ids: string[];
+        examples: { session_id: string; title: string }[];
       }>;
     }
   | {

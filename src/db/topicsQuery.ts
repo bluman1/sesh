@@ -9,7 +9,7 @@ export interface Topic {
   representative: string;
   size: number;
   session_count: number;
-  example_session_ids: string[];
+  examples: { session_id: string; title: string }[];
 }
 
 const CLUSTER_THRESHOLD = 0.65;
@@ -57,13 +57,28 @@ export function computeTopics(db: Db, modelName: string, opts?: { limit?: number
       // Label = first sentence-ish of the rep, or first 60 chars.
       const dotIdx = rep.search(/[.!?]\s/);
       const label = (dotIdx > 0 && dotIdx < 80 ? rep.slice(0, dotIdx) : rep.slice(0, 80)).trim();
+      const exampleIds = sessionIds.slice(0, 5);
+      const titleRows =
+        exampleIds.length === 0
+          ? []
+          : (db
+              .prepare(
+                `SELECT id, COALESCE(custom_title, auto_title, '(untitled)') AS title
+                   FROM sessions WHERE id IN (${exampleIds.map(() => "?").join(",")})`,
+              )
+              .all(...exampleIds) as { id: string; title: string }[]);
+      const byId = new Map(titleRows.map((r) => [r.id, r.title]));
+      const examples = exampleIds.map((sid) => ({
+        session_id: sid,
+        title: byId.get(sid) ?? "(untitled)",
+      }));
       return {
         id: `topic_${i}_${c.rep.chunk_id.slice(-8)}`,
         label,
         representative: rep.length > 280 ? rep.slice(0, 280) + "…" : rep,
         size: c.members.length,
         session_count: sessionIds.length,
-        example_session_ids: sessionIds.slice(0, 5),
+        examples,
       };
     })
     .sort((a, b) => b.size - a.size)

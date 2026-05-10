@@ -108,6 +108,38 @@
   overflow: hidden;
 }
 
+.sesh-knowledge-topic.is-expanded .sesh-knowledge-topic-button {
+  background: var(--sesh-fill-subtle);
+  border-color: var(--sesh-border-subtle);
+}
+.sesh-knowledge-topic-examples {
+  list-style: none;
+  padding: 0 var(--sesh-space-3) var(--sesh-space-2) var(--sesh-space-3);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sesh-knowledge-topic-example {
+  list-style: none;
+}
+.sesh-knowledge-topic-example-button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 4px 0 4px var(--sesh-space-3);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--sesh-text-sm);
+  color: color-mix(in srgb, var(--vscode-foreground) 80%, transparent);
+}
+.sesh-knowledge-topic-example-button:hover {
+  color: var(--vscode-foreground);
+  text-decoration: underline;
+}
+
 /* Lessons (CLAUDE.md tips) */
 .sesh-knowledge-tips-list {
   list-style: none;
