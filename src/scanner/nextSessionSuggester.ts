@@ -9,13 +9,31 @@ export interface SessionSuggestion {
   source_session_ids: string[];
 }
 
-export function suggestNextSessionTopics(db: Db, opts?: { limit?: number }): SessionSuggestion[] {
+export function suggestNextSessionTopics(
+  db: Db,
+  opts?: { limit?: number; repoPath?: string },
+): SessionSuggestion[] {
   const limit = opts?.limit ?? 5;
   const out: SessionSuggestion[] = [];
 
+  // Build repo session id set if filtering by workspace.
+  let repoSessionIds: Set<string> | null = null;
+  if (opts?.repoPath) {
+    const sessionsForRepo = db
+      .prepare("SELECT id FROM sessions WHERE repo_path = ?")
+      .all(opts.repoPath) as { id: string }[];
+    repoSessionIds = new Set(sessionsForRepo.map((r) => r.id));
+  }
+
   // Idea clusters with size >= 2.
   const ideaRepo = new IdeaRepository(db);
-  const clusters = ideaRepo.listClusters().filter((c) => c.size >= 2);
+  let clusters = ideaRepo.listClusters().filter((c) => c.size >= 2);
+  if (repoSessionIds !== null) {
+    const ids = repoSessionIds;
+    clusters = clusters.filter((c) =>
+      c.ideas.some((i) => ids.has(i.source_session_id)),
+    );
+  }
   for (const c of clusters) {
     const head = c.ideas[0];
     if (!head) continue;
@@ -36,6 +54,10 @@ export function suggestNextSessionTopics(db: Db, opts?: { limit?: number }): Ses
     commitmentsList = recentCommitments({ db, since: Date.now() - 14 * 86400 * 1000 });
   } catch {
     commitmentsList = [];
+  }
+  if (repoSessionIds !== null) {
+    const ids = repoSessionIds;
+    commitmentsList = commitmentsList.filter((c) => ids.has(c.session_id));
   }
   for (const c of commitmentsList) {
     const ageDays = (Date.now() - c.ts) / (86400 * 1000);
