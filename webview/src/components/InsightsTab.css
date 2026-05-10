@@ -48,51 +48,260 @@
 .sesh-insights-table th { color: color-mix(in srgb, var(--vscode-foreground) 62%, transparent); font-weight: 500; }
 
 /* ─── Magazine layout (StandupView) ─────────── */
-.sesh-magazine-headline {
-  font-size: 2.5em;
+.sesh-mag {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sesh-space-5);
+  max-width: 880px;
+}
+
+/* Hero */
+.sesh-mag-hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sesh-space-1);
+}
+.sesh-mag-hero-num {
+  font-size: 3em;
   font-weight: 600;
   color: var(--vscode-foreground);
   letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
-.sesh-magazine-subtitle {
+.sesh-mag-hero-sub {
   color: color-mix(in srgb, var(--vscode-foreground) 62%, transparent);
-  margin-bottom: var(--sesh-space-5);
   font-size: 0.95em;
-}
-.sesh-magazine-section-label {
-  font-size: 0.75em;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: color-mix(in srgb, var(--vscode-foreground) 55%, transparent);
-  margin-bottom: var(--sesh-space-2);
-  text-transform: uppercase;
-}
-.sesh-magazine-rows {
-  display: grid;
-  grid-template-columns: minmax(0, max-content) minmax(120px, 2fr) auto;
-  gap: var(--sesh-space-1) var(--sesh-space-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sesh-space-2);
   align-items: center;
 }
-.sesh-magazine-row-label {
+.sesh-mag-hero-dot {
+  color: color-mix(in srgb, var(--vscode-foreground) 35%, transparent);
+}
+
+/* KPI tiles */
+.sesh-mag-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--sesh-space-2);
+}
+.sesh-mag-kpi {
+  background: var(--sesh-bg-elevated);
+  border: 1px solid var(--sesh-border-subtle);
+  border-radius: var(--sesh-radius-md);
+  padding: var(--sesh-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sesh-mag-kpi-label {
+  font-size: 0.75em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--vscode-foreground) 55%, transparent);
+}
+.sesh-mag-kpi-value {
+  font-size: 1.5em;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--vscode-foreground);
+}
+.sesh-mag-kpi-good .sesh-mag-kpi-value {
+  color: var(--vscode-charts-green, #4caf50);
+}
+
+/* Outcome pills */
+.sesh-mag-outcomes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sesh-space-2);
+}
+.sesh-mag-outcome {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--sesh-radius-pill);
+  background: var(--sesh-bg-elevated);
+  border: 1px solid var(--sesh-border-subtle);
+  font-size: 0.9em;
+}
+.sesh-mag-outcome.is-zero {
+  opacity: 0.4;
+}
+.sesh-mag-outcome-count {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--vscode-foreground);
+}
+.sesh-mag-outcome-label {
+  color: color-mix(in srgb, var(--vscode-foreground) 70%, transparent);
+}
+.sesh-mag-outcome-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.sesh-mag-outcome-dot-good { background: var(--vscode-charts-green, #4caf50); }
+.sesh-mag-outcome-dot-warn { background: var(--vscode-charts-yellow, #f5a623); }
+.sesh-mag-outcome-dot-bad  { background: var(--vscode-charts-red, #e57373); }
+.sesh-mag-outcome-dot-muted { background: color-mix(in srgb, var(--vscode-foreground) 35%, transparent); }
+.sesh-mag-outcome-dot-info { background: var(--vscode-charts-blue, #4daafc); }
+
+/* Card */
+.sesh-mag-card {
+  background: var(--sesh-bg-elevated);
+  border: 1px solid var(--sesh-border-subtle);
+  border-radius: var(--sesh-radius-md);
+  padding: var(--sesh-space-3) var(--sesh-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sesh-space-3);
+}
+.sesh-mag-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sesh-space-3);
+}
+.sesh-mag-card-title {
+  margin: 0;
+  font-size: 0.85em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--vscode-foreground) 70%, transparent);
+}
+.sesh-mag-card-meta {
+  font-size: 0.85em;
+  color: color-mix(in srgb, var(--vscode-foreground) 55%, transparent);
+}
+.sesh-mag-cards-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--sesh-space-3);
+}
+
+/* Project rows */
+.sesh-mag-rows {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(120px, 2fr) auto;
+  gap: var(--sesh-space-2) var(--sesh-space-3);
+  align-items: center;
+}
+.sesh-mag-row-label {
   font-size: 0.95em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--vscode-foreground);
 }
-.sesh-magazine-bar {
+.sesh-mag-bar {
   height: 6px;
-  background: var(--sesh-fill-subtle);
+  background: color-mix(in srgb, var(--vscode-foreground) 8%, transparent);
   border-radius: var(--sesh-radius-pill);
   overflow: hidden;
 }
-.sesh-magazine-bar-fill {
+.sesh-mag-bar-fill {
   height: 100%;
-  background: color-mix(in srgb, var(--vscode-charts-blue, #4d8df6) 35%, transparent);
+  background: color-mix(in srgb, var(--vscode-charts-blue, #4d8df6) 55%, transparent);
 }
-.sesh-magazine-row-value {
+.sesh-mag-row-value {
   font-variant-numeric: tabular-nums;
-  color: color-mix(in srgb, var(--vscode-foreground) 80%, transparent);
+  color: var(--vscode-foreground);
+  display: flex;
+  align-items: baseline;
+  gap: var(--sesh-space-2);
 }
+.sesh-mag-row-share {
+  font-size: 0.8em;
+  color: color-mix(in srgb, var(--vscode-foreground) 50%, transparent);
+  min-width: 32px;
+  text-align: right;
+}
+
+/* Chips for Models / Top tools */
+.sesh-mag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sesh-space-2);
+}
+.sesh-mag-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--sesh-radius-pill);
+  background: color-mix(in srgb, var(--vscode-foreground) 5%, transparent);
+  font-size: 0.9em;
+}
+.sesh-mag-chip-strong {
+  color: var(--vscode-foreground);
+  font-weight: 500;
+}
+.sesh-mag-chip-weak {
+  color: color-mix(in srgb, var(--vscode-foreground) 55%, transparent);
+  font-size: 0.85em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Top file */
+.sesh-mag-topfile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sesh-space-2);
+  align-items: baseline;
+  font-size: 0.95em;
+}
+.sesh-mag-topfile-path {
+  color: var(--vscode-foreground);
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.92em;
+}
+.sesh-mag-topfile-meta {
+  color: color-mix(in srgb, var(--vscode-foreground) 60%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* vs prior deltas */
+.sesh-mag-deltas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sesh-space-2);
+}
+.sesh-mag-delta {
+  display: grid;
+  grid-template-columns: 90px auto auto 1fr;
+  gap: var(--sesh-space-3);
+  align-items: baseline;
+  font-size: 0.95em;
+}
+.sesh-mag-delta-label {
+  color: color-mix(in srgb, var(--vscode-foreground) 60%, transparent);
+}
+.sesh-mag-delta-current {
+  color: var(--vscode-foreground);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.sesh-mag-delta-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.9em;
+  font-variant-numeric: tabular-nums;
+}
+.sesh-mag-delta-prior {
+  color: color-mix(in srgb, var(--vscode-foreground) 45%, transparent);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9em;
+}
+.sesh-mag-delta-good { color: var(--vscode-charts-green, #4caf50); }
+.sesh-mag-delta-bad  { color: var(--vscode-charts-red, #e57373); }
+.sesh-mag-delta-flat { color: color-mix(in srgb, var(--vscode-foreground) 50%, transparent); }
 
 /* ─── Mode switcher (segmented control) ─────────── */
 .sesh-insights-modes {
