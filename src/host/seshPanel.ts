@@ -18,6 +18,7 @@ import {
 import {
   buildAnalyticsChips,
   costByFile,
+  sessionsForFile,
   modelLeaderboard,
   personalRecords,
   standupSummary,
@@ -436,6 +437,16 @@ export class SeshPanel {
               break;
           }
           this.send({ kind: "insights", tab: msg.tab, payload });
+          break;
+        }
+        case "getSessionsForFile": {
+          const sinceMs = sinceMsForRange(msg.range);
+          const sessions = sessionsForFile({
+            db: this.host.rawDb!,
+            path: msg.path,
+            since: sinceMs,
+          });
+          this.send({ kind: "sessionsForFile", path: msg.path, sessions });
           break;
         }
         case "setOutcome": {
@@ -1003,5 +1014,19 @@ export class SeshPanel {
     if (candidates.length > 0) {
       this.send({ kind: "remapSuggestion", candidates, currentPath });
     }
+  }
+}
+
+function sinceMsForRange(range: "today" | "7d" | "30d" | "1y" | "all"): number {
+  switch (range) {
+    case "today": {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return today.getTime();
+    }
+    case "7d": return Date.now() - 7 * 86400 * 1000;
+    case "30d": return Date.now() - 30 * 86400 * 1000;
+    case "1y": return Date.now() - 365 * 86400 * 1000;
+    case "all": return 0;
   }
 }

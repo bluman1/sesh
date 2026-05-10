@@ -1,11 +1,15 @@
-import { useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useInsights } from "../../hooks/useInsights";
 import { type InsightsRange, RANGE_TITLE } from "./range";
 import { fmtUsd, fmtCount, pluralize } from "./format";
+import { onHostMessage, postToHost, type ToWebview } from "../../messaging";
+import { Icon } from "../Icon";
 
 interface Row { path: string; usd: number; tool_calls: number; sessions: number; }
 
 type SortKey = "cost" | "calls" | "sessions" | "perCall";
+
+type SessionsForFile = Extract<ToWebview, { kind: "sessionsForFile" }>["sessions"];
 
 function shortPath(p: string): string {
   const parts = p.split("/").filter((x) => x.length > 0);
@@ -20,11 +24,43 @@ function fileKind(p: string): "test" | "config" | "doc" | "code" {
   return "code";
 }
 
-interface Props { range: InsightsRange; }
+interface Props {
+  range: InsightsRange;
+  onNavigateToSession?: (id: string) => void;
+}
 
-export function CostView({ range }: Props): JSX.Element {
+export function CostView({ range, onNavigateToSession }: Props): JSX.Element {
   const { payload } = useInsights("cost", range);
   const [sortKey, setSortKey] = useState<SortKey>("cost");
+  const [openPath, setOpenPath] = useState<string | null>(null);
+  const [drillCache, setDrillCache] = useState<Record<string, SessionsForFile>>({});
+
+  // Listen for the drill-down responses from the host.
+  useEffect(() => {
+    const off = onHostMessage((msg) => {
+      if (msg.kind === "sessionsForFile") {
+        setDrillCache((prev) => ({ ...prev, [msg.path]: msg.sessions }));
+      }
+    });
+    return off;
+  }, []);
+
+  // When the range changes, drop the cache — counts/USD are range-bound.
+  useEffect(() => {
+    setDrillCache({});
+    setOpenPath(null);
+  }, [range]);
+
+  const toggleDrill = (path: string) => {
+    if (openPath === path) {
+      setOpenPath(null);
+      return;
+    }
+    setOpenPath(path);
+    if (!drillCache[path]) {
+      postToHost({ kind: "getSessionsForFile", path, range });
+    }
+  };
 
   const rows = (payload ?? []) as Row[];
 
@@ -169,23 +205,45 @@ export function CostView({ range }: Props): JSX.Element {
               const share = total > 0 ? r.usd / total : 0;
               const perCall = r.tool_calls > 0 ? r.usd / r.tool_calls : 0;
               const kind = fileKind(r.path);
+              const isOpen = openPath === r.path;
+              const drill = drillCache[r.path];
               return (
-                <tr key={r.path}>
-                  <td title={r.path}>
-                    <span className={`sesh-cost-kind sesh-cost-kind-${kind}`} aria-hidden />
-                    <span className="sesh-cost-path">{shortPath(r.path)}</span>
-                  </td>
-                  <td className="numeric sesh-cost-cost-cell">
-                    <div className="sesh-cost-share-bar">
-                      <div className="sesh-cost-share-bar-fill" style={{ width: `${(share * 100).toFixed(1)}%` }} />
-                    </div>
-                    <span className="sesh-cost-cost-amount">{fmtUsd(r.usd)}</span>
-                    <span className="sesh-cost-cost-share">{(share * 100).toFixed(0)}%</span>
-                  </td>
-                  <td className="numeric">{fmtUsd(perCall)}</td>
-                  <td className="numeric">{fmtCount(r.tool_calls)}</td>
-                  <td className="numeric">{fmtCount(r.sessions)}</td>
-                </tr>
+                <Fragment key={r.path}>
+                  <tr
+                    className={`sesh-cost-row${isOpen ? " is-open" : ""}`}
+                    onClick={() => toggleDrill(r.path)}
+                  >
+                    <td title={r.path}>
+                      <Icon
+                        name={isOpen ? "chevron-down" : "chevron-right"}
+                        className="sesh-cost-chevron"
+                      />
+                      <span className={`sesh-cost-kind sesh-cost-kind-${kind}`} aria-hidden />
+                      <span className="sesh-cost-path">{shortPath(r.path)}</span>
+                    </td>
+                    <td className="numeric sesh-cost-cost-cell">
+                      <div className="sesh-cost-share-bar">
+                        <div className="sesh-cost-share-bar-fill" style={{ width: `${(share * 100).toFixed(1)}%` }} />
+                      </div>
+                      <span className="sesh-cost-cost-amount">{fmtUsd(r.usd)}</span>
+                      <span className="sesh-cost-cost-share">{(share * 100).toFixed(0)}%</span>
+                    </td>
+                    <td className="numeric">{fmtUsd(perCall)}</td>
+                    <td className="numeric">{fmtCount(r.tool_calls)}</td>
+                    <td className="numeric">{fmtCount(r.sessions)}</td>
+                  </tr>
+                  {isOpen && (
+                    <tr className="sesh-cost-drill-row">
+                      <td colSpan={5}>
+                        <DrillPanel
+                          path={r.path}
+                          sessions={drill}
+                          onNavigateToSession={onNavigateToSession}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               );
             })}
           </tbody>
@@ -204,6 +262,60 @@ function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: 
       <div className="sesh-mag-kpi-label">{label}</div>
       <div className="sesh-mag-kpi-value">{value}</div>
       {sub && <div className="sesh-mag-kpi-sub" title={sub}>{sub}</div>}
+    </div>
+  );
+}
+
+function DrillPanel({
+  path,
+  sessions,
+  onNavigateToSession,
+}: {
+  path: string;
+  sessions: SessionsForFile | undefined;
+  onNavigateToSession?: (id: string) => void;
+}): JSX.Element {
+  if (sessions === undefined) {
+    return <div className="sesh-cost-drill sesh-cost-drill-loading">Loading sessions for {path}…</div>;
+  }
+  if (sessions.length === 0) {
+    return <div className="sesh-cost-drill sesh-cost-drill-empty">No sessions found for this file in this range.</div>;
+  }
+  return (
+    <div className="sesh-cost-drill">
+      <div className="sesh-cost-drill-head">
+        Sessions that touched <code>{path}</code>
+      </div>
+      <ul className="sesh-cost-drill-list">
+        {sessions.map((s) => {
+          const subtitle = s.title ?? "Untitled session";
+          const date = new Date(s.last_touched_at);
+          const dateStr = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+          return (
+            <li key={s.session_id} className="sesh-cost-drill-item">
+              <button
+                type="button"
+                className="sesh-cost-drill-btn"
+                onClick={() => onNavigateToSession?.(s.session_id)}
+                disabled={!onNavigateToSession}
+              >
+                <span className="sesh-cost-drill-title">{subtitle}</span>
+                <span className="sesh-cost-drill-meta">
+                  {s.project_label && (
+                    <span className="sesh-cost-drill-project">
+                      <Icon name="folder" className="sesh-cost-drill-project-icon" />
+                      {s.project_label}
+                    </span>
+                  )}
+                  <span className="sesh-cost-drill-date">{dateStr}</span>
+                  <span className="sesh-cost-drill-calls">{fmtCount(s.tool_calls)} {pluralize(s.tool_calls, "call")}</span>
+                  <span className="sesh-cost-drill-cost">{fmtUsd(s.usd)}</span>
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

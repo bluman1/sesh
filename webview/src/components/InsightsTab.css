@@ -457,6 +457,111 @@
   font-size: 0.85em;
 }
 
+/* Clickable row + chevron */
+.sesh-cost-row { cursor: pointer; }
+.sesh-cost-chevron {
+  font-size: 11px !important;
+  color: color-mix(in srgb, var(--vscode-foreground) 50%, transparent);
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.sesh-cost-row.is-open .sesh-cost-chevron {
+  color: var(--vscode-foreground);
+}
+.sesh-cost-row.is-open + .sesh-cost-drill-row td {
+  border-bottom: 1px solid var(--sesh-border-subtle);
+}
+
+/* Drill-down panel */
+.sesh-cost-drill-row td {
+  padding: 0;
+  background: color-mix(in srgb, var(--vscode-foreground) 3%, transparent);
+}
+.sesh-cost-drill {
+  padding: var(--sesh-space-2) var(--sesh-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sesh-space-2);
+}
+.sesh-cost-drill-loading,
+.sesh-cost-drill-empty {
+  color: color-mix(in srgb, var(--vscode-foreground) 55%, transparent);
+  font-size: 0.85em;
+  font-style: italic;
+}
+.sesh-cost-drill-head {
+  font-size: 0.75em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--vscode-foreground) 55%, transparent);
+}
+.sesh-cost-drill-head code {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.95em;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--vscode-foreground);
+}
+.sesh-cost-drill-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sesh-cost-drill-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sesh-space-3);
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  background: var(--sesh-bg-elevated);
+  border-radius: var(--sesh-radius-sm);
+  cursor: pointer;
+  font: inherit;
+  color: var(--vscode-foreground);
+  text-align: left;
+}
+.sesh-cost-drill-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--sesh-accent) 8%, var(--sesh-bg-elevated));
+  border-color: color-mix(in srgb, var(--sesh-accent) 35%, var(--sesh-border-subtle));
+}
+.sesh-cost-drill-btn:disabled { cursor: default; }
+.sesh-cost-drill-title {
+  font-size: 0.95em;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.sesh-cost-drill-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sesh-space-3);
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85em;
+  color: color-mix(in srgb, var(--vscode-foreground) 65%, transparent);
+}
+.sesh-cost-drill-project {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: var(--sesh-radius-pill);
+  background: color-mix(in srgb, var(--vscode-foreground) 7%, transparent);
+}
+.sesh-cost-drill-project-icon { font-size: 10px !important; }
+.sesh-cost-drill-cost {
+  color: var(--vscode-foreground);
+  font-weight: 500;
+}
+
 /* ─── Mode switcher (segmented control) ─────────── */
 .sesh-insights-modes {
   display: flex;

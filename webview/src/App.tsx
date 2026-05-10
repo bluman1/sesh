@@ -102,10 +102,11 @@ export function App(): JSX.Element {
             selectedId={selectedSessionId}
             onSelect={setSelectedSessionId}
             pickUpBannerEnabled={appSettings.pickUpBanner}
+            pickUpScope={appSettings.pickUpScope}
           />
         )}
         {tab === "knowledge" && appSettings.tabs.knowledge && <KnowledgeTab onNavigateToSession={navigateToSession} />}
-        {tab === "insights" && appSettings.tabs.insights && <InsightsTab />}
+        {tab === "insights" && appSettings.tabs.insights && <InsightsTab onNavigateToSession={navigateToSession} />}
         {tab === "ideas" && appSettings.tabs.ideas && <IdeasTab onNavigateToSession={navigateToSession} />}
         {tab === "reviewer" && appSettings.tabs.reviewer && <ReviewerTab onNavigateToSession={navigateToSession} />}
         {tab === "settings" && <SettingsTab settings={appSettings} onUpdate={updateSetting} />}

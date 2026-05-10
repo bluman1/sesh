@@ -91,6 +91,7 @@ export type ToHost =
   | { kind: "generateTitle"; id: string }
   | { kind: "openFolderInNewWindow"; path: string }
   | { kind: "getInsights"; tab: "standup" | "cost" | "leaderboard" | "records"; range: "today" | "7d" | "30d" | "1y" | "all" }
+  | { kind: "getSessionsForFile"; path: string; range: "today" | "7d" | "30d" | "1y" | "all" }
   | { kind: "setOutcome"; sessionId: string; state: "open" | "shipped" | "shipped-partial" | "reverted" | "abandoned"; notes?: string | null }
   | { kind: "triggerReindexAnalytics" }
   | { kind: "getCommitments"; sinceDays: number }
@@ -165,6 +166,18 @@ export type ToWebview =
     }
   | { kind: "error"; message: string }
   | { kind: "insights"; tab: "standup" | "cost" | "leaderboard" | "records"; payload: unknown }
+  | {
+      kind: "sessionsForFile";
+      path: string;
+      sessions: Array<{
+        session_id: string;
+        title: string | null;
+        project_label: string | null;
+        usd: number;
+        tool_calls: number;
+        last_touched_at: number;
+      }>;
+    }
   | { kind: "commitments"; commitments: { session_id: string; ts: number; excerpt: string }[] }
   | { kind: "analyticsProgress"; indexed: number; total: number }
   | {
@@ -290,6 +303,8 @@ export type ToWebview =
         text: string;
         weight: number;
         source_session_ids: string[];
+        session_title: string | null;
+        project_label: string | null;
       }>;
     }
   | {

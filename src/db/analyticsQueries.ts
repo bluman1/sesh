@@ -100,6 +100,97 @@ export function costByFile(opts: { db: Db; since: number }): CostByFileRow[] {
     .sort((a, b) => b.usd - a.usd);
 }
 
+export interface SessionForFileRow {
+  session_id: string;
+  title: string | null;
+  project_label: string | null;
+  usd: number;
+  tool_calls: number;
+  last_touched_at: number;
+}
+
+/**
+ * For a given file path, return every session that touched it (since `since`)
+ * with its share of the file's spend, tool-call count, and most recent touch.
+ * Used by the By-file drill-down ("show me the sessions behind this row").
+ */
+export function sessionsForFile(opts: { db: Db; path: string; since: number }): SessionForFileRow[] {
+  const rows = opts.db
+    .prepare(
+      `SELECT
+         t.session_id        AS session_id,
+         t.model             AS model,
+         t.tokens_in         AS tokens_in,
+         t.tokens_out        AS tokens_out,
+         t.tokens_cache_read AS tokens_cache_read,
+         t.tokens_cache_create AS tokens_cache_create,
+         tc.ts               AS ts
+       FROM tool_calls tc
+       JOIN turns t ON t.id = tc.turn_id
+       WHERE tc.target_path = ? AND tc.ts >= ?`,
+    )
+    .all(opts.path, opts.since) as {
+      session_id: string;
+      model: string | null;
+      tokens_in: number;
+      tokens_out: number;
+      tokens_cache_read: number;
+      tokens_cache_create: number;
+      ts: number;
+    }[];
+
+  const agg = new Map<string, { usd: number; calls: number; lastTs: number }>();
+  for (const r of rows) {
+    const existing = agg.get(r.session_id) ?? { usd: 0, calls: 0, lastTs: 0 };
+    existing.usd += usdForTurn(r);
+    existing.calls += 1;
+    if (r.ts > existing.lastTs) existing.lastTs = r.ts;
+    agg.set(r.session_id, existing);
+  }
+  if (agg.size === 0) return [];
+
+  const ids = Array.from(agg.keys());
+  const placeholders = ids.map(() => "?").join(",");
+  const meta = opts.db
+    .prepare(
+      `SELECT id, custom_title, auto_title, repo_path, project_path
+       FROM sessions
+       WHERE id IN (${placeholders})`,
+    )
+    .all(...ids) as Array<{
+      id: string;
+      custom_title: string | null;
+      auto_title: string | null;
+      repo_path: string | null;
+      project_path: string | null;
+    }>;
+  const metaById = new Map(meta.map((m) => [m.id, m]));
+
+  const out: SessionForFileRow[] = ids.map((id) => {
+    const v = agg.get(id)!;
+    const m = metaById.get(id);
+    const title = m ? (m.custom_title?.trim() || m.auto_title?.trim() || null) : null;
+    const projectRaw = m?.repo_path ?? m?.project_path ?? null;
+    const project_label = projectRaw ? basename(projectRaw) : null;
+    return {
+      session_id: id,
+      title,
+      project_label,
+      usd: v.usd,
+      tool_calls: v.calls,
+      last_touched_at: v.lastTs,
+    };
+  });
+  return out.sort((a, b) => b.usd - a.usd);
+}
+
+function basename(p: string): string | null {
+  const trimmed = p.replace(/\/+$/, "");
+  const idx = trimmed.lastIndexOf("/");
+  const tail = idx >= 0 ? trimmed.slice(idx + 1) : trimmed;
+  return tail.length > 0 ? tail : null;
+}
+
 export interface ModelBoardRow {
   model: string;
   turns: number;

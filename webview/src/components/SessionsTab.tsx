@@ -18,9 +18,10 @@ type Props = {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   pickUpBannerEnabled?: boolean;
+  pickUpScope?: "global" | "workspace";
 };
 
-export function SessionsTab({ selectedId, onSelect, pickUpBannerEnabled = true }: Props): JSX.Element {
+export function SessionsTab({ selectedId, onSelect, pickUpBannerEnabled = true, pickUpScope = "workspace" }: Props): JSX.Element {
   const sessionsApi = useSessions();
   const detail = useSessionDetail(selectedId);
   const { categories } = useCategories();
@@ -70,7 +71,7 @@ export function SessionsTab({ selectedId, onSelect, pickUpBannerEnabled = true }
         projects={projects}
       />
       <RemapBanner />
-      {pickUpBannerEnabled && <NextSessionBanner onNavigateToSession={onSelect} />}
+      {pickUpBannerEnabled && <NextSessionBanner onNavigateToSession={onSelect} scope={pickUpScope} />}
       {sessionsApi.error && <div className="sesh-error">{sessionsApi.error}</div>}
       {sessionsApi.indexProgress.total > 0 &&
         sessionsApi.indexProgress.indexed < sessionsApi.indexProgress.total && (

@@ -1670,9 +1670,9 @@ body {
 }
 .sesh-pickup-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--sesh-space-2);
-  padding: 6px var(--sesh-space-3);
+  padding: 8px var(--sesh-space-3);
   border-top: 1px solid var(--sesh-border-subtle);
 }
 .sesh-pickup-item:first-child { border-top: none; }
@@ -1685,6 +1685,7 @@ body {
   height: 6px;
   border-radius: 50%;
   background: var(--sesh-fg-muted);
+  margin-top: 7px;
 }
 .sesh-pickup-dot-idea { background: var(--vscode-charts-purple, #a371f7); }
 .sesh-pickup-dot-commitment { background: var(--vscode-charts-green, #3fb950); }
@@ -1695,15 +1696,56 @@ body {
   padding: 0;
   text-align: left;
   font: inherit;
-  font-size: var(--sesh-text-sm);
   color: var(--vscode-foreground);
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.sesh-pickup-row1 {
+  display: flex;
+  align-items: center;
+  gap: var(--sesh-space-2);
+  min-width: 0;
+}
+.sesh-pickup-item-title {
+  font-size: var(--sesh-text-sm);
+  font-weight: 500;
+  color: var(--vscode-foreground);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+  flex: 0 1 auto;
 }
-.sesh-pickup-text:hover { text-decoration: underline; }
+.sesh-pickup-item-snippet {
+  font-size: var(--sesh-text-xs);
+  color: var(--sesh-fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11px;
+}
+.sesh-pickup-project {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: var(--sesh-radius-pill);
+  background: color-mix(in srgb, var(--vscode-foreground) 7%, transparent);
+  color: var(--sesh-fg-muted);
+  font-size: 10px;
+  font-weight: 500;
+  font-family: var(--vscode-font-family, system-ui);
+  white-space: nowrap;
+}
+.sesh-pickup-project-icon {
+  font-size: 10px !important;
+}
+.sesh-pickup-text:hover .sesh-pickup-item-title { text-decoration: underline; }
 .sesh-pickup-dismiss {
   flex: 0 0 auto;
   background: transparent;
