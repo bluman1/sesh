@@ -15,4 +15,11 @@ describe("openDb", () => {
     expect(row).toBe("wal");
     db.close();
   });
+
+  it("sets a busy_timeout so transient cross-window write locks wait", () => {
+    const db = openDb(":memory:");
+    const timeout = db.pragma("busy_timeout", { simple: true });
+    expect(timeout).toBe(3000);
+    db.close();
+  });
 });

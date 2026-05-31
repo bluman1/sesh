@@ -4,6 +4,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import { openDb, type Db } from "../db/connection";
 import { runMigrations } from "../db/migrate";
+import { withBusyRetry, ifBusyThen, isSqliteBusy } from "../db/retry";
 import { SessionRepository } from "../db/sessions";
 import { TagRepository } from "../db/tags";
 import { CategoryRepository } from "../db/categories";
@@ -51,6 +52,7 @@ export class SeshHost {
   public onIndexProgress?: () => void;
   public onSessionChanged?: (id: string) => void;
   private scanPromise: Promise<void> | null = null;
+  private scanRetryTimer: ReturnType<typeof setTimeout> | null = null;
 
   private readonly dbDir: string;
   private readonly dbFile: string;
@@ -141,21 +143,29 @@ export class SeshHost {
     fs.mkdirSync(this.dbDir, { recursive: true });
     this.db = openDb(this.dbFile);
     try {
-      runMigrations(this.db);
+      // Migrations are idempotent (they skip already-applied versions), so a
+      // transient cross-window write lock can be safely retried.
+      await withBusyRetry(() => runMigrations(this.db!));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.output.appendLine(`[sesh] migration error: ${message}`);
-      this.output.appendLine(
-        `[sesh] If this is a stale DB from an older Sesh build, the safe recovery is:`,
-      );
-      this.output.appendLine(`[sesh]   1. Close VSCode`);
-      this.output.appendLine(`[sesh]   2. mv ${this.dbFile} ${this.dbFile}.bak`);
-      this.output.appendLine(
-        `[sesh]   3. Reopen VSCode — Sesh will rebuild the index from your source JSONLs.`,
-      );
-      this.output.appendLine(
-        `[sesh]      (Annotations will be reset; the source JSONL files are untouched.)`,
-      );
+      if (isSqliteBusy(err)) {
+        this.output.appendLine(
+          `[sesh] The database stayed locked by another VSCode window through startup. Reload this window (Developer: Reload Window) to retry.`,
+        );
+      } else {
+        this.output.appendLine(
+          `[sesh] If this is a stale DB from an older Sesh build, the safe recovery is:`,
+        );
+        this.output.appendLine(`[sesh]   1. Close VSCode`);
+        this.output.appendLine(`[sesh]   2. mv ${this.dbFile} ${this.dbFile}.bak`);
+        this.output.appendLine(
+          `[sesh]   3. Reopen VSCode — Sesh will rebuild the index from your source JSONLs.`,
+        );
+        this.output.appendLine(
+          `[sesh]      (Annotations will be reset; the source JSONL files are untouched.)`,
+        );
+      }
       throw err;
     }
     this.sessions = new SessionRepository(this.db);
@@ -163,8 +173,20 @@ export class SeshHost {
     this.categories = new CategoryRepository(this.db);
     this.output.appendLine(`[sesh] db open: ${this.dbFile}`);
 
+    // Best-effort initial scan. A transient cross-window write lock must NOT
+    // abort activation — otherwise this window is left with no panel ("Sesh
+    // is not running"). Reads work regardless (WAL), so the panel opens from
+    // existing data and the scan retries in the background.
     this.scanPromise = this.runScan();
-    await this.scanPromise;
+    await ifBusyThen(
+      () => this.scanPromise!,
+      () => {
+        this.output.appendLine(
+          `[sesh] initial scan deferred — database busy (another window is indexing). Panel opens from existing data; retrying scan in the background.`,
+        );
+        this.scheduleBackgroundScan();
+      },
+    );
 
     void this.healSessionMetadata();
 
@@ -197,6 +219,38 @@ export class SeshHost {
       },
     );
     void this.watcher.start();
+  }
+
+  /**
+   * Re-run the initial scan in the background after a transient lock deferred
+   * it, backing off and giving up after a bounded number of tries. The file
+   * watcher still catches new sessions live; this only recovers the startup
+   * backlog that was locked out.
+   */
+  private scheduleBackgroundScan(attempt = 1): void {
+    const maxAttempts = 6;
+    const delay = Math.min(30_000, 2000 * attempt);
+    if (this.scanRetryTimer) clearTimeout(this.scanRetryTimer);
+    this.scanRetryTimer = setTimeout(() => {
+      this.scanRetryTimer = null;
+      void this.runScan()
+        .then(() => {
+          this.output.appendLine(
+            `[sesh] background scan succeeded (attempt ${attempt}).`,
+          );
+          void this.indexer?.run();
+          this.onSessionChanged?.("");
+        })
+        .catch((err) => {
+          if (isSqliteBusy(err) && attempt < maxAttempts) {
+            this.scheduleBackgroundScan(attempt + 1);
+          } else {
+            this.output.appendLine(
+              `[sesh] background scan gave up after ${attempt} attempt${attempt === 1 ? "" : "s"}: ${err instanceof Error ? err.message : String(err)} — run "Sesh: Rescan all projects" to refresh.`,
+            );
+          }
+        });
+    }, delay);
   }
 
   private async runScan(): Promise<void> {
@@ -311,6 +365,10 @@ export class SeshHost {
   }
 
   async stop(): Promise<void> {
+    if (this.scanRetryTimer) {
+      clearTimeout(this.scanRetryTimer);
+      this.scanRetryTimer = null;
+    }
     if (this.scanPromise) {
       try {
         await this.scanPromise;

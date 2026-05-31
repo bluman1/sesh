@@ -48,6 +48,11 @@ const PLATFORMS = [
   ["linux", "x64"],
   ["linux", "arm64"],
   ["win32", "x64"],
+  // win32-arm64 prebuilds aren't published by every better-sqlite3 release
+  // (e.g. v12.9.1 skips them) but v12.9.0 has them — the version fallback
+  // below picks them up. package-platforms.sh ships a win32-arm64 VSIX, so it
+  // needs these or the extension can't open its DB on native Windows ARM.
+  ["win32", "arm64"],
 ];
 
 const ROOT = path.resolve(__dirname, "..");
