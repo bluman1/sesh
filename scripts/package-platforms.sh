@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Build per-platform VSIXs. Each one strips other platforms' native
-# binaries (better-sqlite3 prebuilds + onnxruntime-node bins) so the
-# resulting VSIX is small enough for the marketplace.
+# Build per-platform VSIXs. The database engine is now Node's built-in
+# node:sqlite (no native binary), so the only per-platform payload left is
+# onnxruntime-node's bins (used by the opt-in local embedder). Each VSIX
+# strips the other platforms' onnxruntime bins to stay marketplace-sized.
 #
 # vsce package --target <pair> publishes a platform-tagged VSIX; the
 # marketplace serves the right one to each installer.
@@ -34,13 +35,6 @@ for entry in "${PLATFORMS[@]}"; do
 
   # Start from base ignore.
   cp .vscodeignore.base .vscodeignore
-
-  # Exclude every other prebuild flavour.
-  for plat_other in darwin-arm64 darwin-x64 linux-arm64 linux-x64 win32-arm64 win32-x64; do
-    if [[ "$plat_other" != "$os-$arch" ]]; then
-      echo "prebuilds/$plat_other-electron-abi-*/**" >> .vscodeignore
-    fi
-  done
 
   # Exclude every other onnxruntime-node platform/arch.
   for os_other in darwin linux win32; do

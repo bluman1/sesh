@@ -1,5 +1,4 @@
 import * as vscode from "vscode";
-import { ensureNativePrebuild } from "./native-prebuild";
 import { SeshHost } from "./host/seshHost";
 import { SeshPanel } from "./host/seshPanel";
 import { SeshStatusBar } from "./host/statusBar";
@@ -33,8 +32,6 @@ let embedStatusItem: vscode.StatusBarItem | null = null;
 let embeddingTransitions: Promise<void> = Promise.resolve();
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  ensureNativePrebuild(context.extensionPath);
-
   const isDev = context.extensionMode === vscode.ExtensionMode.Development;
   const output = vscode.window.createOutputChannel(isDev ? "Sesh (dev)" : "Sesh");
   context.subscriptions.push(output);

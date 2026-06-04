@@ -24,6 +24,32 @@ describe("isSqliteBusy", () => {
     expect(isSqliteBusy(null)).toBe(false);
     expect(isSqliteBusy("database is locked")).toBe(false);
   });
+
+  it("is true for a node:sqlite busy error via errcode (code is ERR_SQLITE_ERROR, not SQLITE_BUSY)", () => {
+    // node:sqlite reports every SQLite error as code 'ERR_SQLITE_ERROR' and
+    // puts the real result code in errcode. SQLITE_BUSY primary code is 5.
+    const err = Object.assign(new Error("opaque"), {
+      code: "ERR_SQLITE_ERROR",
+      errcode: 5,
+    });
+    expect(isSqliteBusy(err)).toBe(true);
+  });
+
+  it("is true for node:sqlite extended busy codes (e.g. SQLITE_BUSY_SNAPSHOT 517)", () => {
+    const err = Object.assign(new Error("opaque"), {
+      code: "ERR_SQLITE_ERROR",
+      errcode: 517,
+    });
+    expect(isSqliteBusy(err)).toBe(true);
+  });
+
+  it("is false for a node:sqlite constraint error (errcode 2067)", () => {
+    const err = Object.assign(new Error("UNIQUE constraint failed"), {
+      code: "ERR_SQLITE_ERROR",
+      errcode: 2067,
+    });
+    expect(isSqliteBusy(err)).toBe(false);
+  });
 });
 
 describe("withBusyRetry", () => {

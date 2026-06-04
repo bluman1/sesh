@@ -2,9 +2,12 @@ import { describe, it, expect } from "vitest";
 import { openDb } from "../../src/db/connection";
 
 describe("openDb", () => {
-  it("opens an in-memory database with WAL mode disabled gracefully (in-memory does not support WAL)", () => {
+  it("opens an in-memory database that can run statements", () => {
     const db = openDb(":memory:");
-    expect(db.open).toBe(true);
+    db.exec("CREATE TABLE t(a INTEGER)");
+    db.prepare("INSERT INTO t(a) VALUES(?)").run(7);
+    const row = db.prepare("SELECT a FROM t").get() as { a: number };
+    expect(row.a).toBe(7);
     db.close();
   });
 

@@ -30,11 +30,6 @@ package-lock.json
 # Build artefacts not consumed by the extension
 out/migrations/**.ts
 
-# Native binaries — the runtime loader swaps in the right ABI-matched prebuild
-# from the bundled prebuilds/ directory; the dev-time binary built for one
-# specific ABI should not be included.
-node_modules/better-sqlite3/build/**
-
 # @huggingface/transformers leaves a 90 MB .cache dir after any local
 # embedding run — that's just the downloaded ONNX model, which Xenova
 # will re-download on first use. Don't ship it.

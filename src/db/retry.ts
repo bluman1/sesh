@@ -2,8 +2,8 @@
  * SQLite write contention helpers.
  *
  * Sesh runs one extension instance per VSCode window, and every window opens
- * its own better-sqlite3 connection to the SAME `~/.sesh/db.sqlite`. WAL mode
- * lets readers run concurrently but allows only a single writer at a time, so
+ * its own connection to the SAME `~/.sesh/db.sqlite`. WAL mode lets readers
+ * run concurrently but allows only a single writer at a time, so
  * when several windows do activation-time indexing at once a write can come
  * back as SQLITE_BUSY ("database is locked"). These helpers let callers wait
  * out transient contention instead of treating it as fatal.
@@ -12,8 +12,14 @@
 /** True for the SQLITE_BUSY / "database is locked" family of errors. */
 export function isSqliteBusy(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
+  // better-sqlite3 surfaces the result code directly as `code`.
   const code = (err as { code?: unknown }).code;
   if (typeof code === "string" && code.startsWith("SQLITE_BUSY")) return true;
+  // node:sqlite reports every SQLite error as code "ERR_SQLITE_ERROR" and
+  // carries the numeric result code in `errcode`. The low byte is the primary
+  // result code; SQLITE_BUSY is 5 (covers extended 261/517/773 too).
+  const errcode = (err as { errcode?: unknown }).errcode;
+  if (typeof errcode === "number" && (errcode & 0xff) === 5) return true;
   const msg = (err as { message?: unknown }).message;
   return (
     typeof msg === "string" &&
