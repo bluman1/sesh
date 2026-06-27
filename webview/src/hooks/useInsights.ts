@@ -13,6 +13,10 @@ export function useInsights(
   const send = () => {
     if (range === "custom" && custom) {
       postToHost({ kind: "getInsights", tab, range: "custom", start: custom.start, end: custom.end });
+    } else if (range === "custom" && !custom) {
+      // Custom range selected but bounds not yet set — clear stale data so
+      // sub-views show their loading state instead of previous range's data.
+      setPayload(null);
     } else if (range !== "custom") {
       postToHost({ kind: "getInsights", tab, range });
     }

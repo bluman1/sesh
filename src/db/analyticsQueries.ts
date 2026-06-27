@@ -482,11 +482,13 @@ export function standupSummary(opts: StandupOpts): StandupSummary {
     : null;
 
   // ─── Top tools (count by name in period) ────────────────────
+  const toolSql =
+    "SELECT name, COUNT(*) AS c FROM tool_calls WHERE ts >= ?" +
+    (until != null ? " AND ts <= ?" : "") +
+    " GROUP BY name ORDER BY c DESC LIMIT 3";
   const toolRows = db
-    .prepare(
-      "SELECT name, COUNT(*) AS c FROM tool_calls WHERE ts >= ? GROUP BY name ORDER BY c DESC LIMIT 3",
-    )
-    .all(since) as { name: string; c: number }[];
+    .prepare(toolSql)
+    .all(...(until != null ? [since, until] : [since])) as { name: string; c: number }[];
   const topTools: ToolCount[] = toolRows.map((r) => ({ name: r.name, count: r.c }));
 
   // ─── Cache hit rate ─────────────────────────────────────────
@@ -680,6 +682,10 @@ export function dailyMetrics(opts: {
     ts: number[]; cacheRead: number; cacheable: number;
   };
   const byDay = new Map<string, Acc>();
+  // Each turn is bucketed into its local calendar day. Active-time gaps do NOT
+  // cross day boundaries: a turn at 23:58 and one at 00:03 next day fall in
+  // different day buckets, so that gap is counted for neither day — preventing
+  // double-counting and avoiding one day "owning" another day's idle time.
   for (const r of rows) {
     const key = localDayKey(r.ts);
     let a = byDay.get(key);

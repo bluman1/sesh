@@ -361,4 +361,29 @@ describe("until upper bound filtering", () => {
     expect(bounded.length).toBe(1);
     expect(bounded[0].session_id).toBe("s1");
   });
+
+  it("standupSummary.topTools excludes tool_calls after `until`", () => {
+    // Seed two more tool_calls for tool "Read": one before the until boundary
+    // and one after. Both belong to sessions/turns already in beforeEach.
+    // tc1 (ts=base) and tc2 (ts=base+2*day) are "Edit" calls from beforeEach.
+    // Add "Read" calls straddling the boundary.
+    toolCalls.upsertMany([
+      { id: "tc-read-in",  turn_id: "t1", session_id: "s1", name: "Read", target_path: null,
+        is_error: 0, result_size: 0, ts: base },
+      { id: "tc-read-out", turn_id: "t2", session_id: "s2", name: "Read", target_path: null,
+        is_error: 0, result_size: 0, ts: base + 2 * day },
+    ]);
+    // Unbounded: "Read" should appear with count 2
+    const all = standupSummary({ db, since: base });
+    const allRead = all.topTools.find((t) => t.name === "Read");
+    expect(allRead).toBeDefined();
+    expect(allRead!.count).toBe(2);
+
+    // Bounded at base+day: the out-of-range "Read" call should be excluded → count 1
+    const bounded = standupSummary({ db, since: base, until: base + day });
+    const boundedRead = bounded.topTools.find((t) => t.name === "Read");
+    expect(boundedRead).toBeDefined();
+    expect(boundedRead!.count).toBeLessThan(allRead!.count);
+    expect(boundedRead!.count).toBe(1);
+  });
 });
