@@ -18,6 +18,7 @@ import {
 import {
   buildAnalyticsChips,
   costByFile,
+  dailyMetrics,
   sessionsForFile,
   modelLeaderboard,
   personalRecords,
@@ -378,44 +379,52 @@ export class SeshPanel {
           break;
         case "getInsights": {
           let sinceMs: number;
+          let untilMs: number | undefined;
           let priorRange: { start: number; end: number; label: string } | undefined;
-          switch (msg.range) {
-            case "today": {
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-              sinceMs = today.getTime();
-              const yesterdayStart = sinceMs - 86400 * 1000;
-              priorRange = { start: yesterdayStart, end: sinceMs, label: "yesterday" };
-              break;
+          if (msg.range === "custom") {
+            sinceMs = msg.start;
+            untilMs = msg.end;
+            priorRange = undefined;
+          } else {
+            switch (msg.range) {
+              case "today": {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                sinceMs = today.getTime();
+                const yesterdayStart = sinceMs - 86400 * 1000;
+                priorRange = { start: yesterdayStart, end: sinceMs, label: "yesterday" };
+                break;
+              }
+              case "7d":
+                sinceMs = Date.now() - 7 * 86400 * 1000;
+                priorRange = {
+                  start: Date.now() - 14 * 86400 * 1000,
+                  end: sinceMs,
+                  label: "the previous 7 days",
+                };
+                break;
+              case "30d":
+                sinceMs = Date.now() - 30 * 86400 * 1000;
+                priorRange = {
+                  start: Date.now() - 60 * 86400 * 1000,
+                  end: sinceMs,
+                  label: "the previous 30 days",
+                };
+                break;
+              case "1y":
+                sinceMs = Date.now() - 365 * 86400 * 1000;
+                priorRange = {
+                  start: Date.now() - 730 * 86400 * 1000,
+                  end: sinceMs,
+                  label: "the previous year",
+                };
+                break;
+              case "all":
+                sinceMs = 0;
+                priorRange = undefined;
+                break;
             }
-            case "7d":
-              sinceMs = Date.now() - 7 * 86400 * 1000;
-              priorRange = {
-                start: Date.now() - 14 * 86400 * 1000,
-                end: sinceMs,
-                label: "the previous 7 days",
-              };
-              break;
-            case "30d":
-              sinceMs = Date.now() - 30 * 86400 * 1000;
-              priorRange = {
-                start: Date.now() - 60 * 86400 * 1000,
-                end: sinceMs,
-                label: "the previous 30 days",
-              };
-              break;
-            case "1y":
-              sinceMs = Date.now() - 365 * 86400 * 1000;
-              priorRange = {
-                start: Date.now() - 730 * 86400 * 1000,
-                end: sinceMs,
-                label: "the previous year",
-              };
-              break;
-            case "all":
-              sinceMs = 0;
-              priorRange = undefined;
-              break;
+            untilMs = msg.range === "all" ? undefined : Date.now();
           }
           let payload: unknown;
           switch (msg.tab) {
@@ -423,20 +432,29 @@ export class SeshPanel {
               payload = standupSummary({
                 db: this.host.rawDb!,
                 since: sinceMs,
+                until: untilMs,
                 priorRange,
               });
               break;
             case "cost":
-              payload = costByFile({ db: this.host.rawDb!, since: sinceMs });
+              payload = costByFile({ db: this.host.rawDb!, since: sinceMs, until: untilMs });
               break;
             case "leaderboard":
-              payload = modelLeaderboard({ db: this.host.rawDb!, since: sinceMs });
+              payload = modelLeaderboard({ db: this.host.rawDb!, since: sinceMs, until: untilMs });
               break;
             case "records":
               payload = personalRecords({ db: this.host.rawDb! });
               break;
           }
           this.send({ kind: "insights", tab: msg.tab, payload });
+          break;
+        }
+        case "getDailyMetrics": {
+          const [y, m] = msg.month.split("-").map(Number);
+          const monthStartMs = new Date(y, m - 1, 1, 0, 0, 0, 0).getTime();
+          const monthEndMs = new Date(y, m, 1, 0, 0, 0, 0).getTime();
+          const payload = dailyMetrics({ db: this.host.rawDb!, monthStartMs, monthEndMs });
+          this.send({ kind: "dailyMetrics", month: msg.month, payload });
           break;
         }
         case "getSessionsForFile": {

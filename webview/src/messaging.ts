@@ -91,6 +91,8 @@ export type ToHost =
   | { kind: "generateTitle"; id: string }
   | { kind: "openFolderInNewWindow"; path: string }
   | { kind: "getInsights"; tab: "standup" | "cost" | "leaderboard" | "records"; range: "today" | "7d" | "30d" | "1y" | "all" }
+  | { kind: "getInsights"; tab: "standup" | "cost" | "leaderboard" | "records"; range: "custom"; start: number; end: number }
+  | { kind: "getDailyMetrics"; month: string }
   | { kind: "getSessionsForFile"; path: string; range: "today" | "7d" | "30d" | "1y" | "all" }
   | { kind: "setOutcome"; sessionId: string; state: "open" | "shipped" | "shipped-partial" | "reverted" | "abandoned"; notes?: string | null }
   | { kind: "triggerReindexAnalytics" }
@@ -166,6 +168,7 @@ export type ToWebview =
     }
   | { kind: "error"; message: string }
   | { kind: "insights"; tab: "standup" | "cost" | "leaderboard" | "records"; payload: unknown }
+  | { kind: "dailyMetrics"; month: string; payload: unknown }
   | {
       kind: "sessionsForFile";
       path: string;
