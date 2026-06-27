@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useDailyMetrics, type DailyMetric } from "../../hooks/useDailyMetrics";
+import { fmtDuration } from "./format";
 import "./TrendsView.css";
 
 type MetricKey = "cost" | "sessions" | "turns" | "activeMs" | "cacheHitRate" | "costPerTurn";
@@ -7,14 +8,10 @@ const METRICS: { key: MetricKey; label: string; fmt: (n: number) => string }[] =
   { key: "cost", label: "Total cost", fmt: (n) => `$${n.toFixed(2)}` },
   { key: "sessions", label: "Sessions", fmt: (n) => `${n}` },
   { key: "turns", label: "Turns", fmt: (n) => `${n}` },
-  { key: "activeMs", label: "Active time", fmt: fmtDur },
+  { key: "activeMs", label: "Active time", fmt: fmtDuration },
   { key: "cacheHitRate", label: "Cache hit", fmt: (n) => `${Math.round(n * 100)}%` },
   { key: "costPerTurn", label: "$ / turn", fmt: (n) => `$${n.toFixed(3)}` },
 ];
-function fmtDur(ms: number): string {
-  const m = Math.round(ms / 60000);
-  return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
-}
 function thisMonth(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;

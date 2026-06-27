@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useInsights } from "../../hooks/useInsights";
 import { type InsightsRange, RANGE_TITLE } from "./range";
-import { fmtUsd, fmtCount, pluralize } from "./format";
+import { fmtUsd, fmtCount, pluralize, fmtDuration } from "./format";
 
 interface ModelShareRow { model: string; share: number; usd: number; tokens_total: number; }
 interface OutcomeCounts { open: number; shipped: number; shipped_partial: number; reverted: number; abandoned: number; }
@@ -13,7 +13,7 @@ interface StandupPayload {
   totalTurns: number;
   totalUsd: number;
   perProject: { project_path: string; sessions: number; usd: number }[];
-  activeHours: { firstTs: number; lastTs: number } | null;
+  activeMs: number;
   modelBreakdown: ModelShareRow[];
   outcomes: OutcomeCounts;
   topFile: { path: string; usd: number; sessions: number } | null;
@@ -41,14 +41,6 @@ function shortFilePath(p: string): string {
   const parts = p.split("/").filter((x) => x.length > 0);
   if (parts.length <= 2) return p;
   return ".../" + parts.slice(-2).join("/");
-}
-
-function fmtTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  }).toLowerCase().replace(/\s/g, "");
 }
 
 function fmtPct(n: number): string {
@@ -168,11 +160,9 @@ function buildStandupProse(data: StandupPayload, range: InsightsRange): string {
     lines.push(parts.join(" / ") + ".");
   }
 
-  // Active hours
-  if (data.activeHours) {
-    lines.push(
-      `Active ${fmtTime(data.activeHours.firstTs)} – ${fmtTime(data.activeHours.lastTs)}.`,
-    );
+  // Active time
+  if (data.activeMs > 0) {
+    lines.push(`Active ${fmtDuration(data.activeMs)}.`);
   }
 
   // Cache hit rate
@@ -255,10 +245,10 @@ export function StandupView({ range, custom }: Props): JSX.Element {
               <span>{data.totalSessions} {pluralize(data.totalSessions, "session")}</span>
               <span className="sesh-mag-hero-dot">·</span>
               <span>{fmtCount(data.totalTurns)} turns</span>
-              {data.activeHours && (
+              {data.activeMs > 0 && (
                 <>
                   <span className="sesh-mag-hero-dot">·</span>
-                  <span>{fmtTime(data.activeHours.firstTs)} – {fmtTime(data.activeHours.lastTs)}</span>
+                  <span>{fmtDuration(data.activeMs)} active</span>
                 </>
               )}
             </div>

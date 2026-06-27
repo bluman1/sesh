@@ -12,3 +12,10 @@ export function fmtCount(n: number): string {
 export function pluralize(n: number, singular: string, plural = singular + "s"): string {
   return n === 1 ? singular : plural;
 }
+
+export function fmtDuration(ms: number): string {
+  const m = Math.round(ms / 60000);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}m`;
+}
