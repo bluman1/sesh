@@ -64,6 +64,8 @@ node_modules/**/CHANGELOG*
 # Internal docs / packaging scripts — not shipped to end users.
 HANDOFF.md
 scripts/**
+docs/**
+.superpowers/**
 .vscodeignore.base
 *.vsix.tmp
 
