@@ -190,7 +190,7 @@ describe("standupSummary", () => {
     expect(summary.modelBreakdown.length).toBeGreaterThan(0);
     expect(summary.modelBreakdown[0].model).toBe("claude-opus-4-7");
     expect(summary.modelBreakdown[0].share).toBeCloseTo(1.0); // only one model
-    expect(summary.activeHours).not.toBeNull();
+    expect(summary.activeMs).toBeGreaterThanOrEqual(0);
     expect(summary.topFile?.path).toBe("/p/file.ts");
     expect(summary.topTools[0].name).toBe("Edit");
     expect(summary.cacheHitRate).toBeGreaterThanOrEqual(0);
@@ -223,5 +223,31 @@ describe("standupSummary", () => {
     const summary = standupSummary({ db, since: 0 });
     expect(summary.outcomes.shipped).toBe(1);
     expect(summary.costPerShipped).toBeGreaterThan(0);
+  });
+
+  it("reports activeMs as gap-based active time, capping idle", () => {
+    const MIN = 60_000;
+    const base = Date.now() - 60 * MIN;
+    // three turns: gaps 10m then 90m(skip) — active = 10m
+    db.prepare(
+      `INSERT INTO sessions (id, source, project_path, file_path, file_mtime, file_size, created_at, last_active_at, message_count, auto_title, custom_title, category_id, notes, favorited, archived, orphaned, content_indexed, last_parsed_offset, tokens_in, tokens_out, tokens_cache_read, tokens_cache_create, turns_indexed, turns_last_offset, repo_path)
+       VALUES (?, 'claude-code', '/p2', '/p2/s_at.jsonl', 0, 0, ?, ?, 3, null, null, null, null, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, null)`
+    ).run("s_at", base, base + 100 * MIN);
+    db.prepare(
+      `INSERT INTO turns (id, session_id, seq, role, model, ts, tokens_in, tokens_out, tokens_cache_read, tokens_cache_create, text_len, latency_ms, is_correction)
+       VALUES (?, ?, ?, 'assistant', ?, ?, 0, 0, 0, 0, 0, null, 0)`
+    ).run("t1", "s_at", 0, "claude-sonnet-4-6", base);
+    db.prepare(
+      `INSERT INTO turns (id, session_id, seq, role, model, ts, tokens_in, tokens_out, tokens_cache_read, tokens_cache_create, text_len, latency_ms, is_correction)
+       VALUES (?, ?, ?, 'assistant', ?, ?, 0, 0, 0, 0, 0, null, 0)`
+    ).run("t2", "s_at", 1, "claude-sonnet-4-6", base + 10 * MIN);
+    db.prepare(
+      `INSERT INTO turns (id, session_id, seq, role, model, ts, tokens_in, tokens_out, tokens_cache_read, tokens_cache_create, text_len, latency_ms, is_correction)
+       VALUES (?, ?, ?, 'assistant', ?, ?, 0, 0, 0, 0, 0, null, 0)`
+    ).run("t3", "s_at", 2, "claude-sonnet-4-6", base + 100 * MIN);
+    const out = standupSummary({ db, since: base });
+    expect(out.activeMs).toBe(10 * MIN);
+    // @ts-expect-error activeHours is removed
+    expect(out.activeHours).toBeUndefined();
   });
 });

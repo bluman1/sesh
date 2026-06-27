@@ -1,6 +1,7 @@
 import type { Db } from "./connection";
 import type { SessionAnalyticsChip } from "../messaging";
 import { basename } from "../util/path";
+import { activeMsFromTimestamps } from "./activeTime";
 
 // Pricing table (USD per 1M tokens) — rough Claude prices as of 2026-05.
 // Update when model lineup changes; not load-bearing for correctness.
@@ -337,7 +338,7 @@ export interface StandupSummary {
   totalUsd: number;
   perProject: { project_path: string; sessions: number; usd: number }[];
 
-  activeHours: { firstTs: number; lastTs: number } | null;
+  activeMs: number;
   modelBreakdown: ModelShareRow[];
   outcomes: OutcomeCounts;
   topFile: { path: string; usd: number; sessions: number } | null;
@@ -394,8 +395,7 @@ export function standupSummary(opts: StandupOpts): StandupSummary {
   let totalCacheRead = 0;
   let totalCacheReadable = 0;
   let corrections = 0;
-  let firstTs: number | null = null;
-  let lastTs: number | null = null;
+  const turnTimestamps: number[] = [];
   const usdByModel = new Map<string, number>();
   const tokensByModel = new Map<string, number>();
   const usdByProject = new Map<string, number>();
@@ -408,8 +408,7 @@ export function standupSummary(opts: StandupOpts): StandupSummary {
     totalCacheRead += r.tokens_cache_read;
     totalCacheReadable += r.tokens_in + r.tokens_cache_read;
     if (r.is_correction === 1) corrections++;
-    if (firstTs === null || r.ts < firstTs) firstTs = r.ts;
-    if (lastTs === null || r.ts > lastTs) lastTs = r.ts;
+    turnTimestamps.push(r.ts);
     if (r.model) {
       usdByModel.set(r.model, (usdByModel.get(r.model) ?? 0) + usd);
       tokensByModel.set(r.model, (tokensByModel.get(r.model) ?? 0) + tokens);
@@ -538,9 +537,7 @@ export function standupSummary(opts: StandupOpts): StandupSummary {
 
   return {
     totalSessions, totalTurns, totalUsd, perProject,
-    activeHours: firstTs !== null && lastTs !== null
-      ? { firstTs, lastTs }
-      : null,
+    activeMs: activeMsFromTimestamps(turnTimestamps),
     modelBreakdown, outcomes,
     topFile, topTools,
     cacheHitRate, corrections,
