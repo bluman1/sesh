@@ -4,16 +4,18 @@ import { CostView } from "./insights/CostView";
 import { LeaderboardView } from "./insights/LeaderboardView";
 import { RecordsView } from "./insights/RecordsView";
 import { StyleView } from "./insights/StyleView";
+import { TrendsView } from "./insights/TrendsView";
 import { type InsightsRange, RANGE_OPTIONS, localStartOfDayMs, localEndOfDayMs } from "./insights/range";
 import "./InsightsTab.css";
 
-type SubTab = "standup" | "cost" | "leaderboard" | "records" | "style";
+type SubTab = "standup" | "cost" | "leaderboard" | "records" | "style" | "trends";
 const SUBS: { id: SubTab; label: string }[] = [
   { id: "standup", label: "Standup" },
   { id: "cost", label: "By file" },
   { id: "leaderboard", label: "Models" },
   { id: "records", label: "Records" },
   { id: "style", label: "Style" },
+  { id: "trends", label: "Trends" },
 ];
 
 type Props = { onNavigateToSession?: (id: string) => void };
@@ -56,7 +58,7 @@ export function InsightsTab({ onNavigateToSession }: Props = {}): JSX.Element {
     }
   };
 
-  const showRanges = sub !== "records" && sub !== "style";
+  const showRanges = sub !== "records" && sub !== "style" && sub !== "trends";
 
   return (
     <div className="sesh-insights">
@@ -115,6 +117,7 @@ export function InsightsTab({ onNavigateToSession }: Props = {}): JSX.Element {
         {sub === "leaderboard" && <LeaderboardView range={range} custom={custom} />}
         {sub === "records" && <RecordsView />}
         {sub === "style" && <StyleView />}
+        {sub === "trends" && <TrendsView />}
       </div>
     </div>
   );

@@ -1,0 +1,12 @@
+.sesh-trends { display: flex; flex-direction: column; gap: 12px; }
+.sesh-trends-nav { display: flex; align-items: center; gap: 12px; }
+.sesh-trends-nav button { background: none; border: none; color: var(--sesh-fg); cursor: pointer; font-size: 16px; padding: 2px 8px; }
+.sesh-trends-nav button:disabled { opacity: 0.4; cursor: default; }
+.sesh-trends-month { font-weight: 600; }
+.sesh-trends-metrics { display: flex; flex-wrap: wrap; gap: 6px; }
+.sesh-trends-metrics button { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--sesh-fg) 18%, transparent); background: none; color: var(--sesh-fg); cursor: pointer; }
+.sesh-trends-metrics button.is-active { background: color-mix(in srgb, var(--vscode-charts-blue, #4d8df6) 30%, transparent); border-color: transparent; }
+.sesh-trends-svg { width: 100%; height: 160px; }
+.sesh-trends-bar { fill: color-mix(in srgb, var(--vscode-charts-blue, #4d8df6) 70%, transparent); }
+.sesh-trends-bar:hover { fill: var(--vscode-charts-blue, #4d8df6); }
+.sesh-trends-empty { opacity: 0.6; font-size: 13px; padding: 24px 0; text-align: center; }
