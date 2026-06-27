@@ -633,6 +633,91 @@ export function buildAnalyticsChips(
   return result;
 }
 
+function localDayKey(tsMs: number): string {
+  const d = new Date(tsMs);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export interface DailyMetric {
+  day: string;
+  cost: number;
+  sessions: number;
+  turns: number;
+  activeMs: number;
+  cacheHitRate: number;
+  costPerTurn: number;
+}
+
+export function dailyMetrics(opts: {
+  db: Db;
+  monthStartMs: number;
+  monthEndMs: number;
+}): DailyMetric[] {
+  const { db, monthStartMs, monthEndMs } = opts;
+  const rows = db
+    .prepare(
+      `SELECT model, tokens_in, tokens_out, tokens_cache_read, tokens_cache_create,
+              session_id, ts
+         FROM turns
+        WHERE ts >= ? AND ts < ?
+        ORDER BY ts ASC`,
+    )
+    .all(monthStartMs, monthEndMs) as {
+    model: string | null;
+    tokens_in: number;
+    tokens_out: number;
+    tokens_cache_read: number;
+    tokens_cache_create: number;
+    session_id: string;
+    ts: number;
+  }[];
+
+  type Acc = {
+    cost: number; turns: number; sessions: Set<string>;
+    ts: number[]; cacheRead: number; cacheable: number;
+  };
+  const byDay = new Map<string, Acc>();
+  for (const r of rows) {
+    const key = localDayKey(r.ts);
+    let a = byDay.get(key);
+    if (!a) { a = { cost: 0, turns: 0, sessions: new Set(), ts: [], cacheRead: 0, cacheable: 0 }; byDay.set(key, a); }
+    a.cost += usdForTurn(r);
+    a.turns += 1;
+    a.sessions.add(r.session_id);
+    a.ts.push(r.ts);
+    a.cacheRead += r.tokens_cache_read;
+    a.cacheable += r.tokens_in + r.tokens_cache_read;
+  }
+
+  // Zero-fill every local calendar day in [monthStart, monthEnd).
+  const out: DailyMetric[] = [];
+  const cursor = new Date(monthStartMs);
+  cursor.setHours(0, 0, 0, 0);
+  const end = new Date(monthEndMs);
+  while (cursor.getTime() < end.getTime()) {
+    const key = localDayKey(cursor.getTime());
+    const a = byDay.get(key);
+    out.push(
+      a
+        ? {
+            day: key,
+            cost: a.cost,
+            sessions: a.sessions.size,
+            turns: a.turns,
+            activeMs: activeMsFromTimestamps(a.ts),
+            cacheHitRate: a.cacheable > 0 ? a.cacheRead / a.cacheable : 0,
+            costPerTurn: a.turns > 0 ? a.cost / a.turns : 0,
+          }
+        : { day: key, cost: 0, sessions: 0, turns: 0, activeMs: 0, cacheHitRate: 0, costPerTurn: 0 },
+    );
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return out;
+}
+
 const COMMITMENT_PATTERNS = [
   /\bI'?ll\s+(do|fix|finish|write|address|tackle)\s+(this|that|it|them)\s+(later|tomorrow|next time|tonight)/i,
   /\b(TODO|FIXME)\s*:?\s*(.{1,150})/i,
