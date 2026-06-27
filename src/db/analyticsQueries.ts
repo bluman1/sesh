@@ -61,13 +61,12 @@ export interface CostByFileRow {
   sessions: number;
 }
 
-export function costByFile(opts: { db: Db; since: number }): CostByFileRow[] {
+export function costByFile(opts: { db: Db; since: number; until?: number }): CostByFileRow[] {
   // Cost per file = sum of usd for every assistant turn that emitted at least
   // one tool_call against that path. Counts all tool_calls regardless of
   // tool name (so Read counts too) — those are signals of attention.
-  const rows = opts.db
-    .prepare(
-      `SELECT
+  const sql =
+    `SELECT
          tc.target_path AS path,
          t.model AS model,
          t.tokens_in AS tokens_in,
@@ -77,9 +76,11 @@ export function costByFile(opts: { db: Db; since: number }): CostByFileRow[] {
          t.session_id AS session_id
        FROM tool_calls tc
        JOIN turns t ON t.id = tc.turn_id
-       WHERE tc.target_path IS NOT NULL AND tc.ts >= ?`,
-    )
-    .all(opts.since) as {
+       WHERE tc.target_path IS NOT NULL AND tc.ts >= ?` +
+    (opts.until != null ? " AND tc.ts <= ?" : "");
+  const rows = opts.db
+    .prepare(sql)
+    .all(...(opts.until != null ? [opts.since, opts.until] : [opts.since])) as {
       path: string;
       model: string | null;
       tokens_in: number;
@@ -116,10 +117,9 @@ export interface SessionForFileRow {
  * with its share of the file's spend, tool-call count, and most recent touch.
  * Used by the By-file drill-down ("show me the sessions behind this row").
  */
-export function sessionsForFile(opts: { db: Db; path: string; since: number }): SessionForFileRow[] {
-  const rows = opts.db
-    .prepare(
-      `SELECT
+export function sessionsForFile(opts: { db: Db; path: string; since: number; until?: number }): SessionForFileRow[] {
+  const sql =
+    `SELECT
          t.session_id        AS session_id,
          t.model             AS model,
          t.tokens_in         AS tokens_in,
@@ -129,9 +129,11 @@ export function sessionsForFile(opts: { db: Db; path: string; since: number }): 
          tc.ts               AS ts
        FROM tool_calls tc
        JOIN turns t ON t.id = tc.turn_id
-       WHERE tc.target_path = ? AND tc.ts >= ?`,
-    )
-    .all(opts.path, opts.since) as {
+       WHERE tc.target_path = ? AND tc.ts >= ?` +
+    (opts.until != null ? " AND tc.ts <= ?" : "");
+  const rows = opts.db
+    .prepare(sql)
+    .all(...(opts.until != null ? [opts.path, opts.since, opts.until] : [opts.path, opts.since])) as {
       session_id: string;
       model: string | null;
       tokens_in: number;
@@ -194,10 +196,9 @@ export interface ModelBoardRow {
   usd: number;
 }
 
-export function modelLeaderboard(opts: { db: Db; since: number }): ModelBoardRow[] {
-  const rows = opts.db
-    .prepare(
-      `SELECT
+export function modelLeaderboard(opts: { db: Db; since: number; until?: number }): ModelBoardRow[] {
+  const sql =
+    `SELECT
          model,
          COUNT(*) AS turns,
          SUM(tokens_in) AS tokens_in_total,
@@ -205,10 +206,12 @@ export function modelLeaderboard(opts: { db: Db; since: number }): ModelBoardRow
          SUM(tokens_cache_read) AS tokens_cache_read_total,
          SUM(tokens_cache_create) AS tokens_cache_create_total
        FROM turns
-       WHERE model IS NOT NULL AND ts >= ?
-       GROUP BY model`,
-    )
-    .all(opts.since) as {
+       WHERE model IS NOT NULL AND ts >= ?` +
+    (opts.until != null ? " AND ts <= ?" : "") +
+    " GROUP BY model";
+  const rows = opts.db
+    .prepare(sql)
+    .all(...(opts.until != null ? [opts.since, opts.until] : [opts.since])) as {
       model: string;
       turns: number;
       tokens_in_total: number;
@@ -354,32 +357,35 @@ export interface StandupSummary {
 export interface StandupOpts {
   db: Db;
   since: number; // unix ms
+  until?: number; // unix ms inclusive upper bound (optional)
   priorRange?: { start: number; end: number; label: string }; // optional comparison range
 }
 
 export function standupSummary(opts: StandupOpts): StandupSummary {
-  const { db, since, priorRange } = opts;
+  const { db, since, until, priorRange } = opts;
 
   // ─── Sessions in period ─────────────────────────────────────
+  const sessionSql =
+    "SELECT id, project_path FROM sessions WHERE last_active_at >= ?" +
+    (until != null ? " AND last_active_at <= ?" : "");
   const sessionRows = db
-    .prepare(
-      "SELECT id, project_path FROM sessions WHERE last_active_at >= ?",
-    )
-    .all(since) as { id: string; project_path: string }[];
+    .prepare(sessionSql)
+    .all(...(until != null ? [since, until] : [since])) as { id: string; project_path: string }[];
   const totalSessions = sessionRows.length;
   const sessionIds = sessionRows.map((r) => r.id);
 
   // ─── Turns in period ────────────────────────────────────────
-  const turnRows = db
-    .prepare(
-      `SELECT t.model, t.tokens_in, t.tokens_out, t.tokens_cache_read,
+  const turnSql =
+    `SELECT t.model, t.tokens_in, t.tokens_out, t.tokens_cache_read,
               t.tokens_cache_create, t.is_correction, t.ts,
               s.project_path
          FROM turns t
          JOIN sessions s ON s.id = t.session_id
-        WHERE t.ts >= ?`,
-    )
-    .all(since) as {
+        WHERE t.ts >= ?` +
+    (until != null ? " AND t.ts <= ?" : "");
+  const turnRows = db
+    .prepare(turnSql)
+    .all(...(until != null ? [since, until] : [since])) as {
       model: string | null;
       tokens_in: number;
       tokens_out: number;
@@ -469,7 +475,7 @@ export function standupSummary(opts: StandupOpts): StandupSummary {
   }
 
   // ─── Top file (reuse costByFile, take top) ──────────────────
-  const allFiles = costByFile({ db, since });
+  const allFiles = costByFile({ db, since, until });
   const topFileRow = allFiles[0] ?? null;
   const topFile = topFileRow
     ? { path: topFileRow.path, usd: topFileRow.usd, sessions: topFileRow.sessions }

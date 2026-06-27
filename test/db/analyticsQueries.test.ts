@@ -250,4 +250,115 @@ describe("standupSummary", () => {
     // @ts-expect-error activeHours is removed
     expect(out.activeHours).toBeUndefined();
   });
+
+  it("standupSummary excludes turns after `until`", () => {
+    const day = 86_400_000;
+    const base = 1_700_000_000_000;
+    // Seed a fresh db for this test — use the beforeEach db but add a second session/turn
+    sessions.upsert({
+      id: "su1", source: "claude-code", project_path: "/q", file_path: "/q/su1.jsonl",
+      file_mtime: 0, file_size: 0, created_at: base, last_active_at: base,
+      message_count: 1,
+      auto_title: null, custom_title: null, category_id: null, notes: null,
+      favorited: 0, archived: 0, orphaned: 0, content_indexed: 0, last_parsed_offset: 0,
+      tokens_in: 0, tokens_out: 0, tokens_cache_read: 0, tokens_cache_create: 0,
+      turns_indexed: 0, turns_last_offset: 0, repo_path: null,
+    });
+    turns.upsertMany([
+      { id: "st1", session_id: "su1", seq: 0, role: "assistant", model: "claude-sonnet-4-6",
+        ts: base, tokens_in: 10, tokens_out: 10, tokens_cache_read: 0,
+        tokens_cache_create: 0, text_len: 10, latency_ms: null, is_correction: 0 },
+      { id: "st2", session_id: "su1", seq: 1, role: "assistant", model: "claude-sonnet-4-6",
+        ts: base + 2 * day, tokens_in: 10, tokens_out: 10, tokens_cache_read: 0,
+        tokens_cache_create: 0, text_len: 10, latency_ms: null, is_correction: 0 },
+    ]);
+    const all = standupSummary({ db, since: base });
+    const bounded = standupSummary({ db, since: base, until: base + day });
+    // "all" includes both st1 and st2 (plus turns from beforeEach setup)
+    // "bounded" should exclude st2 (ts = base + 2*day > base + day)
+    expect(all.totalTurns).toBeGreaterThan(bounded.totalTurns);
+    // bounded.totalTurns should be 1 fewer than all (st2 excluded)
+    expect(all.totalTurns - bounded.totalTurns).toBe(1);
+  });
+});
+
+describe("until upper bound filtering", () => {
+  let db: Db;
+  let sessions: SessionRepository;
+  let turns: TurnRepository;
+  let toolCalls: ToolCallRepository;
+  const base = 1_700_000_000_000;
+  const day = 86_400_000;
+
+  beforeEach(() => {
+    db = openDb(":memory:");
+    runMigrations(db);
+    sessions = new SessionRepository(db);
+    turns = new TurnRepository(db);
+    toolCalls = new ToolCallRepository(db);
+
+    // Session at base
+    sessions.upsert({
+      id: "s1", source: "claude-code", project_path: "/proj", file_path: "/proj/s1.jsonl",
+      file_mtime: 0, file_size: 0, created_at: base, last_active_at: base,
+      message_count: 1,
+      auto_title: null, custom_title: null, category_id: null, notes: null,
+      favorited: 0, archived: 0, orphaned: 0, content_indexed: 0, last_parsed_offset: 0,
+      tokens_in: 0, tokens_out: 0, tokens_cache_read: 0, tokens_cache_create: 0,
+      turns_indexed: 0, turns_last_offset: 0, repo_path: null,
+    });
+    // Session at base + 2*day (after the until boundary)
+    sessions.upsert({
+      id: "s2", source: "claude-code", project_path: "/proj", file_path: "/proj/s2.jsonl",
+      file_mtime: 0, file_size: 0, created_at: base + 2 * day, last_active_at: base + 2 * day,
+      message_count: 1,
+      auto_title: null, custom_title: null, category_id: null, notes: null,
+      favorited: 0, archived: 0, orphaned: 0, content_indexed: 0, last_parsed_offset: 0,
+      tokens_in: 0, tokens_out: 0, tokens_cache_read: 0, tokens_cache_create: 0,
+      turns_indexed: 0, turns_last_offset: 0, repo_path: null,
+    });
+    // Turn at base (within range)
+    turns.upsertMany([
+      { id: "t1", session_id: "s1", seq: 0, role: "assistant", model: "claude-sonnet-4-6",
+        ts: base, tokens_in: 100, tokens_out: 50, tokens_cache_read: 0,
+        tokens_cache_create: 0, text_len: 20, latency_ms: null, is_correction: 0 },
+      // Turn at base + 2*day (after until boundary)
+      { id: "t2", session_id: "s2", seq: 0, role: "assistant", model: "claude-sonnet-4-6",
+        ts: base + 2 * day, tokens_in: 100, tokens_out: 50, tokens_cache_read: 0,
+        tokens_cache_create: 0, text_len: 20, latency_ms: null, is_correction: 0 },
+    ]);
+    // Tool calls: tc1 at base (within), tc2 at base + 2*day (after)
+    toolCalls.upsertMany([
+      { id: "tc1", turn_id: "t1", session_id: "s1", name: "Edit", target_path: "/proj/app.ts",
+        is_error: 0, result_size: 0, ts: base },
+      { id: "tc2", turn_id: "t2", session_id: "s2", name: "Edit", target_path: "/proj/app.ts",
+        is_error: 0, result_size: 0, ts: base + 2 * day },
+    ]);
+  });
+
+  it("costByFile excludes tool_calls after `until`", () => {
+    const all = costByFile({ db, since: base });
+    const bounded = costByFile({ db, since: base, until: base + day });
+    const allRow = all.find((r) => r.path === "/proj/app.ts")!;
+    const boundedRow = bounded.find((r) => r.path === "/proj/app.ts")!;
+    expect(allRow.tool_calls).toBe(2);
+    expect(boundedRow.tool_calls).toBe(1);
+  });
+
+  it("modelLeaderboard excludes turns after `until`", () => {
+    const all = modelLeaderboard({ db, since: base });
+    const bounded = modelLeaderboard({ db, since: base, until: base + day });
+    const allRow = all.find((r) => r.model === "claude-sonnet-4-6")!;
+    const boundedRow = bounded.find((r) => r.model === "claude-sonnet-4-6")!;
+    expect(allRow.turns).toBe(2);
+    expect(boundedRow.turns).toBe(1);
+  });
+
+  it("sessionsForFile excludes tool_calls after `until`", () => {
+    const all = sessionsForFile({ db, path: "/proj/app.ts", since: base });
+    const bounded = sessionsForFile({ db, path: "/proj/app.ts", since: base, until: base + day });
+    expect(all.length).toBe(2);
+    expect(bounded.length).toBe(1);
+    expect(bounded[0].session_id).toBe("s1");
+  });
 });
