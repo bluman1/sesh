@@ -96,6 +96,7 @@ export type ToHost =
   | { kind: "getInsights"; tab: "standup" | "cost" | "leaderboard" | "records"; range: "custom"; start: number; end: number }
   | { kind: "getDailyMetrics"; month: string }
   | { kind: "getSessionsForFile"; path: string; range: "today" | "7d" | "30d" | "1y" | "all" }
+  | { kind: "getSessionsForFile"; path: string; range: "custom"; start: number; end: number }
   | { kind: "setOutcome"; sessionId: string; state: "open" | "shipped" | "shipped-partial" | "reverted" | "abandoned"; notes?: string | null }
   | { kind: "triggerReindexAnalytics" }
   | { kind: "getCommitments"; sinceDays: number }

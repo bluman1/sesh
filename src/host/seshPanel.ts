@@ -458,11 +458,20 @@ export class SeshPanel {
           break;
         }
         case "getSessionsForFile": {
-          const sinceMs = sinceMsForRange(msg.range);
+          let sinceMs: number;
+          let untilMs: number | undefined;
+          if (msg.range === "custom") {
+            sinceMs = msg.start;
+            untilMs = msg.end;
+          } else {
+            sinceMs = sinceMsForRange(msg.range);
+            untilMs = msg.range === "all" ? undefined : Date.now();
+          }
           const sessions = sessionsForFile({
             db: this.host.rawDb!,
             path: msg.path,
             since: sinceMs,
+            until: untilMs,
           });
           this.send({ kind: "sessionsForFile", path: msg.path, sessions });
           break;

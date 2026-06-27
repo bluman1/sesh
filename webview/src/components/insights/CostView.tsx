@@ -58,8 +58,12 @@ export function CostView({ range, custom, onNavigateToSession }: Props): JSX.Ele
       return;
     }
     setOpenPath(path);
-    if (!drillCache[path] && range !== "custom") {
-      postToHost({ kind: "getSessionsForFile", path, range });
+    if (!drillCache[path]) {
+      if (range === "custom" && custom) {
+        postToHost({ kind: "getSessionsForFile", path, range: "custom", start: custom.start, end: custom.end });
+      } else if (range !== "custom") {
+        postToHost({ kind: "getSessionsForFile", path, range });
+      }
     }
   };
 
