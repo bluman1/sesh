@@ -4,7 +4,7 @@ import { CostView } from "./insights/CostView";
 import { LeaderboardView } from "./insights/LeaderboardView";
 import { RecordsView } from "./insights/RecordsView";
 import { StyleView } from "./insights/StyleView";
-import { type InsightsRange, RANGE_OPTIONS } from "./insights/range";
+import { type InsightsRange, RANGE_OPTIONS, localStartOfDayMs, localEndOfDayMs } from "./insights/range";
 import "./InsightsTab.css";
 
 type SubTab = "standup" | "cost" | "leaderboard" | "records" | "style";
@@ -21,6 +21,42 @@ type Props = { onNavigateToSession?: (id: string) => void };
 export function InsightsTab({ onNavigateToSession }: Props = {}): JSX.Element {
   const [sub, setSub] = useState<SubTab>("standup");
   const [range, setRange] = useState<InsightsRange>("today");
+  const [showCustomPanel, setShowCustomPanel] = useState(false);
+  const [customStartStr, setCustomStartStr] = useState("");
+  const [customEndStr, setCustomEndStr] = useState("");
+  const [custom, setCustom] = useState<{ start: number; end: number } | null>(null);
+
+  const handlePresetClick = (id: InsightsRange) => {
+    setRange(id);
+    setShowCustomPanel(false);
+    setCustom(null);
+  };
+
+  const handleCustomChipClick = () => {
+    setShowCustomPanel((prev) => !prev);
+    if (range !== "custom") {
+      setRange("custom");
+      setCustom(null);
+    }
+  };
+
+  const handleCustomStartChange = (val: string) => {
+    setCustomStartStr(val);
+    if (val && customEndStr) {
+      setCustom({ start: localStartOfDayMs(val), end: localEndOfDayMs(customEndStr) });
+      setRange("custom");
+    }
+  };
+
+  const handleCustomEndChange = (val: string) => {
+    setCustomEndStr(val);
+    if (customStartStr && val) {
+      setCustom({ start: localStartOfDayMs(customStartStr), end: localEndOfDayMs(val) });
+      setRange("custom");
+    }
+  };
+
+  const showRanges = sub !== "records" && sub !== "style";
 
   return (
     <div className="sesh-insights">
@@ -36,24 +72,47 @@ export function InsightsTab({ onNavigateToSession }: Props = {}): JSX.Element {
             </button>
           ))}
         </div>
-        {sub !== "records" && sub !== "style" && (
+        {showRanges && (
           <div className="sesh-insights-ranges">
             {RANGE_OPTIONS.map((r) => (
               <button
                 key={r.id}
                 className={`sesh-insights-range${range === r.id ? " is-active" : ""}`}
-                onClick={() => setRange(r.id)}
+                onClick={() => handlePresetClick(r.id)}
               >
                 {r.label}
               </button>
             ))}
+            <button
+              className={`sesh-insights-range${range === "custom" ? " is-active" : ""}`}
+              onClick={handleCustomChipClick}
+            >
+              Custom…
+            </button>
+          </div>
+        )}
+        {showRanges && showCustomPanel && (
+          <div className="sesh-insights-custom-panel">
+            <input
+              type="date"
+              className="sesh-insights-date-input"
+              value={customStartStr}
+              onChange={(e) => handleCustomStartChange(e.target.value)}
+            />
+            <span className="sesh-insights-date-sep">–</span>
+            <input
+              type="date"
+              className="sesh-insights-date-input"
+              value={customEndStr}
+              onChange={(e) => handleCustomEndChange(e.target.value)}
+            />
           </div>
         )}
       </nav>
       <div className="sesh-insights-body">
-        {sub === "standup" && <StandupView range={range} />}
-        {sub === "cost" && <CostView range={range} onNavigateToSession={onNavigateToSession} />}
-        {sub === "leaderboard" && <LeaderboardView range={range} />}
+        {sub === "standup" && <StandupView range={range} custom={custom} />}
+        {sub === "cost" && <CostView range={range} custom={custom} onNavigateToSession={onNavigateToSession} />}
+        {sub === "leaderboard" && <LeaderboardView range={range} custom={custom} />}
         {sub === "records" && <RecordsView />}
         {sub === "style" && <StyleView />}
       </div>

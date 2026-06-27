@@ -26,11 +26,12 @@ function fileKind(p: string): "test" | "config" | "doc" | "code" {
 
 interface Props {
   range: InsightsRange;
+  custom?: { start: number; end: number } | null;
   onNavigateToSession?: (id: string) => void;
 }
 
-export function CostView({ range, onNavigateToSession }: Props): JSX.Element {
-  const { payload } = useInsights("cost", range);
+export function CostView({ range, custom, onNavigateToSession }: Props): JSX.Element {
+  const { payload } = useInsights("cost", range, custom);
   const [sortKey, setSortKey] = useState<SortKey>("cost");
   const [openPath, setOpenPath] = useState<string | null>(null);
   const [drillCache, setDrillCache] = useState<Record<string, SessionsForFile>>({});
@@ -57,7 +58,7 @@ export function CostView({ range, onNavigateToSession }: Props): JSX.Element {
       return;
     }
     setOpenPath(path);
-    if (!drillCache[path]) {
+    if (!drillCache[path] && range !== "custom") {
       postToHost({ kind: "getSessionsForFile", path, range });
     }
   };

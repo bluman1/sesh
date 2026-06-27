@@ -204,11 +204,11 @@ function buildStandupProse(data: StandupPayload, range: InsightsRange): string {
   return lines.join(" ");
 }
 
-interface Props { range: InsightsRange; }
+interface Props { range: InsightsRange; custom?: { start: number; end: number } | null; }
 
-export function StandupView({ range }: Props): JSX.Element {
+export function StandupView({ range, custom }: Props): JSX.Element {
   // ALL hooks must be at the top — before any conditional return
-  const { payload } = useInsights("standup", range);
+  const { payload } = useInsights("standup", range, custom);
   const [mode, setMode] = useState<Mode>("magazine");
   const [copied, setCopied] = useState(false);
 

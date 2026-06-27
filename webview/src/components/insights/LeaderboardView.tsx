@@ -11,10 +11,10 @@ function shortModel(m: string): string {
   return m;
 }
 
-interface Props { range: InsightsRange; }
+interface Props { range: InsightsRange; custom?: { start: number; end: number } | null; }
 
-export function LeaderboardView({ range }: Props): JSX.Element {
-  const { payload } = useInsights("leaderboard", range);
+export function LeaderboardView({ range, custom }: Props): JSX.Element {
+  const { payload } = useInsights("leaderboard", range, custom);
 
   if (!payload) return <div>Loading…</div>;
   const rows = payload as Row[];
