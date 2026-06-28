@@ -2,7 +2,7 @@
   "name": "sesh",
   "displayName": "Sesh",
   "description": "Browse, annotate, and resume saved Claude Code and Codex CLI sessions.",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "publisher": "MichaelOgundare",
   "license": "MIT",
   "icon": "resources/sesh-icon.png",
@@ -193,7 +193,10 @@
         },
         "sesh.pickUpScope": {
           "type": "string",
-          "enum": ["global", "workspace"],
+          "enum": [
+            "global",
+            "workspace"
+          ],
           "default": "workspace",
           "description": "Which sessions feed the 'Pick up where you left off' banner. 'workspace' (default) restricts to sessions inside the current workspace's git repo; 'global' uses every session you've had."
         },
@@ -214,7 +217,11 @@
         },
         "sesh.embedder": {
           "type": "string",
-          "enum": ["local", "ollama", "cloud"],
+          "enum": [
+            "local",
+            "ollama",
+            "cloud"
+          ],
           "default": "local",
           "description": "Which embedder to use. 'local' runs entirely on-device via @huggingface/transformers (recommended). 'ollama' targets a local Ollama server. 'cloud' targets an OpenAI-compatible endpoint."
         },
