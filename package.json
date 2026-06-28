@@ -2,7 +2,7 @@
   "name": "sesh",
   "displayName": "Sesh",
   "description": "Browse, annotate, and resume saved Claude Code and Codex CLI sessions.",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "publisher": "MichaelOgundare",
   "license": "MIT",
   "icon": "resources/sesh-icon.png",
