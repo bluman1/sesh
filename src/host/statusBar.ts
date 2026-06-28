@@ -30,7 +30,11 @@ export class SeshStatusBar {
       this.item.hide();
       return;
     }
-    this.item.text = `$(history) $${summary.totalUsd.toFixed(2)} today`;
+    const usd = summary.totalUsd.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    this.item.text = `$(history) $${usd} today`;
     this.item.show();
   }
 

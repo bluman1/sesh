@@ -5,7 +5,7 @@ import {
   type DayValue,
   type MonthlySummary,
 } from "../../hooks/useDailyMetrics";
-import { fmtDuration } from "./format";
+import { fmtDuration, fmtUsd, fmtCount } from "./format";
 import "./TrendsView.css";
 
 type MetricKey = "cost" | "sessions" | "turns" | "activeMs" | "cacheHitRate" | "costPerTurn";
@@ -18,13 +18,15 @@ interface MetricCfg {
   total: (s: MonthlySummary) => number;
 }
 
+const fmtUsd3 = (n: number) =>
+  "$" + n.toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 const METRICS: MetricCfg[] = [
-  { key: "cost", label: "Total cost", fmt: (n) => `$${n.toFixed(2)}`, total: (s) => s.totalCost },
-  { key: "sessions", label: "Sessions", fmt: (n) => `${Math.round(n)}`, total: (s) => s.totalSessions },
-  { key: "turns", label: "Turns", fmt: (n) => `${Math.round(n)}`, total: (s) => s.totalTurns },
+  { key: "cost", label: "Total cost", fmt: fmtUsd, total: (s) => s.totalCost },
+  { key: "sessions", label: "Sessions", fmt: (n) => fmtCount(Math.round(n)), total: (s) => s.totalSessions },
+  { key: "turns", label: "Turns", fmt: (n) => fmtCount(Math.round(n)), total: (s) => s.totalTurns },
   { key: "activeMs", label: "Active time", fmt: fmtDuration, total: (s) => s.totalActiveMs },
   { key: "cacheHitRate", label: "Cache hit", fmt: (n) => `${Math.round(n * 100)}%`, total: (s) => s.cacheHitRate },
-  { key: "costPerTurn", label: "$ / turn", fmt: (n) => `$${n.toFixed(3)}`, total: (s) => s.costPerTurn },
+  { key: "costPerTurn", label: "$ / turn", fmt: fmtUsd3, total: (s) => s.costPerTurn },
 ];
 
 function thisMonth(): string {
@@ -173,22 +175,22 @@ function TrendRecords({ summary: s }: { summary: MonthlySummary }) {
   const dv = (d: DayValue | null, fmt: (n: number) => string) =>
     d ? `${dayShort(d.day)} · ${fmt(d.value)}` : "—";
   const pct = (n: number) => `${Math.round(n * 100)}%`;
-  const usd2 = (n: number) => `$${n.toFixed(2)}`;
+  const count = (n: number) => fmtCount(Math.round(n));
   return (
     <div className="sesh-trends-records">
       <div className="sesh-trends-records-title">This month</div>
       <div className="sesh-trends-records-grid">
-        <Stat label="Total cost" value={usd2(s.totalCost)} />
-        <Stat label="Sessions" value={`${s.totalSessions}`} />
-        <Stat label="Turns" value={`${s.totalTurns}`} />
+        <Stat label="Total cost" value={fmtUsd(s.totalCost)} />
+        <Stat label="Sessions" value={count(s.totalSessions)} />
+        <Stat label="Turns" value={count(s.totalTurns)} />
         <Stat label="Active time" value={fmtDuration(s.totalActiveMs)} />
         <Stat label="Cache hit" value={pct(s.cacheHitRate)} />
-        <Stat label="$ / turn" value={`$${s.costPerTurn.toFixed(3)}`} />
+        <Stat label="$ / turn" value={fmtUsd3(s.costPerTurn)} />
       </div>
       <div className="sesh-trends-records-title">Notable days</div>
       <div className="sesh-trends-records-grid">
-        <Stat label="Top cost" value={dv(s.topCostDay, usd2)} />
-        <Stat label="Most turns" value={dv(s.topTurnsDay, (n) => `${Math.round(n)}`)} />
+        <Stat label="Top cost" value={dv(s.topCostDay, fmtUsd)} />
+        <Stat label="Most turns" value={dv(s.topTurnsDay, count)} />
         <Stat label="Longest active" value={dv(s.topActiveDay, fmtDuration)} />
         <Stat label="Best cache" value={dv(s.bestCacheDay, pct)} />
         <Stat label="Worst cache" value={dv(s.worstCacheDay, pct)} />
