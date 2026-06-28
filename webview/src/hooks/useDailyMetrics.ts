@@ -6,17 +6,29 @@ export interface DailyMetric {
   activeMs: number; cacheHitRate: number; costPerTurn: number;
 }
 
-export function useDailyMetrics(month: string): DailyMetric[] | null {
-  const [rows, setRows] = useState<DailyMetric[] | null>(null);
+export interface DayValue { day: string; value: number; }
+
+export interface MonthlySummary {
+  totalCost: number; totalSessions: number; totalTurns: number;
+  totalActiveMs: number; cacheHitRate: number; costPerTurn: number;
+  topCostDay: DayValue | null; topTurnsDay: DayValue | null;
+  topActiveDay: DayValue | null; bestCacheDay: DayValue | null;
+  worstCacheDay: DayValue | null;
+}
+
+export interface MonthlyMetrics { days: DailyMetric[]; summary: MonthlySummary; }
+
+export function useDailyMetrics(month: string): MonthlyMetrics | null {
+  const [data, setData] = useState<MonthlyMetrics | null>(null);
   useEffect(() => {
-    setRows(null);
+    setData(null);
     const off = onHostMessage((msg) => {
       if (msg.kind === "dailyMetrics" && msg.month === month) {
-        setRows(msg.payload as DailyMetric[]);
+        setData(msg.payload as MonthlyMetrics);
       }
     });
     postToHost({ kind: "getDailyMetrics", month });
     return off;
   }, [month]);
-  return rows;
+  return data;
 }

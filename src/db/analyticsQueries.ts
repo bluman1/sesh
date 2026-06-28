@@ -412,7 +412,9 @@ export function standupSummary(opts: StandupOpts): StandupSummary {
     const tokens = r.tokens_in + r.tokens_out;
     totalTokens += tokens;
     totalCacheRead += r.tokens_cache_read;
-    totalCacheReadable += r.tokens_in + r.tokens_cache_read;
+    // Include cache_create: it's input written to cache (processed fresh), so
+    // it belongs in the denominator. Omitting it pins the rate near 100%.
+    totalCacheReadable += r.tokens_in + r.tokens_cache_read + r.tokens_cache_create;
     if (r.is_correction === 1) corrections++;
     turnTimestamps.push(r.ts);
     if (r.model) {
@@ -653,11 +655,36 @@ export interface DailyMetric {
   costPerTurn: number;
 }
 
+export interface DayValue {
+  day: string;
+  value: number;
+}
+
+/** Month-wide aggregates + notable days for the Trends records section. */
+export interface MonthlySummary {
+  totalCost: number;
+  totalSessions: number; // distinct sessions across the month (not summed daily)
+  totalTurns: number;
+  totalActiveMs: number; // sum of per-day active time
+  cacheHitRate: number; // computed from month-total tokens, not averaged daily ratios
+  costPerTurn: number;
+  topCostDay: DayValue | null;
+  topTurnsDay: DayValue | null;
+  topActiveDay: DayValue | null;
+  bestCacheDay: DayValue | null;
+  worstCacheDay: DayValue | null;
+}
+
+export interface MonthlyMetrics {
+  days: DailyMetric[];
+  summary: MonthlySummary;
+}
+
 export function dailyMetrics(opts: {
   db: Db;
   monthStartMs: number;
   monthEndMs: number;
-}): DailyMetric[] {
+}): MonthlyMetrics {
   const { db, monthStartMs, monthEndMs } = opts;
   const rows = db
     .prepare(
@@ -695,7 +722,10 @@ export function dailyMetrics(opts: {
     a.sessions.add(r.session_id);
     a.ts.push(r.ts);
     a.cacheRead += r.tokens_cache_read;
-    a.cacheable += r.tokens_in + r.tokens_cache_read;
+    // Cache hit = read / (all input that flowed this turn). cache_create is
+    // input written to cache (processed fresh), so it MUST be in the
+    // denominator — omitting it pins cache-creation-heavy days near 100%.
+    a.cacheable += r.tokens_in + r.tokens_cache_read + r.tokens_cache_create;
   }
 
   // Zero-fill every local calendar day in [monthStart, monthEnd).
@@ -721,7 +751,48 @@ export function dailyMetrics(opts: {
     );
     cursor.setDate(cursor.getDate() + 1);
   }
-  return out;
+
+  // ─── Monthly summary ────────────────────────────────────────
+  // Distinct sessions and cache-hit are computed from month totals, NOT by
+  // summing/averaging the per-day values (a session active on 3 days would be
+  // counted 3×, and averaging daily ratios isn't token-weighted).
+  let monthCacheRead = 0;
+  let monthCacheable = 0;
+  for (const a of byDay.values()) {
+    monthCacheRead += a.cacheRead;
+    monthCacheable += a.cacheable;
+  }
+  const totalCost = out.reduce((s, r) => s + r.cost, 0);
+  const totalTurns = rows.length;
+  const totalActiveMs = out.reduce((s, r) => s + r.activeMs, 0);
+  const totalSessions = new Set(rows.map((r) => r.session_id)).size;
+
+  const activeDays = out.filter((r) => r.turns > 0);
+  const pick = (
+    cmp: (best: DailyMetric, cur: DailyMetric) => boolean,
+    val: (r: DailyMetric) => number,
+  ): DayValue | null => {
+    if (activeDays.length === 0) return null;
+    let best = activeDays[0];
+    for (const r of activeDays) if (cmp(best, r)) best = r;
+    return { day: best.day, value: val(best) };
+  };
+
+  const summary: MonthlySummary = {
+    totalCost,
+    totalSessions,
+    totalTurns,
+    totalActiveMs,
+    cacheHitRate: monthCacheable > 0 ? monthCacheRead / monthCacheable : 0,
+    costPerTurn: totalTurns > 0 ? totalCost / totalTurns : 0,
+    topCostDay: pick((b, c) => c.cost > b.cost, (r) => r.cost),
+    topTurnsDay: pick((b, c) => c.turns > b.turns, (r) => r.turns),
+    topActiveDay: pick((b, c) => c.activeMs > b.activeMs, (r) => r.activeMs),
+    bestCacheDay: pick((b, c) => c.cacheHitRate > b.cacheHitRate, (r) => r.cacheHitRate),
+    worstCacheDay: pick((b, c) => c.cacheHitRate < b.cacheHitRate, (r) => r.cacheHitRate),
+  };
+
+  return { days: out, summary };
 }
 
 const COMMITMENT_PATTERNS = [

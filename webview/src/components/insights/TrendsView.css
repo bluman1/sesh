@@ -6,7 +6,28 @@
 .sesh-trends-metrics { display: flex; flex-wrap: wrap; gap: 6px; }
 .sesh-trends-metrics button { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--sesh-fg) 18%, transparent); background: none; color: var(--sesh-fg); cursor: pointer; }
 .sesh-trends-metrics button.is-active { background: color-mix(in srgb, var(--vscode-charts-blue, #4d8df6) 30%, transparent); border-color: transparent; }
-.sesh-trends-svg { width: 100%; height: 160px; }
-.sesh-trends-bar { fill: color-mix(in srgb, var(--vscode-charts-blue, #4d8df6) 70%, transparent); }
-.sesh-trends-bar:hover { fill: var(--vscode-charts-blue, #4d8df6); }
+
+.sesh-trends-chart { display: flex; flex-direction: column; gap: 4px; }
+
+/* Prominent hover/total readout above the chart */
+.sesh-trends-readout { display: flex; align-items: baseline; gap: 10px; min-height: 28px; }
+.sesh-trends-readout-val { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--sesh-fg); }
+.sesh-trends-readout-cap { font-size: 12px; opacity: 0.7; }
+
+.sesh-trends-svg { width: 100%; height: 160px; display: block; }
+.sesh-trends-bar { fill: color-mix(in srgb, var(--vscode-charts-blue, #4d8df6) 60%, transparent); transition: fill 60ms linear; }
+.sesh-trends-bar.is-focus { fill: var(--vscode-charts-blue, #4d8df6); }
+
+/* X-axis day-of-month ticks, one cell per bar so labels align under bars */
+.sesh-trends-axis { display: flex; width: 100%; }
+.sesh-trends-axis-tick { flex: 1 1 0; min-width: 0; text-align: center; font-size: 10px; opacity: 0.55; font-variant-numeric: tabular-nums; }
+
+/* Monthly records section */
+.sesh-trends-records { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.sesh-trends-records-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.55; margin-top: 6px; }
+.sesh-trends-records-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.sesh-trends-stat { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--sesh-fg) 5%, transparent); border: 1px solid color-mix(in srgb, var(--sesh-fg) 10%, transparent); }
+.sesh-trends-stat-label { font-size: 11px; opacity: 0.6; }
+.sesh-trends-stat-value { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
 .sesh-trends-empty { opacity: 0.6; font-size: 13px; padding: 24px 0; text-align: center; }
